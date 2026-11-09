@@ -67,6 +67,8 @@ jobs:
           {
             echo "CHANGES<<EOF"
             git log --reverse --format='%s' "$old..HEAD" -- . ':(exclude).github' \
+              ':(exclude)smarttubetv/plus.gradle' ':(exclude)smarttubetv/src/stdev' \
+              ':(exclude)smarttubetv/src/ststableRelease' \
               | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' || true
             echo "EOF"
           } >> "$GITHUB_ENV"
