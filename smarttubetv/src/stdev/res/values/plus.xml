@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SmartTube Plus dev build: installs next to the release build and updates from the "dev" release. -->
+<resources>
+    <string translatable="false" name="app_name"><![CDATA[SmartTube Plus dev]]></string>
+    <string translatable="false" name="browse_title"><![CDATA[SmartTube Plus dev]]></string>
+    <string name="search_label">SmartTube Plus dev</string>
+    <string name="settings_description">SmartTube Plus dev Videos</string>
+    <!-- Must match applicationId in plus.gradle and res/xml/searchable.xml -->
+    <string translatable="false" name="search_authority">org.indodev.smarttubeplus.dev</string>
+    <string-array name="update_urls">
+        <item>https://github.com/IndoDev-B/SmartTube/releases/download/dev/smarttubeplus_dev.json</item>
+    </string-array>
+</resources>

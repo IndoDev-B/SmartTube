@@ -1,0 +1,99 @@
+name: SmartTube Plus dev build
+
+# Every push to my-features builds "SmartTube Plus dev" (its own app ID) and publishes it to the
+# "dev" release. The dev app's updater reads smarttubeplus_dev.json from there, so a push shows
+# up on the TV as an in-app update a few minutes later.
+
+on:
+  push:
+    branches: [ "my-features" ]
+    paths-ignore: [ "**.md" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plus-dev
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD: ${{ github.run_number }}
+      BASE_URL: https://github.com/${{ github.repository }}/releases/download/dev
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Configure signing
+        run: |
+          if [ -z "${{ secrets.SIGNING_KEY }}" ]; then
+            echo "::error::SIGNING_KEY secret is missing. Unsigned APKs cannot be installed."
+            exit 1
+          fi
+          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > "$RUNNER_TEMP/key.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/key.jks"
+            echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}"
+            echo "keyAlias=${{ secrets.ALIAS }}"
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}"
+          } > keystore.properties
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleStdevRelease -PplusBuild=$BUILD
+
+      - name: Package
+        run: |
+          mkdir dist
+          for f in smarttubetv/build/outputs/apk/stdev/release/*.apk; do
+            abi="${f##*_}"; abi="${abi%.apk}"
+            cp "$f" "dist/smarttubeplus_dev_${abi}.apk"
+          done
+          ls -l dist
+
+          # Same formula as plus.gradle, so the JSON matches the APK the updater installs.
+          code=$(grep -m1 'versionCode ' smarttubetv/build.gradle | grep -o '[0-9]*')
+          name=$(grep -m1 'versionName ' smarttubetv/build.gradle | cut -d'"' -f2)
+          version="$name-dev.$BUILD"
+          changes=$(git log -1 --format=%s)
+          jq -n \
+            --arg base "$BASE_URL" --arg version "$version" \
+            --argjson code $(( code * 1000 + BUILD )) --arg changes "$changes" '
+            {
+              package: {
+                downloadUrlList: ["\($base)/smarttubeplus_dev_universal.apk"]
+              }
+            } + { ($version): { versionCode: $code, changelog: [$changes] } }' \
+            > dist/smarttubeplus_dev.json
+          cat dist/smarttubeplus_dev.json
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Publish to the dev release
+        run: |
+          notes="Test build of SmartTube Plus, installs as **SmartTube Plus dev** next to the normal app.
+
+          **Install on the TV:** in Downloader, open
+          $BASE_URL/smarttubeplus_dev_universal.apk
+
+          After that, the app offers each new dev build as an update.
+
+          Version: $VERSION, commit ${GITHUB_SHA::7}"
+          if gh release view dev >/dev/null 2>&1; then
+            gh release edit dev --title "SmartTube Plus dev $VERSION" --notes "$notes" --prerelease
+          else
+            gh release create dev --target "$GITHUB_SHA" --title "SmartTube Plus dev $VERSION" --notes "$notes" --prerelease
+          fi
+          gh release upload dev dist/* --clobber

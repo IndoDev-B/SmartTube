@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SmartTube Plus: overrides the stable flavor's name, search ID and update feed. -->
+<resources>
+    <string translatable="false" name="app_name"><![CDATA[SmartTube Plus]]></string>
+    <string translatable="false" name="browse_title"><![CDATA[SmartTube Plus]]></string>
+    <string name="search_label">SmartTube Plus</string>
+    <string name="settings_description">SmartTube Plus Videos</string>
+    <!-- Must match applicationId in plus.gradle and res/xml/searchable.xml -->
+    <string translatable="false" name="search_authority">org.indodev.smarttubeplus</string>
+    <string-array name="update_urls">
+        <item>https://github.com/IndoDev-B/SmartTube/releases/download/latest/smarttubeplus.json</item>
+    </string-array>
+</resources>

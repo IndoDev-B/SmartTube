@@ -1,0 +1,32 @@
+// SmartTube Plus overrides, applied at the end of build.gradle.
+// Kept in a separate file so rebasing onto a new SmartTube release only touches one line upstream owns.
+//
+// Release:  ./gradlew assembleStstableRelease -PplusBuild=<n>   -> org.indodev.smarttubeplus
+// Dev:      ./gradlew assembleStdevRelease    -PplusBuild=<n>   -> org.indodev.smarttubeplus.dev
+//
+// Name, search authority and update URL overrides are resources in
+// src/ststableRelease/res (beats the stable flavor's own files) and src/stdev/res.
+
+def plusBuild = (project.findProperty('plusBuild') ?: '0') as int
+
+// Upstream bumps versionCode every release. Multiplying keeps every Plus build above the one
+// before it, both across upstream releases and across our own rebuilds of the same release.
+def plusVersionCode = android.defaultConfig.versionCode * 1000 + plusBuild
+
+android {
+    productFlavors {
+        ststable {
+            applicationId 'org.indodev.smarttubeplus'
+            versionCode plusVersionCode
+            versionNameSuffix "-plus.${plusBuild}"
+        }
+        stdev {
+            applicationId 'org.indodev.smarttubeplus.dev'
+            targetSdkVersion project.properties.compileSdkVersion
+            versionCode plusVersionCode
+            versionNameSuffix "-dev.${plusBuild}"
+            // Library modules only define stbeta/ststable/stfdroid; build them as stable.
+            matchingFallbacks = ['ststable']
+        }
+    }
+}

@@ -1,0 +1,160 @@
+name: SmartTube Plus release
+
+# Once a day: if SmartTube published a new stable release, replay the my-features commits on top
+# of it, build SmartTube Plus and publish it to the "latest" release, which the app's updater
+# reads. A rebase conflict fails the run (GitHub emails you); fix it locally, then push.
+#
+# Run it by hand ("Run workflow") to rebuild after adding a feature.
+#
+# The rebased branch is NOT pushed back: the built-in token may not push commits that touch
+# workflow files. my-features is rebased locally the next time you work on it.
+
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plus-release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD: ${{ github.run_number }}
+      UPSTREAM: https://github.com/yuliskov/SmartTube.git
+      BASE_URL: https://github.com/${{ github.repository }}/releases/download/latest
+
+    steps:
+      - name: Check for a new SmartTube release
+        id: check
+        run: |
+          tag=$(gh api repos/yuliskov/SmartTube/releases/latest --jq .tag_name)
+          built=$(gh release view latest -R "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null \
+            | sed -n 's/.*<!-- upstream: \([^ ]*\) -->.*/\1/p' || true)
+          echo "SmartTube latest stable: $tag, last Plus build based on: ${built:-none}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ "$tag" = "$built" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Nothing new."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.go == 'true'
+        with:
+          ref: my-features
+          fetch-depth: 0
+
+      - name: Rebase my-features onto SmartTube ${{ steps.check.outputs.tag }}
+        if: steps.check.outputs.go == 'true'
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git fetch --force "$UPSTREAM" "+refs/tags/*:refs/tags/*"
+          # The upstream stable tag my-features currently sits on, e.g. 32.71s.
+          old=$(git describe --tags --abbrev=0 --match '[0-9]*s' HEAD)
+          echo "my-features is based on $old, moving it to $TAG"
+          if ! git rebase --onto "$TAG" "$old"; then
+            echo "::error::Your features conflict with SmartTube $TAG in:"
+            git diff --name-only --diff-filter=U
+            git rebase --abort
+            exit 1
+          fi
+          git submodule update --init --recursive
+          {
+            echo "CHANGES<<EOF"
+            git log --reverse --format='%s' "$TAG..HEAD"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.go == 'true'
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Configure signing
+        if: steps.check.outputs.go == 'true'
+        run: |
+          if [ -z "${{ secrets.SIGNING_KEY }}" ]; then
+            echo "::error::SIGNING_KEY secret is missing. Unsigned APKs cannot be installed."
+            exit 1
+          fi
+          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > "$RUNNER_TEMP/key.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/key.jks"
+            echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}"
+            echo "keyAlias=${{ secrets.ALIAS }}"
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}"
+          } > keystore.properties
+
+      - name: Build
+        if: steps.check.outputs.go == 'true'
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleStstableRelease -PplusBuild=$BUILD
+
+      - name: Package
+        if: steps.check.outputs.go == 'true'
+        run: |
+          mkdir dist
+          for f in smarttubetv/build/outputs/apk/ststable/release/*.apk; do
+            abi="${f##*_}"; abi="${abi%.apk}"
+            cp "$f" "dist/smarttubeplus_${abi}.apk"
+          done
+          ls -l dist
+
+          # Same formula as plus.gradle, so the JSON matches the APK the updater installs.
+          code=$(grep -m1 'versionCode ' smarttubetv/build.gradle | grep -o '[0-9]*')
+          name=$(grep -m1 'versionName ' smarttubetv/build.gradle | cut -d'"' -f2)
+          version="$name-plus.$BUILD"
+          jq -n \
+            --arg base "$BASE_URL" --arg version "$version" \
+            --argjson code $(( code * 1000 + BUILD )) \
+            --arg tag "${{ steps.check.outputs.tag }}" --arg changes "$CHANGES" '
+            {
+              package: {
+                downloadUrlList: ["\($base)/smarttubeplus_armeabi-v7a.apk"],
+                "downloadUrlList_arm64-v8a": ["\($base)/smarttubeplus_arm64-v8a.apk"],
+                downloadUrlList_x86: ["\($base)/smarttubeplus_x86.apk"]
+              }
+            } + { ($version): {
+              versionCode: $code,
+              changelog: (["Based on SmartTube \($tag)"] + ($changes | split("\n") | map(select(length > 0))))
+            } }' \
+            > dist/smarttubeplus.json
+          cat dist/smarttubeplus.json
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Publish to the latest release
+        if: steps.check.outputs.go == 'true'
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          list=$(printf '%s\n' "$CHANGES" | sed '/^$/d; s/^/- /')
+          notes="Unofficial build of [SmartTube](https://github.com/yuliskov/SmartTube) $TAG with extra features. Installs as **SmartTube Plus**, next to the official app.
+
+          **Install on the TV:** in Downloader, open
+          $BASE_URL/smarttubeplus_universal.apk
+
+          After that, the app offers new builds as in-app updates.
+
+          **Changes on top of SmartTube:**
+          $list
+
+          <!-- upstream: $TAG -->"
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --title "SmartTube Plus $VERSION" --notes "$notes" --latest
+          else
+            gh release create latest --target my-features --title "SmartTube Plus $VERSION" --notes "$notes" --latest
+          fi
+          gh release upload latest dist/* --clobber

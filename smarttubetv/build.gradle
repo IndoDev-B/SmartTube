@@ -255,3 +255,6 @@ dependencies {
 
     implementation 'androidx.work:work-runtime:' + workVersion
 }
+
+// SmartTube Plus: app ID, version and the dev build live in plus.gradle
+apply from: 'plus.gradle'
