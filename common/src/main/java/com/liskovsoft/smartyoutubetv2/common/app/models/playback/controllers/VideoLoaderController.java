@@ -474,7 +474,10 @@ public class VideoLoaderController extends BasePlayerController {
 
         getPlayer().setPositionMs(getPlayer().getDurationMs());
         getPlayer().setPlayWhenReady(false);
-        getPlayer().showSuggestions(true);
+        // SmartTube Plus: keep focus on the player controls when a video ends. showSuggestions()
+        // focuses the first suggestions row, which is Chapters on videos that have them, so the
+        // last chapter got selected. Suggestions stay one press of Down away.
+        getPlayer().showControls(true);
     }
 
     private void restartPlaylistIfNeeded() {
