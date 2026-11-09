@@ -7,7 +7,7 @@ name: SmartTube Plus dev build
 on:
   push:
     branches: [ "my-features" ]
-    paths-ignore: [ "**.md" ]
+    paths-ignore: [ "**.md", ".github/**" ]
   workflow_dispatch:
 
 permissions:

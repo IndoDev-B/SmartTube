@@ -104,6 +104,9 @@ jobs:
       - name: Build
         if: steps.check.outputs.go == 'true'
         run: |
+          # The author's Firebase config only knows the official app ID, so the stable build fails
+          # on it. Without it, crash reporting is off, and nothing goes to the author's Firebase.
+          rm -f smarttubetv/google-services.json
           chmod +x gradlew
           ./gradlew assembleStstableRelease -PplusBuild=$BUILD
 
