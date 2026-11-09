@@ -1,13 +1,13 @@
 name: SmartTube Plus release
 
-# Once a day: if SmartTube published a new stable release, replay the my-features commits on top
+# Once a day: if SmartTube published a new stable release, apply the my-features changes on top
 # of it, build SmartTube Plus and publish it to the "latest" release, which the app's updater
-# reads. A rebase conflict fails the run (GitHub emails you); fix it locally, then push.
+# reads. A conflict fails the run (GitHub emails you); fix it locally, then push.
 #
 # Run it by hand ("Run workflow") to rebuild after adding a feature.
 #
-# The rebased branch is NOT pushed back: the built-in token may not push commits that touch
-# workflow files. my-features is rebased locally the next time you work on it.
+# The updated branch is NOT pushed back: the built-in token may not push commits that touch
+# workflow files. my-features is moved to the new release locally the next time you work on it.
 
 on:
   schedule:
@@ -51,29 +51,33 @@ jobs:
           ref: my-features
           fetch-depth: 0
 
-      - name: Rebase my-features onto SmartTube ${{ steps.check.outputs.tag }}
+      - name: Apply my-features on top of SmartTube ${{ steps.check.outputs.tag }}
         if: steps.check.outputs.go == 'true'
         env:
           TAG: ${{ steps.check.outputs.tag }}
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
           git fetch --force "$UPSTREAM" "+refs/tags/*:refs/tags/*"
           # The upstream stable tag my-features currently sits on, e.g. 32.71s.
           old=$(git describe --tags --abbrev=0 --match '[0-9]*s' HEAD)
-          echo "my-features is based on $old, moving it to $TAG"
-          if ! git rebase --onto "$TAG" "$old"; then
+          echo "my-features is based on $old, applying it to $TAG"
+
+          # Apply all of my-features as ONE patch instead of replaying commits: commits that
+          # cancel out (a change and its revert) then can't conflict with the new release.
+          # Changelog = commit subjects, minus the setup commits.
+          {
+            echo "CHANGES<<EOF"
+            git log --reverse --format='%s' "$old..HEAD" \
+              | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' || true
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+          git diff --binary "$old" HEAD > "$RUNNER_TEMP/plus.patch"
+          git checkout -q --detach "$TAG"
+          if ! git apply --3way "$RUNNER_TEMP/plus.patch"; then
             echo "::error::Your features conflict with SmartTube $TAG in:"
             git diff --name-only --diff-filter=U
-            git rebase --abort
             exit 1
           fi
           git submodule update --init --recursive
-          {
-            echo "CHANGES<<EOF"
-            git log --reverse --format='%s' "$TAG..HEAD"
-            echo "EOF"
-          } >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         if: steps.check.outputs.go == 'true'
@@ -141,6 +145,7 @@ jobs:
           TAG: ${{ steps.check.outputs.tag }}
         run: |
           list=$(printf '%s\n' "$CHANGES" | sed '/^$/d; s/^/- /')
+          [ -n "$list" ] || list="- None yet, same features as SmartTube"
           notes="Unofficial build of [SmartTube](https://github.com/yuliskov/SmartTube) $TAG with extra features. Installs as **SmartTube Plus**, next to the official app.
 
           **Install on the TV:** in Downloader, open
