@@ -13,6 +13,15 @@ def plusBuild = (project.findProperty('plusBuild') ?: '0') as int
 // before it, both across upstream releases and across our own rebuilds of the same release.
 def plusVersionCode = android.defaultConfig.versionCode * 1000 + plusBuild
 
+// -PplusFast: quickest build for iterating on the dev app. One APK for all ARM TVs instead of
+// four per-CPU ones, and no release lint pass (release builds still get it).
+if (project.hasProperty('plusFast')) {
+    android {
+        splits.abi.enable = false
+        lintOptions.checkReleaseBuilds = false
+    }
+}
+
 android {
     productFlavors {
         ststable {

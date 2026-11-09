@@ -34,7 +34,12 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      # Saves Gradle's dependency, transform and build caches after every run, so modules
+      # you did not touch (ExoPlayer, MediaServiceCore...) come from cache instead of compiling.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: Configure signing
         run: |
@@ -53,7 +58,8 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleStdevRelease -PplusBuild=$BUILD
+          ./gradlew assembleStdevRelease -PplusBuild=$BUILD -PplusFast \
+            --build-cache --parallel -Dorg.gradle.jvmargs=-Xmx6g
 
       - name: Package
         run: |
