@@ -35,10 +35,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Saves Gradle's dependency, transform and build caches after every run, so modules
-      # you did not touch (ExoPlayer, MediaServiceCore...) come from cache instead of compiling.
+      - name: Read the Gradle version SmartTube uses
+        id: gradle
+        run: echo "version=$(sed -n 's/.*gradle-\(.*\)-bin\.zip/\1/p' gradle/wrapper/gradle-wrapper.properties)" >> "$GITHUB_OUTPUT"
+
+      # Runs an official Gradle download instead of the repo's gradlew. SmartTube's
+      # gradle-wrapper.jar is a 2013 Gradle 1.6 build: checked byte for byte against the official
+      # 1.6 release and genuine, but not on the validator's list, and skipping it means a swapped
+      # wrapper in a future SmartTube release can never run here. Validation is off because no
+      # wrapper is executed.
+      # Also saves Gradle's caches after every run, so modules you did not touch (ExoPlayer,
+      # MediaServiceCore...) come from cache instead of compiling.
       - uses: gradle/actions/setup-gradle@v4
         with:
+          gradle-version: ${{ steps.gradle.outputs.version }}
+          validate-wrappers: false
           cache-read-only: false
 
       - name: Configure signing
@@ -57,8 +68,7 @@ jobs:
 
       - name: Build
         run: |
-          chmod +x gradlew
-          ./gradlew assembleStdevRelease -PplusBuild=$BUILD -PplusFast \
+          gradle assembleStdevRelease -PplusBuild=$BUILD -PplusFast \
             --build-cache --parallel -Dorg.gradle.jvmargs=-Xmx6g
 
       - name: Package

@@ -84,7 +84,19 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Read the Gradle version SmartTube uses
+        if: steps.check.outputs.go == 'true'
+        id: gradle
+        run: echo "version=$(sed -n 's/.*gradle-\(.*\)-bin\.zip/\1/p' gradle/wrapper/gradle-wrapper.properties)" >> "$GITHUB_OUTPUT"
+
+      # Official Gradle instead of the repo's gradlew, see plus-dev.yml for why.
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.check.outputs.go == 'true'
+        with:
+          gradle-version: ${{ steps.gradle.outputs.version }}
+          validate-wrappers: false
+          cache-read-only: false
 
       - name: Configure signing
         if: steps.check.outputs.go == 'true'
@@ -107,8 +119,7 @@ jobs:
           # The author's Firebase config only knows the official app ID, so the stable build fails
           # on it. Without it, crash reporting is off, and nothing goes to the author's Firebase.
           rm -f smarttubetv/google-services.json
-          chmod +x gradlew
-          ./gradlew assembleStstableRelease -PplusBuild=$BUILD
+          gradle assembleStstableRelease -PplusBuild=$BUILD --build-cache --parallel -Dorg.gradle.jvmargs=-Xmx6g
 
       - name: Package
         if: steps.check.outputs.go == 'true'
