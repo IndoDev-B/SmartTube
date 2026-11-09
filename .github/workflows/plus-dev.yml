@@ -85,7 +85,7 @@ jobs:
         run: |
           notes="Test build of SmartTube Plus, installs as **SmartTube Plus dev** next to the normal app.
 
-          **Install on the TV:** in Downloader, open
+          **Install on the TV:** in Downloader, enter code **6905756**, or open
           $BASE_URL/smarttubeplus_dev_universal.apk
 
           After that, the app offers each new dev build as an update.

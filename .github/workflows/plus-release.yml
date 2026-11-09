@@ -151,7 +151,7 @@ jobs:
           [ -n "$list" ] || list="- None yet, same features as SmartTube"
           notes="Unofficial build of [SmartTube](https://github.com/yuliskov/SmartTube) $TAG with extra features. Installs as **SmartTube Plus**, next to the official app.
 
-          **Install on the TV:** in Downloader, open
+          **Install on the TV:** in Downloader, enter code **9583142**, or open
           $BASE_URL/smarttubeplus_universal.apk
 
           After that, the app offers new builds as in-app updates.
