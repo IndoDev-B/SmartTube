@@ -63,10 +63,10 @@ jobs:
 
           # Apply all of my-features as ONE patch instead of replaying commits: commits that
           # cancel out (a change and its revert) then can't conflict with the new release.
-          # Changelog = commit subjects, minus the setup commits.
+          # Changelog = commit subjects, minus the setup commits and workflow-only commits.
           {
             echo "CHANGES<<EOF"
-            git log --reverse --format='%s' "$old..HEAD" \
+            git log --reverse --format='%s' "$old..HEAD" -- . ':(exclude).github' \
               | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' || true
             echo "EOF"
           } >> "$GITHUB_ENV"
