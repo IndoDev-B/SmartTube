@@ -1979,6 +1979,11 @@ public class TvModeService {
                 mOpenMode = settings.optString("openMode", mOpenMode);
                 mLastChannelId = settings.isNull("lastChannel") ? null : settings.optString("lastChannel", null);
                 mGuideChannelId = settings.isNull("guideChannel") ? mLastChannelId : settings.optString("guideChannel", mLastChannelId);
+                if (!settings.has("filterGenre")) {
+                    // Saved before the guide had filters. "Favourites only" then only steered CH+ and CH-.
+                    // It now hides channels in the guide, which nobody asked for by ticking the old setting.
+                    mFavOnly = false;
+                }
                 mFilterGenre = settings.optString("filterGenre", "");
                 mFilterLanguage = settings.optString("filterLanguage", "");
             }

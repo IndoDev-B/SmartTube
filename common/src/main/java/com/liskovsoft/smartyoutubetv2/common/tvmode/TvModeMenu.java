@@ -122,7 +122,7 @@ public class TvModeMenu {
 
         // Cancel comes first, so a stray OK changes nothing.
         mDialog.appendSingleButton(UiOptionItem.from("Cancel", option -> mDialog.closeDialog()));
-        mDialog.appendSingleButton(UiOptionItem.from("Play now. " + channel.name + "'s schedule moves to start here", option -> {
+        mDialog.appendSingleButton(UiOptionItem.from("Play now. This channel's schedule moves to start here", option -> {
             mDialog.closeDialog();
             Video picked = mService.jumpLive(channel, item);
             if (picked != null) {

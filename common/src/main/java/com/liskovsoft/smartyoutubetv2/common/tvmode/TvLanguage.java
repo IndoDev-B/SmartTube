@@ -47,7 +47,7 @@ public final class TvLanguage {
 
     /** A language named in the title. Longer names first, so "portuguese" isn't read as something shorter. */
     private static final String[][] NAMED = {
-            {"hi", "hindi"}, {"ta", "tamil"}, {"te", "telugu"}, {"kn", "kannada"}, {"ml", "malayalam"},
+            {"hi", "hindi"}, {"hi", "bollywood"}, {"es", "película"}, {"es", "pelicula"}, {"es", "en español"}, {"ta", "tamil"}, {"te", "telugu"}, {"kn", "kannada"}, {"ml", "malayalam"},
             {"bn", "bengali"}, {"bn", "bangla"}, {"mr", "marathi"}, {"gu", "gujarati"}, {"pa", "punjabi"},
             {"ar", "urdu"}, {"ar", "arabic"}, {"es", "español"}, {"es", "spanish"}, {"es", "castellano"},
             {"pt", "português"}, {"pt", "portuguese"}, {"fr", "français"}, {"de", "deutsch"},
@@ -63,7 +63,7 @@ public final class TvLanguage {
     private static final Set<String> ID = words("yang dan ini itu dengan untuk dari cara tidak ada akan bisa saya kami juga pada adalah");
     private static final Set<String> TR = words("ve bir bu için ile nasıl çok daha en ne gibi kadar var");
     /** Hindi written in Latin letters, the way a great many Hindi titles are. */
-    private static final Set<String> HI = words("hai kya ka ki ke mein nahi kaise aur ko se bhi yeh kyun hain tha thi kar raha rahi hoga apna apne sab kuch liye wala wali");
+    private static final Set<String> HI = words("hai kya ka ki ke mein nahi kaise aur ko se bhi yeh kyun hain tha thi kar raha rahi hoga apna apne sab kuch liye wala wali kaun karega teri tera mera meri tum pyar ishq zindagi dil kahani");
 
     private TvLanguage() {
     }

@@ -74,12 +74,22 @@
       "id": "westerns",
       "name": "Westerns",
       "terms": [
-        "western full movie",
-        "classic western movie full"
+        "hollywood western full movie english",
+        "classic western movie full length english"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -89,13 +99,23 @@
       "id": "classic-movies",
       "name": "Classic Movies",
       "terms": [
-        "classic full movie",
+        "classic hollywood full movie english",
         "old hollywood full movie",
-        "black and white full movie"
+        "black and white hollywood full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -105,12 +125,22 @@
       "id": "retro-80s-movies",
       "name": "Retro 80s Movies",
       "terms": [
-        "80s full movie",
-        "1980s movie full"
+        "80s hollywood full movie english",
+        "1980s english movie full length"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -120,12 +150,22 @@
       "id": "retro-90s-movies",
       "name": "Retro 90s Movies",
       "terms": [
-        "90s full movie",
-        "1990s movie full"
+        "90s hollywood full movie english",
+        "1990s english movie full length"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -135,12 +175,22 @@
       "id": "action-movies",
       "name": "Action Movies",
       "terms": [
-        "action full movie",
-        "action thriller full movie"
+        "hollywood action full movie english",
+        "action thriller full movie english"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -150,12 +200,22 @@
       "id": "comedy-movies",
       "name": "Comedy Movies",
       "terms": [
-        "comedy full movie",
-        "romantic comedy full movie"
+        "hollywood comedy full movie english",
+        "romantic comedy full movie english"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -165,12 +225,22 @@
       "id": "sci-fi-movies",
       "name": "Sci-fi Movies",
       "terms": [
-        "sci fi full movie",
-        "science fiction full movie"
+        "sci fi full movie english",
+        "science fiction full movie english"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -180,12 +250,22 @@
       "id": "horror-movies",
       "name": "Horror Movies",
       "terms": [
-        "horror full movie",
-        "thriller full movie"
+        "hollywood horror full movie english",
+        "thriller full movie english"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
@@ -195,12 +275,22 @@
       "id": "family-movies",
       "name": "Family Movies",
       "terms": [
-        "family full movie",
-        "adventure family movie full"
+        "family full movie english",
+        "adventure family movie full english"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
+      "skipWords": [
+        "hindi",
+        "dubbed",
+        "tamil",
+        "telugu",
+        "punjabi",
+        "bhojpuri",
+        "subtitulada",
+        "completa"
+      ],
       "genre": "Movies",
       "languages": [
         "en"
