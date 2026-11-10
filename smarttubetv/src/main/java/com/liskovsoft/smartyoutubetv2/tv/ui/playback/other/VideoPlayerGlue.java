@@ -51,6 +51,8 @@ import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TwoStateAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.ThumbsDownAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.ThumbsUpAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvGuideAction;
+import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvRandomAction;
+import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvSettingsAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvShuffleAction;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.VideoSpeedAction;
@@ -141,6 +143,8 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
         if (TvModeService.isEnabled(context)) {
             putAction(new TvShuffleAction(context));
             putAction(new TvGuideAction(context));
+            putAction(new TvRandomAction(context));
+            putAction(new TvSettingsAction(context));
         }
     }
 
@@ -166,8 +170,10 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
             adapter.add(mActions.get(R.id.action_repeat));
         }
         if (mActions.containsKey(R.id.action_tv_shuffle)) { // TV mode
+            adapter.add(mActions.get(R.id.action_tv_random));
             adapter.add(mActions.get(R.id.action_tv_shuffle));
             adapter.add(mActions.get(R.id.action_tv_guide));
+            adapter.add(mActions.get(R.id.action_tv_settings));
         }
         if (mPlayerTweaksData.isPlayerButtonEnabled(PlayerTweaksData.PLAYER_BUTTON_VIDEO_SPEED)) {
             adapter.add(mActions.get(R.id.action_video_speed));

@@ -77,12 +77,6 @@ public class TvModeController extends BasePlayerController {
 
         controller.getPlayer().setPlayWhenReady(false);
 
-        TvModeService service = controller.getService();
-
-        if (service.isSleepTurnsOff() && service.turnOffTv()) {
-            return;
-        }
-
         TvModeOverlay overlay = sOverlay.get();
 
         if (overlay != null) {
@@ -219,7 +213,21 @@ public class TvModeController extends BasePlayerController {
     // player is still buffering, and lifting it then showed the loading circle in between.
 
     @Override
+    public void onSeekEnd() {
+        alignLive(); // Live TV: a seek moves the channel's schedule with it
+    }
+
+    private void alignLive() {
+        Video current = getVideo();
+
+        if (isTvVideo(current) && getPlayer() != null) {
+            getService().alignLive(current, getPlayer().getPositionMs());
+        }
+    }
+
+    @Override
     public void onPlay() {
+        alignLive(); // a pause or a slow start: the schedule follows what is on screen
         liftSwitching(FIRST_FRAME_MS); // playing: give the first frame a moment to reach the screen
         Utils.removeCallbacks(mPreloadNeighbours);
         Utils.postDelayed(mPreloadNeighbours, PRELOAD_DELAY_MS);
@@ -326,7 +334,19 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onButtonClicked(int buttonId, int buttonState) {
-        if (buttonId == R.id.action_tv_guide) {
+        if (buttonId == R.id.action_tv_settings) {
+            TvModeMenu.showSettings(getContext());
+        } else if (buttonId == R.id.action_tv_random) {
+            Video random = getService().randomVideo();
+
+            if (random == null) {
+                MessageHelpers.showMessage(getContext(), "Open the TV guide once, so the channels have videos");
+                return;
+            }
+
+            MessageHelpers.showMessage(getContext(), "Random: " + random.getTitle());
+            getMainController().onNewVideo(random);
+        } else if (buttonId == R.id.action_tv_guide) {
             if (getPlayer() != null) {
                 getPlayer().finish();
             }

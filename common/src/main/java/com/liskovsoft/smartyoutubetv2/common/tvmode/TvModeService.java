@@ -88,8 +88,10 @@ public class TvModeService {
     private String mOpenMode = OPEN_GUIDE;
     private String mLastChannelId;
     private int mSleepMinutes;
+    private long mSleepAtMs;
     private final Runnable mSleep = () -> {
         mSleepMinutes = 0;
+        mSleepAtMs = 0;
         TvModeController.onSleepTimer();
     };
     private int mMinAhead = 12;
@@ -604,8 +606,7 @@ public class TvModeService {
     }
 
     public boolean isScanlinesEnabled() {
-        ensureLoaded();
-        return mScanlines;
+        return false; // the setting was dropped: the VHS preview does this job
     }
 
     public void setScanlinesEnabled(boolean enabled) {
@@ -674,82 +675,78 @@ public class TvModeService {
         return channel.lineup.get(channel.pos + 1);
     }
 
-    // The sleep timer can put the TV in standby, but only once the user has made this app a
-    // device admin (Android's rule). Until then, or where the TV refuses, the screen dims instead.
-
-    private android.content.ComponentName adminComponent() {
-        return new android.content.ComponentName(mContext, TvModeAdminReceiver.class);
-    }
-
-    public boolean canTurnOffTv() {
-        try {
-            android.app.admin.DevicePolicyManager manager =
-                    (android.app.admin.DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
-            return manager != null && manager.isAdminActive(adminComponent());
-        } catch (Throwable e) {
-            return false;
-        }
-    }
-
-    public boolean isSleepTurnsOff() {
-        ensureLoaded();
-        return mSleepTurnsOff && canTurnOffTv();
-    }
-
-    /**
-     * Switches "sleep timer turns the TV off" on or off. Turning it on opens Android's own screen
-     * that asks for the permission. False when this TV has no such screen.
-     */
-    public boolean setSleepTurnsOff(Context activity, boolean enabled) {
-        mSleepTurnsOff = enabled;
-        save();
-
-        if (!enabled || canTurnOffTv()) {
-            return true;
-        }
-
-        try {
-            android.content.Intent intent = new android.content.Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-            intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent());
-            intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, mContext.getString(R.string.tv_mode_admin_description));
-            activity.startActivity(intent);
-            return true;
-        } catch (Throwable e) {
-            Log.e(TAG, "This TV can't make the app a device admin: %s", e.getMessage());
-            return false;
-        }
-    }
-
-    /** Puts the TV in standby. False when it isn't allowed, so the caller can dim the screen instead. */
-    public boolean turnOffTv() {
-        try {
-            android.app.admin.DevicePolicyManager manager =
-                    (android.app.admin.DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
-
-            if (manager == null || !manager.isAdminActive(adminComponent())) {
-                return false;
-            }
-
-            manager.lockNow();
-            return true;
-        } catch (Throwable e) {
-            Log.e(TAG, "Can't turn the TV off: %s", e.getMessage());
-            return false;
-        }
-    }
-
     public int getSleepMinutes() {
         return mSleepMinutes;
     }
 
-    /** Stops TV mode playing after this many minutes. 0 = off. Not kept across restarts. */
+    /** Minutes until the sleep timer stops playback, rounded up. 0 = it isn't running. */
+    public int getSleepMinutesLeft() {
+        long left = mSleepAtMs - System.currentTimeMillis();
+        return mSleepMinutes > 0 && left > 0 ? (int) ((left + 59_999) / 60_000) : 0;
+    }
+
+    /**
+     * Stops TV mode playing and dims the screen after this many minutes. 0 = off.
+     * Not kept across restarts. An app can't switch a TV off, so the TV's own power saving does that later.
+     */
     public void setSleepTimer(int minutes) {
         mSleepMinutes = minutes;
+        mSleepAtMs = minutes > 0 ? System.currentTimeMillis() + minutes * 60_000L : 0;
         mMain.removeCallbacks(mSleep);
 
         if (minutes > 0) {
             mMain.postDelayed(mSleep, minutes * 60_000L);
         }
+    }
+
+    /**
+     * Live TV follows what is actually on screen. After a seek, a pause or a slow start the
+     * channel's clock is moved so that "on now" is at the player's position, and everything
+     * after it on that channel shifts with it.
+     */
+    public void alignLive(Video video, long positionMs) {
+        TvChannel channel = findChannel(video);
+
+        if (channel == null || !isLive(channel) || positionMs < 0) {
+            return;
+        }
+
+        Video onNow = channel.onNow();
+
+        if (onNow != null && onNow.videoId != null && onNow.videoId.equals(video.videoId)) {
+            channel.liveStartMs = System.currentTimeMillis() - positionMs;
+        }
+    }
+
+    /**
+     * A video picked at random from what is coming up on any channel, to play once from the start.
+     * It is a copy that belongs to no channel, so no channel moves and the guide stays as it is.
+     */
+    public Video randomVideo() {
+        ensureLoaded();
+        List<Video> coming = new ArrayList<>();
+
+        for (TvChannel channel : mChannels) {
+            for (int i = channel.pos + 1; i < channel.lineup.size(); i++) {
+                coming.add(channel.lineup.get(i));
+            }
+        }
+
+        if (coming.isEmpty()) {
+            return null;
+        }
+
+        Video pick = coming.get((int) (Math.random() * coming.size()));
+        Video copy = Video.from(pick);
+        copy.author = pick.author;
+        copy.badge = pick.badge;
+        copy.setGroup(null);
+        copy.playlistId = null;
+        copy.playlistParams = null;
+        copy.playlistIndex = -1;
+        copy.pendingPosMs = 1; // from the start, even when it was partly watched before
+        copy.incognito = !mYtHistory;
+        return copy;
     }
 
     public int getWatchedCount() {

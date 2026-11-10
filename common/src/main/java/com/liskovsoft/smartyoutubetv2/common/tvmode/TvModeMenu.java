@@ -81,6 +81,11 @@ public class TvModeMenu {
         return true;
     }
 
+    /** TV settings, opened from the player. */
+    public static void showSettings(Context context) {
+        new TvModeMenu(context).showSettings();
+    }
+
     /** A card in the guide was long pressed. True = handled here. */
     public static boolean onLongClicked(Context context, Video item) {
         if (TvModeService.isAction(item)) {
@@ -118,21 +123,16 @@ public class TvModeMenu {
         mDialog.appendRadioCategory("Switching effect", options(mService.getSwitchEffect(), mService::setSwitchEffect,
                 TvModeService.FX_STATIC, "TV static", TvModeService.FX_VHS, "VHS preview", TvModeService.FX_BLACK, "Black screen", TvModeService.FX_NONE, "Loading circle"));
 
-        mDialog.appendSingleSwitch(UiOptionItem.from("Retro TV scanlines",
-                option -> mService.setScanlinesEnabled(option.isSelected()), mService.isScanlinesEnabled()));
-
         List<OptionItem> sleep = new ArrayList<>();
         for (int minutes : SLEEP_MINUTES) {
-            sleep.add(UiOptionItem.from(minutes == 0 ? "Off" : minutes + " minutes",
-                    option -> mService.setSleepTimer(minutes), mService.getSleepMinutes() == minutes));
+            sleep.add(UiOptionItem.from(minutes == 0 ? "Off" : "Stop playing in " + minutes + " minutes", option -> {
+                mService.setSleepTimer(minutes);
+                toast(minutes == 0 ? "Sleep timer off" : "In " + minutes + " minutes the video stops and the screen dims");
+            }, mService.getSleepMinutes() == minutes));
         }
-        mDialog.appendRadioCategory("Sleep timer", sleep);
-
-        mDialog.appendSingleSwitch(UiOptionItem.from("Sleep timer turns the TV off", option -> {
-            if (!mService.setSleepTurnsOff(mContext, option.isSelected())) {
-                toast("This TV doesn't allow it. The screen will dim instead.");
-            }
-        }, mService.isSleepTurnsOff()));
+        // The line itself says what the timer is doing, so there's no need to open it to check.
+        int left = mService.getSleepMinutesLeft();
+        mDialog.appendRadioCategory(left > 0 ? "Sleep timer: stops in " + left + " min" : "Sleep timer: off", sleep);
 
         mDialog.appendSingleSwitch(UiOptionItem.from("Save to YouTube history",
                 option -> mService.setYtHistoryEnabled(option.isSelected()), mService.isYtHistoryEnabled()));

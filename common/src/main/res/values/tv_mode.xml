@@ -9,9 +9,11 @@
     <string translatable="false" name="tv_mode_new_channel">New channel</string>
     <string translatable="false" name="tv_mode_shuffle">Shuffle this channel</string>
     <string translatable="false" name="tv_mode_guide">TV guide</string>
-    <string translatable="false" name="tv_mode_admin_description">Lets the TV mode sleep timer turn the TV off. It is used for nothing else.</string>
+    <string translatable="false" name="tv_mode_random">Random video</string>
     <item name="action_tv_shuffle" type="id"/>
     <item name="action_tv_guide" type="id"/>
+    <item name="action_tv_random" type="id"/>
+    <item name="action_tv_settings" type="id"/>
     <!-- Preset channels and tuning: the copy inside the app, and where a newer one is downloaded from. -->
     <string translatable="false" name="tv_mode_config_asset">tv_mode_stable.json</string>
     <string translatable="false" name="tv_mode_config_url">https://raw.githubusercontent.com/IndoDev-B/SmartTube/my-features/common/src/main/assets/tv_mode_stable.json</string>

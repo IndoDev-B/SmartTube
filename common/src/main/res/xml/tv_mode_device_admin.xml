@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The one right the TV mode sleep timer needs: put the device in standby. -->
-<device-admin>
-    <uses-policies>
-        <force-lock />
-    </uses-policies>
-</device-admin>
