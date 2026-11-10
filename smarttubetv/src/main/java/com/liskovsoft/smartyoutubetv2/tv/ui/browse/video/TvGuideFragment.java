@@ -82,6 +82,13 @@ public class TvGuideFragment extends VideoRowsFragment {
         super.onViewCreated(view, savedInstanceState);
         hideAppTitle();
 
+        // The app's search button sits hidden above the guide. Up on the top line would move the
+        // focus onto it, where nothing shows it, so the top line is where Up stops.
+        if (getVerticalGridView() != null) {
+            getVerticalGridView().setOnKeyInterceptListener(event ->
+                    event.getKeyCode() == android.view.KeyEvent.KEYCODE_DPAD_UP && getSelectedPosition() <= 0);
+        }
+
         // "When I open TV: play the last channel". Opening means moving into the guide, not just
         // passing over TV in the side menu, so it waits for the focus to land on a card.
         mOpened = false;

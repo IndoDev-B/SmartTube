@@ -24,7 +24,7 @@ public class TvModeController extends BasePlayerController {
     private static WeakReference<TvModeController> sInstance = new WeakReference<>(null);
     private static WeakReference<TvModeOverlay> sOverlay = new WeakReference<>(null);
     private String mDigits = "";
-    private String mLastChannelId;
+    private String mDecoratedId;
     private boolean mSleeping;
     private final Runnable mTuneDigits = this::tuneDigits;
     private final Runnable mHideSwitching = () -> {
@@ -41,6 +41,13 @@ public class TvModeController extends BasePlayerController {
     /** The player screen hands over the view TV mode draws on. */
     public static void setOverlay(TvModeOverlay overlay) {
         sOverlay = new WeakReference<>(overlay);
+
+        // The first video starts before the player screen exists, so its banner is shown now.
+        TvModeController controller = sInstance.get();
+
+        if (controller != null && controller.isTvVideo(controller.getVideo())) {
+            controller.decorate(controller.getVideo());
+        }
     }
 
     /** The sleep timer ran out: stop playing, then turn the TV off or dim the screen. */
@@ -112,7 +119,7 @@ public class TvModeController extends BasePlayerController {
 
         if (!isTvVideo(item)) {
             // A normal video: nothing of TV mode may stay on screen.
-            mLastChannelId = null;
+            mDecoratedId = null;
             if (overlay != null) {
                 overlay.hideBanner();
                 overlay.hideSwitching();
@@ -130,22 +137,39 @@ public class TvModeController extends BasePlayerController {
             MessageHelpers.showLongMessage(getContext(), note);
         }
 
+        decorate(item);
+    }
+
+    /**
+     * Static while the video loads, then the channel banner. Once per video: the player restarts
+     * a video by itself when a stream fails, and that must not replay them.
+     */
+    private void decorate(Video item) {
+        TvModeOverlay overlay = sOverlay.get();
         TvChannel channel = getService().findChannel(item);
 
-        if (overlay != null && channel != null) {
-            String effect = getService().getSwitchEffect();
-            if (!TvModeService.FX_NONE.equals(effect)) {
-                overlay.showSwitching(effect);
-                Utils.removeCallbacks(mHideSwitching);
-                Utils.postDelayed(mHideSwitching, SWITCHING_MAX_MS); // never leave the picture covered
-            }
-            overlay.setScanlines(getService().isScanlinesEnabled());
-            showBanner(overlay, channel, item);
-        } else if (channel != null && !channel.id.equals(mLastChannelId)) {
-            MessageHelpers.showMessage(getContext(), "CH " + getService().title(channel));
+        if (overlay == null || channel == null) {
+            return; // the player screen isn't up yet: setOverlay() calls back when it is
         }
 
-        mLastChannelId = channel != null ? channel.id : null;
+        overlay.setScanlines(getService().isScanlinesEnabled());
+
+        if (item.videoId == null || item.videoId.equals(mDecoratedId)) {
+            return;
+        }
+
+        mDecoratedId = item.videoId;
+        String effect = getService().getSwitchEffect();
+
+        if (!TvModeService.FX_NONE.equals(effect)) {
+            overlay.showSwitching(effect);
+            Utils.removeCallbacks(mHideSwitching);
+            Utils.postDelayed(mHideSwitching, SWITCHING_MAX_MS); // never leave the picture covered
+        }
+
+        if (getPlayer() == null || !getPlayer().isOverlayShown()) { // the controls show the same things
+            showBanner(overlay, channel, item);
+        }
     }
 
     private void showBanner(TvModeOverlay overlay, TvChannel channel, Video video) {
