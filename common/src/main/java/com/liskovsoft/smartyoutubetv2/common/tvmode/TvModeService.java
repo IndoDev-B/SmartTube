@@ -700,6 +700,31 @@ public class TvModeService {
         return copy;
     }
 
+    /**
+     * Clock time at which the channel's video on now started, for drawing the guide's time line.
+     * A Live TV channel runs on the clock. A Free mode channel is paused where it was left, so
+     * its start keeps the same distance behind now.
+     */
+    public long onNowStartMs(TvChannel channel, long now) {
+        if (isLive(channel)) {
+            syncLive(channel);
+            return channel.liveStartMs;
+        }
+
+        Video onNow = channel.onNow();
+        long position = 0;
+
+        if (onNow != null && onNow.videoId != null) {
+            com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.State state =
+                    com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.instance(mContext).getByVideoId(onNow.videoId);
+            if (state != null && state.positionMs > 0 && state.positionMs < channel.durationOf(onNow)) {
+                position = state.positionMs;
+            }
+        }
+
+        return now - position;
+    }
+
     /** The first video of the fresh lineup after a shuffle, ready to play. */
     public Video firstAfterShuffle(TvChannel channel) {
         if (channel.ahead() < 1) {

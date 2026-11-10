@@ -36,6 +36,7 @@ public class TvGuideFragment extends VideoRowsFragment {
     private TvProgramCardPresenter mProgramPresenter;
     private TvActionCardPresenter mActionPresenter;
     private TvGuideHeroView mHero;
+    private TvGuideGridView mGrid;
     private Video mSelected;
     private boolean mWasPaused;
     private boolean mOpened;
@@ -70,8 +71,35 @@ public class TvGuideFragment extends VideoRowsFragment {
         FrameLayout root = new FrameLayout(inflater.getContext());
         root.addView(rows, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        // The rows of cards stay only as the plumbing the app expects from a section. The guide's
+        // own time grid is what is shown and what takes the remote.
+        rows.setVisibility(View.GONE);
+
         mHero = new TvGuideHeroView(inflater.getContext());
         root.addView(mHero, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(TvGuideHeroView.HEIGHT_DP)));
+
+        mGrid = new TvGuideGridView(inflater.getContext());
+        FrameLayout.LayoutParams gridParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        gridParams.topMargin = dp(TvGuideHeroView.HEIGHT_DP + 6);
+        root.addView(mGrid, gridParams);
+        mGrid.setListener(new TvGuideGridView.Listener() {
+            @Override
+            public void onFocused(Video video) {
+                onVideoItemSelected(video);
+            }
+
+            @Override
+            public void onClicked(Video video) {
+                BrowsePresenter.instance(getContext()).onVideoItemClicked(video);
+            }
+
+            @Override
+            public void onLongClicked(Video video) {
+                BrowsePresenter.instance(getContext()).onVideoItemLongClicked(video);
+            }
+        });
+
+        mSelected = mGrid.getFocused();
         mHero.show(mSelected);
 
         return root;
@@ -144,6 +172,7 @@ public class TvGuideFragment extends VideoRowsFragment {
 
     @Override
     public void onDestroyView() {
+        mGrid = null;
         if (getView() != null && mFocusListener != null) {
             getView().getViewTreeObserver().removeOnGlobalFocusChangeListener(mFocusListener);
         }
@@ -190,74 +219,20 @@ public class TvGuideFragment extends VideoRowsFragment {
     }
 
     /**
-     * The guide is rebuilt after every change (a setting, a shuffle, a new channel, coming back
-     * from the player). Clearing the lines would throw the focus back to the top, so a line that
-     * is already on screen gets its new programs in place and keeps the focus.
+     * The presenter sends the channels as rows of cards. The guide draws them itself as a time
+     * grid, so a row arriving only means: the channels changed, draw again.
      */
     @Override
     public void update(VideoGroup group) {
-        if (group == null) {
-            return;
-        }
-
-        boolean startOver = group.getAction() == VideoGroup.ACTION_REPLACE && group.getPosition() == -1;
-
-        if (startOver) {
-            if (!keepLines()) {
-                super.update(group);
-            }
-            return;
-        }
-
-        VideoGroupObjectAdapter line = getGroupAdapter(group.getId());
-
-        if (line == null) {
-            super.update(group); // a new line
-            return;
-        }
-
-        line.clear();
-        line.add(group);
-        setRowTitle(group.getId(), group.getTitle());
-
-        // Back to the video on now. Programs that already played are to its left.
-        int position = findRowPosition(group.getId());
-        RowPresenter.ViewHolder holder = position != -1 ? getRowViewHolder(position) : null;
-        if (holder instanceof ListRowPresenter.ViewHolder) {
-            ((ListRowPresenter.ViewHolder) holder).getGridView().setSelectedPosition(TvListRowPresenter.onNowIndex(line, getContext()));
+        if (mGrid != null) {
+            mGrid.reload();
+            onVideoItemSelected(mGrid.getFocused());
         }
     }
 
-    /**
-     * Drops the lines of channels that are gone. True when the lines left are in the right order,
-     * so they can be refreshed where they are. False means the guide has to be built again.
-     */
-    private boolean keepLines() {
-        List<Integer> shown = getRowIds();
-
-        if (shown.isEmpty() || getContext() == null) {
-            return false;
-        }
-
-        List<Integer> wanted = TvModeService.instance(getContext()).getGuideRowIds();
-
-        for (int id : shown) {
-            if (!wanted.contains(id)) {
-                removeRow(id);
-            }
-        }
-
-        shown = getRowIds();
-        List<Integer> wantedShown = new ArrayList<>();
-
-        for (int id : wanted) {
-            if (shown.contains(id)) {
-                wantedShown.add(id);
-            }
-        }
-
-        // A new channel is added at the end, so the lines shown must be the start of the wanted list.
-        return !shown.isEmpty() && shown.equals(wantedShown) && shown.equals(wanted.subList(0, shown.size()));
+    @Override
+    public boolean isEmpty() {
+        return false;
     }
 
     @Override
