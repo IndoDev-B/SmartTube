@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- TV mode sleep timer: lets it turn the TV off, once the user allows it in TV settings. -->
+        <receiver
+            android:name="com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeAdminReceiver"
+            android:description="@string/tv_mode_admin_description"
+            android:exported="true"
+            android:label="@string/header_tv_mode"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/tv_mode_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

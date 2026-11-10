@@ -185,6 +185,10 @@ public class VideoLoaderController extends BasePlayerController {
 
     @Override
     public void onSuggestionItemClicked(Video item) {
+        if (com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeController.blocksSuggestionClick(getContext(), item)) {
+            return; // TV mode: a live channel plays only what's on now
+        }
+
         openVideoInt(item);
 
         if (getPlayer() != null)

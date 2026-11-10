@@ -52,10 +52,17 @@ public class TvModeService {
     public static final String ACTION_SETTINGS = "@settings";
     public static final String ACTION_SHUFFLE_ALL = "@shuffle_all";
     public static final String ACTION_NEW_CHANNEL = "@new_channel";
+    public static final String FX_STATIC = "static";
+    public static final String FX_BLACK = "black";
+    public static final String FX_NONE = "none";
+    public static final String OPEN_GUIDE = "guide";
+    public static final String OPEN_LAST = "play";
     private static final String STATE_FILE = "tv_mode_state.json";
     private static final String CONFIG_CACHE_FILE = "tv_mode_config.json";
     private static final long CONFIG_CHECK_PERIOD_MS = 5 * 60 * 1_000;
     private static final int MAX_PAST = 20;
+    private static final int PAST_SHOWN = 8;
+    private static final long SKIP_WINDOW_MS = 30_000;
     private static final int MAX_WATCHED = 3_000;
     @SuppressLint("StaticFieldLeak")
     private static TvModeService sInstance;
@@ -74,6 +81,11 @@ public class TvModeService {
     private boolean mDpadSurf = true;
     private boolean mFavOnly;
     private boolean mYtHistory;
+    private String mSwitchEffect = FX_STATIC;
+    private boolean mScanlines;
+    private boolean mSleepTurnsOff;
+    private String mOpenMode = OPEN_GUIDE;
+    private String mLastChannelId;
     private int mSleepMinutes;
     private final Runnable mSleep = () -> {
         mSleepMinutes = 0;
@@ -81,6 +93,8 @@ public class TvModeService {
     };
     private int mMinAhead = 12;
     private int mMaxPerCreatorInRow = 2;
+    private int mSkipsToBlock = 3;
+    private long mMinViews;
     private boolean mLoaded;
     private String mConfigText;
     private long mConfigCheckedMs;
@@ -151,6 +165,19 @@ public class TvModeService {
         }
     }
 
+    /** Ids of the guide's lines, top to bottom: the buttons, then every channel. */
+    public List<Integer> getGuideRowIds() {
+        ensureLoaded();
+        List<Integer> ids = new ArrayList<>();
+        ids.add("tv_mode:actions".hashCode());
+
+        for (TvChannel channel : mChannels) {
+            ids.add(("tv_mode:" + channel.id).hashCode());
+        }
+
+        return ids;
+    }
+
     /** The top row of the guide: TV settings, Shuffle all, New channel. One press up from channel 1. */
     private VideoGroup buildActionGroup() {
         List<Video> actions = new ArrayList<>();
@@ -181,7 +208,8 @@ public class TvModeService {
     /** row = the row's place on screen. Row 0 is the action row, so channel 1 is row 1. */
     private VideoGroup buildGroup(TvChannel channel, int row) {
         syncLive(channel);
-        List<Video> videos = new ArrayList<>(channel.lineup.subList(channel.pos, channel.lineup.size()));
+        // A few already played videos stay at the start of the line, to the left of what's on now.
+        List<Video> videos = new ArrayList<>(channel.lineup.subList(Math.max(0, channel.pos - PAST_SHOWN), channel.lineup.size()));
         VideoGroup group = VideoGroup.from(videos, mSection, row);
         group.setId(("tv_mode:" + channel.id).hashCode());
         group.setTitle(title(channel));
@@ -242,20 +270,49 @@ public class TvModeService {
     }
 
     /** A TV mode video started: it's now what the channel has on, and everything before it is in the past. */
-    public void onVideoStarted(Video video) {
+    public String onVideoStarted(Video video) {
         TvChannel channel = findChannel(video);
 
         if (channel == null) {
-            return;
+            return null;
         }
 
         int index = channel.indexOf(video.videoId);
 
         if (index == -1) {
-            return;
+            return null;
         }
 
         remember(video.videoId);
+
+        // Skipping a creator's videos within the first seconds, several times, blocks that creator here.
+        // Watching one longer forgives the earlier skips.
+        String note = null;
+        String toBlock = null;
+        long now = System.currentTimeMillis();
+        Video previous = channel.onNow();
+
+        if (previous != null && previous.videoId != null && previous.videoId.equals(channel.startedId) && !isLive(channel)) {
+            String creator = creatorOf(previous.author);
+
+            if (creator != null && index == channel.pos + 1 && now - channel.startedMs < SKIP_WINDOW_MS) {
+                Integer before = channel.skips.get(creator);
+                int count = (before != null ? before : 0) + 1;
+                channel.skips.put(creator, count);
+
+                if (count >= mSkipsToBlock && !channel.blocked.contains(creator)) {
+                    channel.skips.remove(creator);
+                    toBlock = creator;
+                    note = creator + ": skipped " + count + " times, so it's blocked on " + channel.name + ". Unblock it in Edit channel.";
+                }
+            } else if (creator != null && now - channel.startedMs >= SKIP_WINDOW_MS) {
+                channel.skips.remove(creator);
+            }
+        }
+
+        channel.startedId = video.videoId;
+        channel.startedMs = now;
+        mLastChannelId = channel.id;
 
         if (isLive(channel)) {
             syncLive(channel);
@@ -279,6 +336,12 @@ public class TvModeService {
         }
 
         save();
+
+        if (toBlock != null) {
+            block(channel, toBlock);
+        }
+
+        return note;
     }
 
     /**
@@ -476,6 +539,123 @@ public class TvModeService {
         save();
     }
 
+    public String getSwitchEffect() {
+        ensureLoaded();
+        return mSwitchEffect;
+    }
+
+    public void setSwitchEffect(String effect) {
+        mSwitchEffect = effect;
+        save();
+    }
+
+    public boolean isScanlinesEnabled() {
+        ensureLoaded();
+        return mScanlines;
+    }
+
+    public void setScanlinesEnabled(boolean enabled) {
+        mScanlines = enabled;
+        save();
+    }
+
+    public String getOpenMode() {
+        ensureLoaded();
+        return mOpenMode;
+    }
+
+    public void setOpenMode(String mode) {
+        mOpenMode = mode;
+        save();
+    }
+
+    /** The channel that was watched last, ready to play. Null when nothing was watched yet. */
+    public Video tuneLastChannel() {
+        ensureLoaded();
+
+        for (TvChannel channel : mChannels) {
+            if (channel.id.equals(mLastChannelId)) {
+                return tune(channel);
+            }
+        }
+
+        return null;
+    }
+
+    /** The first video of the fresh lineup after a shuffle, ready to play. */
+    public Video firstAfterShuffle(TvChannel channel) {
+        if (channel.ahead() < 1) {
+            return null;
+        }
+
+        buildGroup(channel, mChannels.indexOf(channel) + 1);
+        return channel.lineup.get(channel.pos + 1);
+    }
+
+    // The sleep timer can put the TV in standby, but only once the user has made this app a
+    // device admin (Android's rule). Until then, or where the TV refuses, the screen dims instead.
+
+    private android.content.ComponentName adminComponent() {
+        return new android.content.ComponentName(mContext, TvModeAdminReceiver.class);
+    }
+
+    public boolean canTurnOffTv() {
+        try {
+            android.app.admin.DevicePolicyManager manager =
+                    (android.app.admin.DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+            return manager != null && manager.isAdminActive(adminComponent());
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    public boolean isSleepTurnsOff() {
+        ensureLoaded();
+        return mSleepTurnsOff && canTurnOffTv();
+    }
+
+    /**
+     * Switches "sleep timer turns the TV off" on or off. Turning it on opens Android's own screen
+     * that asks for the permission. False when this TV has no such screen.
+     */
+    public boolean setSleepTurnsOff(Context activity, boolean enabled) {
+        mSleepTurnsOff = enabled;
+        save();
+
+        if (!enabled || canTurnOffTv()) {
+            return true;
+        }
+
+        try {
+            android.content.Intent intent = new android.content.Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+            intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent());
+            intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, mContext.getString(R.string.tv_mode_admin_description));
+            activity.startActivity(intent);
+            return true;
+        } catch (Throwable e) {
+            Log.e(TAG, "This TV can't make the app a device admin: %s", e.getMessage());
+            return false;
+        }
+    }
+
+    /** Puts the TV in standby. False when it isn't allowed, so the caller can dim the screen instead. */
+    public boolean turnOffTv() {
+        try {
+            android.app.admin.DevicePolicyManager manager =
+                    (android.app.admin.DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
+
+            if (manager == null || !manager.isAdminActive(adminComponent())) {
+                return false;
+            }
+
+            manager.lockNow();
+            return true;
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't turn the TV off: %s", e.getMessage());
+            return false;
+        }
+    }
+
     public int getSleepMinutes() {
         return mSleepMinutes;
     }
@@ -561,6 +741,22 @@ public class TvModeService {
         if (channel.ahead() < mMinAhead) {
             fill(channel, null);
         }
+    }
+
+    /** Adds a YouTube channel as a source. id may be null: it's looked up by name on first use. */
+    public boolean addCreator(TvChannel channel, String name, String id, Runnable onDone) {
+        if (name == null || name.trim().isEmpty() || channel.creators.contains(name.trim())) {
+            return false;
+        }
+
+        channel.creators.add(name.trim());
+
+        if (id != null) {
+            channel.creatorIds.put(name.trim(), id);
+        }
+
+        onSearchChanged(channel, onDone);
+        return true;
     }
 
     /** A search setting of the channel changed: keep what is on now, rebuild what is coming up. */
@@ -665,7 +861,7 @@ public class TvModeService {
 
     /** Adds one page of search results to the end of the channel's lineup. */
     private void fill(final TvChannel channel, final Runnable onDone) {
-        if (channel.terms.isEmpty()) {
+        if (channel.terms.isEmpty() && channel.creators.isEmpty()) {
             if (onDone != null) {
                 onDone.run();
             }
@@ -680,13 +876,18 @@ public class TvModeService {
         }
 
         channel.loading = true;
-        final String term = channel.terms.get(Math.abs(channel.termCursor++) % channel.terms.size());
-        final int options = searchOptions(channel);
-        final String pageKey = channel.id + "|" + term + "|" + options;
+        // Sources take turns: each search term, then each YouTube channel.
+        final int turn = Math.abs(channel.termCursor++) % (channel.terms.size() + channel.creators.size());
+        final boolean fromCreator = turn >= channel.terms.size();
+        final String term = fromCreator ? channel.creators.get(turn - channel.terms.size()) : channel.terms.get(turn);
+        final String knownCreatorId = fromCreator ? channel.creatorIds.get(term) : null;
+        final int options = fromCreator ? 0 : searchOptions(channel);
+        final String pageKey = channel.id + "|" + (fromCreator ? "@" : "") + term + "|" + options;
         final String searchKey = channel.searchKey();
 
         mWorker.execute(() -> {
             final List<MediaItem> found = new ArrayList<>();
+            final String[] creatorId = {knownCreatorId};
 
             try {
                 ContentService service = YouTubeServiceManager.instance().getContentService();
@@ -696,6 +897,11 @@ public class TvModeService {
                 if (previous != null) {
                     MediaGroup next = service.continueGroup(previous);
                     groups = next != null ? Collections.singletonList(next) : new ArrayList<MediaGroup>();
+                } else if (fromCreator) {
+                    if (creatorId[0] == null) {
+                        creatorId[0] = findCreatorId(service, term);
+                    }
+                    groups = creatorId[0] != null ? service.getChannelObserve(creatorId[0]).blockingFirst() : new ArrayList<MediaGroup>();
                 } else {
                     groups = service.getSearch(term, options);
                 }
@@ -726,15 +932,19 @@ public class TvModeService {
             mMain.post(() -> {
                 channel.loading = false;
 
+                if (fromCreator && creatorId[0] != null) {
+                    channel.creatorIds.put(term, creatorId[0]);
+                }
+
                 // The channel was edited while the search ran. These results no longer apply.
                 if (mChannels.contains(channel) && searchKey.equals(channel.searchKey())) {
-                    int added = append(channel, found);
+                    int added = append(channel, found, fromCreator ? term : null);
                     Log.d(TAG, "%s: +%s videos from \"%s\"", channel.name, added, term);
 
                     if (added == 0) {
                         channel.emptyFills++;
                         // Every term came back with nothing new: let watched videos return.
-                        if (channel.emptyFills >= channel.terms.size() * 2) {
+                        if (channel.emptyFills >= channel.sources() * 2) {
                             channel.exhausted = true;
                         }
                     } else {
@@ -743,7 +953,7 @@ public class TvModeService {
                     }
 
                     // One page is often not enough after filtering. Bounded so a dead search can't loop.
-                    if (channel.ahead() < mMinAhead && channel.emptyFills < channel.terms.size() * 3) {
+                    if (channel.ahead() < mMinAhead && channel.emptyFills < channel.sources() * 3) {
                         fill(channel, null);
                     }
                 }
@@ -788,7 +998,51 @@ public class TvModeService {
         return SearchOptions.TYPE_VIDEO;
     }
 
-    private int append(TvChannel channel, List<MediaItem> found) {
+    /** The YouTube channel id for a creator's name: the first channel a search for the name returns. */
+    private static String findCreatorId(ContentService service, String name) {
+        List<MediaGroup> groups = service.getSearch(name, SearchOptions.TYPE_CHANNEL);
+
+        if (groups != null) {
+            for (MediaGroup group : groups) {
+                if (group == null || group.getMediaItems() == null) {
+                    continue;
+                }
+                for (MediaItem item : group.getMediaItems()) {
+                    if (item != null && item.getChannelId() != null && item.getVideoId() == null) {
+                        return item.getChannelId();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** "1.2M views" as a number, or -1 when the text has no view count this can read. */
+    static long parseViews(CharSequence text) {
+        if (text == null) {
+            return -1;
+        }
+
+        java.util.regex.Matcher matcher = VIEWS.matcher(text);
+
+        if (!matcher.find()) {
+            return -1;
+        }
+
+        try {
+            double number = Double.parseDouble(matcher.group(1).replace(",", ""));
+            String unit = matcher.group(2) != null ? matcher.group(2).toUpperCase(Locale.ROOT) : "";
+            return (long) (number * ("K".equals(unit) ? 1_000 : "M".equals(unit) ? 1_000_000 : "B".equals(unit) ? 1_000_000_000L : 1));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private static final java.util.regex.Pattern VIEWS = java.util.regex.Pattern.compile("([\\d.,]+)\\s*([KMBkmb])?\\s+views");
+
+    /** creator: set when the videos came from a creator's own page, where YouTube leaves the name off. */
+    private int append(TvChannel channel, List<MediaItem> found, String creator) {
         List<Video> fresh = new ArrayList<>();
         Set<String> seen = new HashSet<>();
 
@@ -811,6 +1065,9 @@ public class TvModeService {
             video.playlistParams = null;
             video.playlistIndex = -1;
             video.tvChannelId = channel.id;
+            if (video.author == null && creator != null) {
+                video.author = creator;
+            }
             fresh.add(video);
         }
 
@@ -854,6 +1111,15 @@ public class TvModeService {
             if ((TvChannel.LENGTH_SHORT.equals(channel.length) && minutes >= 4)
                     || (TvChannel.LENGTH_MEDIUM.equals(channel.length) && (minutes < 4 || minutes > 20))
                     || (TvChannel.LENGTH_LONG.equals(channel.length) && minutes < 20)) {
+                return false;
+            }
+        }
+
+        long minViews = Math.max(mMinViews, channel.minViews);
+
+        if (minViews > 0) {
+            long views = parseViews(item.getSecondTitle());
+            if (views >= 0 && views < minViews) {
                 return false;
             }
         }
@@ -984,6 +1250,8 @@ public class TvModeService {
             if (tuning != null) {
                 mMinAhead = Math.max(3, tuning.optInt("minAhead", mMinAhead));
                 mMaxPerCreatorInRow = tuning.optInt("maxPerCreatorInRow", mMaxPerCreatorInRow);
+                mSkipsToBlock = Math.max(2, tuning.optInt("skipsToBlock", mSkipsToBlock));
+                mMinViews = tuning.optLong("minViews", mMinViews);
                 mGlobalSkipWords.clear();
                 JSONArray words = tuning.optJSONArray("skipWords");
                 for (int i = 0; words != null && i < words.length(); i++) {
@@ -1092,6 +1360,11 @@ public class TvModeService {
                 mDpadSurf = settings.optBoolean("dpadSurf", mDpadSurf);
                 mFavOnly = settings.optBoolean("favOnly", mFavOnly);
                 mYtHistory = settings.optBoolean("ytHistory", mYtHistory);
+                mSwitchEffect = settings.optString("switchEffect", mSwitchEffect);
+                mScanlines = settings.optBoolean("scanlines", mScanlines);
+                mSleepTurnsOff = settings.optBoolean("sleepTurnsOff", mSleepTurnsOff);
+                mOpenMode = settings.optString("openMode", mOpenMode);
+                mLastChannelId = settings.isNull("lastChannel") ? null : settings.optString("lastChannel", null);
             }
 
             addAll(state.optJSONArray("watched"), mWatched);
@@ -1125,6 +1398,11 @@ public class TvModeService {
             settings.put("dpadSurf", mDpadSurf);
             settings.put("favOnly", mFavOnly);
             settings.put("ytHistory", mYtHistory);
+            settings.put("switchEffect", mSwitchEffect);
+            settings.put("scanlines", mScanlines);
+            settings.put("sleepTurnsOff", mSleepTurnsOff);
+            settings.put("openMode", mOpenMode);
+            settings.put("lastChannel", mLastChannelId);
             state.put("settings", settings);
             state.put("channels", channels);
             state.put("watched", new JSONArray(mWatched));

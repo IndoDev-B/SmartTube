@@ -86,6 +86,55 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         return new ItemViewLongPressedListener();
     }
 
+    protected ListRowPresenter createRowPresenter() {
+        return new CustomListRowPresenter();
+    }
+
+    /** The cards of the row with this id, or null when there's no such row. */
+    protected VideoGroupObjectAdapter getGroupAdapter(int id) {
+        return mVideoGroupAdapters != null ? mVideoGroupAdapters.get(id) : null;
+    }
+
+    /** Ids of the rows on screen, top to bottom. */
+    protected List<Integer> getRowIds() {
+        List<Integer> ids = new ArrayList<>();
+
+        for (int i = 0; mRowsAdapter != null && i < mRowsAdapter.size(); i++) {
+            Object row = mRowsAdapter.get(i);
+            if (row instanceof ListRow) {
+                for (Map.Entry<Integer, VideoGroupObjectAdapter> entry : mVideoGroupAdapters.entrySet()) {
+                    if (entry.getValue() == ((ListRow) row).getAdapter()) {
+                        ids.add(entry.getKey());
+                        break;
+                    }
+                }
+            }
+        }
+
+        return ids;
+    }
+
+    protected void removeRow(int id) {
+        removeById(id);
+    }
+
+    /** Position of the row with this id among the rows, or -1. */
+    protected int findRowPosition(int id) {
+        return mVideoGroupAdapters != null && mVideoGroupAdapters.containsKey(id) ? findPositionById(id) : -1;
+    }
+
+    protected void setRowTitle(int id, String title) {
+        int position = findRowPosition(id);
+
+        if (position != -1 && title != null) {
+            ListRow row = (ListRow) mRowsAdapter.get(position);
+            if (row.getHeaderItem() == null || !title.equals(row.getHeaderItem().getName())) {
+                row.setHeaderItem(new HeaderItem(title));
+                mRowsAdapter.notifyArrayItemRangeChanged(position, 1);
+            }
+        }
+    }
+
     private void applyPendingUpdates() {
         // prevent modification within update method
         List<VideoGroup> copyArray = new ArrayList<>(mPendingUpdates);
@@ -103,7 +152,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
         }
 
         if (mRowsAdapter == null) {
-            mRowPresenter = new CustomListRowPresenter();
+            mRowPresenter = createRowPresenter();
             mRowPresenter.enableChildRoundedCorners(getMainUIData().isUiTweakEnabled(MainUIData.UI_TWEAK_ROUNDED_CORNERS));
 
             ClassPresenterSelector presenterSelector = new ClassPresenterSelector();

@@ -172,6 +172,10 @@ public class PlaybackFragment extends SeekModePlaybackFragment implements Playba
         // ProgressBar.setRootView already called at this moment.
         ProgressBarManager.setup(getProgressBarManager(), (ViewGroup) root);
 
+        if (com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.isEnabled(getContext())) {
+            com.liskovsoft.smartyoutubetv2.tv.ui.playback.other.TvModeOverlayView.attach((ViewGroup) root); // channel banner, static
+        }
+
         return root;
     }
 

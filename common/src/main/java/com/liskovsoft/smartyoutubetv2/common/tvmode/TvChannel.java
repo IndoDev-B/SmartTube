@@ -40,6 +40,12 @@ public class TvChannel {
     public String order = ORDER_MIXED;
     public String quality = ANY;
     public boolean noShorts = true;
+    /** Leave out videos with fewer views than this. 0 = any. */
+    public long minViews;
+    /** YouTube channel ids of the creators, by name. Looked up once, then kept. */
+    public final Map<String, String> creatorIds = new HashMap<>();
+    /** How many times in a row each creator was skipped within the first seconds. */
+    public final Map<String, Integer> skips = new HashMap<>();
     public final List<String> skipWords = new ArrayList<>();
     public final List<String> blocked = new ArrayList<>();
     public String mode = MODE_DEFAULT;
@@ -63,6 +69,9 @@ public class TvChannel {
     /** Searches stopped returning new videos, so watched ones are allowed back. */
     public boolean exhausted;
     public int emptyFills;
+    /** The video that is playing and when it started, to tell a skip from watching. */
+    public String startedId;
+    public long startedMs;
     /** Callers waiting for the search that is running now. */
     public final List<Runnable> waiters = new ArrayList<>();
 
@@ -70,6 +79,11 @@ public class TvChannel {
     public long durationOf(Video video) {
         Long duration = durations.get(video.videoId);
         return duration != null && duration > 0 ? duration : 10 * 60_000;
+    }
+
+    /** Search terms and YouTube channels both feed the lineup. */
+    public int sources() {
+        return Math.max(1, terms.size() + creators.size());
     }
 
     public Video onNow() {
@@ -96,7 +110,7 @@ public class TvChannel {
 
     /** The part of a channel that decides what it plays. A change here means the coming-up lineup is stale. */
     public String searchKey() {
-        return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + quality + "|" + noShorts + "|" + skipWords + "|" + blocked;
+        return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + quality + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews;
     }
 
     public JSONObject toJson() throws JSONException {
@@ -110,6 +124,9 @@ public class TvChannel {
         o.put("order", order);
         o.put("quality", quality);
         o.put("noShorts", noShorts);
+        o.put("minViews", minViews);
+        o.put("creatorIds", new JSONObject(creatorIds));
+        o.put("skips", new JSONObject(skips));
         o.put("skipWords", new JSONArray(skipWords));
         o.put("blocked", new JSONArray(blocked));
         o.put("mode", mode);
@@ -145,6 +162,22 @@ public class TvChannel {
         c.termCursor = o.optInt("termCursor", 0);
         c.liveStartMs = o.optLong("liveStartMs", 0);
 
+        JSONObject ids = o.optJSONObject("creatorIds");
+        if (ids != null) {
+            for (java.util.Iterator<String> it = ids.keys(); it.hasNext();) {
+                String key = it.next();
+                c.creatorIds.put(key, ids.optString(key, null));
+            }
+        }
+
+        JSONObject skips = o.optJSONObject("skips");
+        if (skips != null) {
+            for (java.util.Iterator<String> it = skips.keys(); it.hasNext();) {
+                String key = it.next();
+                c.skips.put(key, skips.optInt(key, 0));
+            }
+        }
+
         JSONArray items = o.optJSONArray("lineup");
         if (items != null) {
             for (int i = 0; i < items.length(); i++) {
@@ -177,6 +210,7 @@ public class TvChannel {
         order = o.optString("order", ORDER_MIXED);
         quality = o.optString("quality", ANY);
         noShorts = o.optBoolean("noShorts", true);
+        minViews = o.optLong("minViews", 0);
         readList(o.optJSONArray("skipWords"), skipWords);
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);

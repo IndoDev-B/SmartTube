@@ -50,6 +50,9 @@ import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.SubscribeAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TwoStateAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.ThumbsDownAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.ThumbsUpAction;
+import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvGuideAction;
+import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvShuffleAction;
+import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.VideoSpeedAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.VideoStatsAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.VideoZoomAction;
@@ -134,6 +137,11 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
         putAction(new RotateAction(context));
         putAction(new FlipAction(context));
         putAction(new SoundOffAction(context));
+
+        if (TvModeService.isEnabled(context)) {
+            putAction(new TvShuffleAction(context));
+            putAction(new TvGuideAction(context));
+        }
     }
 
     @Override
@@ -156,6 +164,10 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
         }
         if (mPlayerTweaksData.isPlayerButtonEnabled(PlayerTweaksData.PLAYER_BUTTON_REPEAT_MODE)) {
             adapter.add(mActions.get(R.id.action_repeat));
+        }
+        if (mActions.containsKey(R.id.action_tv_shuffle)) { // TV mode
+            adapter.add(mActions.get(R.id.action_tv_shuffle));
+            adapter.add(mActions.get(R.id.action_tv_guide));
         }
         if (mPlayerTweaksData.isPlayerButtonEnabled(PlayerTweaksData.PLAYER_BUTTON_VIDEO_SPEED)) {
             adapter.add(mActions.get(R.id.action_video_speed));

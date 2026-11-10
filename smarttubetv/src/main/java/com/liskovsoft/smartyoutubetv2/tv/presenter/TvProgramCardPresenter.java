@@ -161,7 +161,9 @@ public class TvProgramCardPresenter extends LongClickPresenter {
         view.nowEdge.setVisibility(onNow ? View.VISIBLE : View.GONE);
         view.progressTrack.setVisibility(onNow ? View.VISIBLE : View.GONE);
         view.progress.setVisibility(onNow ? View.VISIBLE : View.GONE);
-        view.past = live && !onNow; // Live TV: what's coming up can't be picked yet
+        int place = channel != null ? channel.indexOf(video.videoId) : -1;
+        boolean played = channel != null && place != -1 && place < channel.pos;
+        view.past = played || (live && !onNow); // dimmed: already played, or on Live TV not on yet
 
         String badge = video.badge;
         int badgeColor = 0xD9000000;
@@ -179,6 +181,8 @@ public class TvProgramCardPresenter extends LongClickPresenter {
             } else if (video.percentWatched > 0) {
                 meta = join(meta, "paused");
             }
+        } else if (played) {
+            meta = join("Watched", meta);
         } else if (live && channel != null) {
             int index = channel.indexOf(video.videoId);
             if (index > channel.pos) {

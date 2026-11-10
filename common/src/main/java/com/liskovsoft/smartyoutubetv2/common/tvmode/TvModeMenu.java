@@ -112,12 +112,27 @@ public class TvModeMenu {
         mDialog.appendSingleSwitch(UiOptionItem.from("Favourites only",
                 option -> mService.setFavOnly(option.isSelected()), mService.isFavOnly()));
 
+        mDialog.appendRadioCategory("When I open TV", options(mService.getOpenMode(), mService::setOpenMode,
+                TvModeService.OPEN_GUIDE, "Show the guide", TvModeService.OPEN_LAST, "Play the last channel"));
+
+        mDialog.appendRadioCategory("Switching effect", options(mService.getSwitchEffect(), mService::setSwitchEffect,
+                TvModeService.FX_STATIC, "TV static", TvModeService.FX_BLACK, "Black screen", TvModeService.FX_NONE, "Loading circle"));
+
+        mDialog.appendSingleSwitch(UiOptionItem.from("Retro TV scanlines",
+                option -> mService.setScanlinesEnabled(option.isSelected()), mService.isScanlinesEnabled()));
+
         List<OptionItem> sleep = new ArrayList<>();
         for (int minutes : SLEEP_MINUTES) {
             sleep.add(UiOptionItem.from(minutes == 0 ? "Off" : minutes + " minutes",
                     option -> mService.setSleepTimer(minutes), mService.getSleepMinutes() == minutes));
         }
         mDialog.appendRadioCategory("Sleep timer", sleep);
+
+        mDialog.appendSingleSwitch(UiOptionItem.from("Sleep timer turns the TV off", option -> {
+            if (!mService.setSleepTurnsOff(mContext, option.isSelected())) {
+                toast("This TV doesn't allow it. The screen will dim instead.");
+            }
+        }, mService.isSleepTurnsOff()));
 
         mDialog.appendSingleSwitch(UiOptionItem.from("Save to YouTube history",
                 option -> mService.setYtHistoryEnabled(option.isSelected()), mService.isYtHistoryEnabled()));
@@ -172,6 +187,15 @@ public class TvModeMenu {
             }));
         }
 
+        if (author != null && !channel.creators.contains(author)) {
+            final String channelId = video.channelId;
+            mDialog.appendSingleButton(UiOptionItem.from("More from " + author, option -> {
+                mDialog.closeDialog();
+                mService.addCreator(channel, author, channelId, this::refreshGuide);
+                toast(author + " added to " + channel.name);
+            }));
+        }
+
         appendConfirm("Clear history", "Yes, its watched videos may come back", () -> {
             mService.clearHistory(channel);
             toast("History cleared for " + channel.name);
@@ -210,8 +234,8 @@ public class TvModeMenu {
         List<OptionItem> terms = new ArrayList<>();
         for (String term : channel.terms) {
             terms.add(UiOptionItem.from("Remove: " + term, option -> {
-                if (channel.terms.size() < 2) {
-                    toast("A channel needs at least one search term");
+                if (channel.creators.isEmpty() && channel.terms.size() < 2) {
+                    toast("A channel needs at least one source");
                     return;
                 }
                 channel.terms.remove(term);
@@ -232,6 +256,35 @@ public class TvModeMenu {
             }
         }
         mDialog.appendStringsCategory("Search terms (" + channel.terms.size() + ")", terms);
+
+        // YouTube channels: their uploads join the lineup next to the search results.
+        List<OptionItem> creators = new ArrayList<>();
+        for (String creator : channel.creators) {
+            creators.add(UiOptionItem.from("Remove: " + creator, option -> {
+                if (channel.terms.isEmpty() && channel.creators.size() < 2) {
+                    toast("A channel needs at least one source");
+                    return;
+                }
+                channel.creators.remove(creator);
+                channel.creatorIds.remove(creator);
+                searchChanged(channel, "Removed " + creator);
+            }));
+        }
+        creators.add(UiOptionItem.from("+  Type a YouTube channel's name", option -> {
+            mDialog.closeDialog();
+            SimpleEditDialog.show(mContext, "YouTube channel for " + channel.name, "", value -> {
+                if (value != null && mService.addCreator(channel, value, null, this::refreshGuide)) {
+                    toast("Added " + value.trim());
+                }
+                return true;
+            });
+        }));
+        mDialog.appendStringsCategory("YouTube channels (" + channel.creators.size() + ")", creators);
+
+        mDialog.appendRadioCategory("Minimum views", options(String.valueOf(channel.minViews), value -> {
+            channel.minViews = Long.parseLong(value);
+            searchChanged(channel, null);
+        }, "0", "Any", "10000", "10K", "100000", "100K", "1000000", "1M"));
 
         mDialog.appendRadioCategory("Length", options(channel.length, value -> {
             channel.length = value;
