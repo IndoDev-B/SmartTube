@@ -382,6 +382,13 @@ public class SuggestionsController extends BasePlayerController {
 
         appendSectionPlaylistIfNeeded(video);
 
+        if (video.tvChannelId != null) { // TV mode: the other channels instead of YouTube's suggestions
+            for (VideoGroup channelRow : com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.instance(getContext()).getOtherChannelRows(video)) {
+                getPlayer().updateSuggestions(channelRow);
+            }
+            return;
+        }
+
         List<MediaGroup> suggestions = mediaItemMetadata.getSuggestions();
 
         if (suggestions == null) {

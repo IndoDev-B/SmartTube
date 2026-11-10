@@ -143,10 +143,14 @@ public class TvGuideHeroView extends FrameLayout {
         bugParams.setMargins(dp(9), dp(8), 0, 0);
         preview.addView(mPreviewBug, bugParams);
 
-        mClock = text(14f, 0xFFE0E0E0, 1);
-        LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
-        clockParams.setMargins(dp(330), 0, 0, dp(16));
-        addView(mClock, clockParams);
+        // The clock sits over the top right corner of the picture, like a channel's on-screen clock.
+        mClock = text(13f, 0xFFFFFFFF, 1);
+        mClock.setTypeface(null, Typeface.BOLD);
+        mClock.setPadding(dp(7), dp(2), dp(7), dp(2));
+        mClock.setBackground(rounded(0xB3000000, 0, dp(4)));
+        LayoutParams clockParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        clockParams.setMargins(0, dp(8), dp(9), 0);
+        preview.addView(mClock, clockParams);
     }
 
     /** Shows the focused card: a program of a channel, or one of the buttons in the top row. */
@@ -166,6 +170,8 @@ public class TvGuideHeroView extends FrameLayout {
             mTitle.setText(video.title);
             mBy.setText(describe(video.tvChannelId));
             mProgressTrack.setVisibility(INVISIBLE);
+            mOkKey.setVisibility(VISIBLE);
+            mOkLabel.setVisibility(VISIBLE);
             mOkLabel.setText("Open");
             mHoldKey.setVisibility(GONE);
             mHoldLabel.setVisibility(GONE);

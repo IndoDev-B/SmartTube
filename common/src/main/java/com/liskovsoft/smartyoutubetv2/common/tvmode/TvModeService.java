@@ -281,6 +281,40 @@ public class TvModeService {
         save();
     }
 
+    /**
+     * The other channels as rows for the player, starting with the one after the playing channel.
+     */
+    public List<VideoGroup> getOtherChannelRows(Video current) {
+        List<VideoGroup> rows = new ArrayList<>();
+        TvChannel from = findChannel(current);
+
+        if (from == null) {
+            return rows;
+        }
+
+        int start = mChannels.indexOf(from);
+
+        for (int n = 1; n < mChannels.size(); n++) {
+            int index = (start + n) % mChannels.size();
+            TvChannel channel = mChannels.get(index);
+            syncLive(channel);
+
+            if (channel.onNow() == null) {
+                continue;
+            }
+
+            if (channel.group == null || !channel.group.contains(channel.onNow())) {
+                buildGroup(channel, index + 1);
+            }
+
+            channel.group.setTitle(title(channel));
+            channel.group.setPosition(-1); // the player adds rows in the order they arrive
+            rows.add(channel.group);
+        }
+
+        return rows;
+    }
+
     /** The video on now on the next (dir 1) or previous (dir -1) channel that has one. */
     public Video surf(Video current, int dir) {
         TvChannel from = findChannel(current);
