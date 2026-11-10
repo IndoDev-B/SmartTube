@@ -137,6 +137,19 @@ public class TvGuideFragment extends VideoRowsFragment {
         super.setAlignment(dp(TvGuideHeroView.HEIGHT_DP + 34));
     }
 
+    /**
+     * The lines are rebuilt after every change (a setting, a shuffle, a new channel).
+     * Stay on the line that was focused instead of jumping back to the top.
+     */
+    @Override
+    public void clear() {
+        int line = getPosition();
+        super.clear();
+        if (line > 0) {
+            setPosition(line);
+        }
+    }
+
     @Override
     protected void onVideoItemSelected(Video video) {
         mSelected = video;
