@@ -329,7 +329,8 @@ public class TvGuideHeroView extends FrameLayout {
 
         // One line: the creator, the length, and when. The lines saved go to the description.
         mBy.setMaxLines(1);
-        mBy.setText(by.isEmpty() ? when : by + "  •  " + when);
+        // The time first: a long creator name is what gets cut off at the end of the line.
+        mBy.setText(by.isEmpty() ? when : when + "  •  " + by);
         mOkKey.setVisibility(ok != null ? VISIBLE : GONE);
         mOkLabel.setVisibility(ok != null ? VISIBLE : GONE);
         mOkLabel.setText(ok);
