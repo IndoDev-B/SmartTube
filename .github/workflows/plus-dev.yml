@@ -32,6 +32,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Apply our MediaServiceCore patches
+        run: sh patches/apply.sh
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'

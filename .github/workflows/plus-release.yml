@@ -80,6 +80,8 @@ jobs:
             exit 1
           fi
           git submodule update --init --recursive
+          # A patch that no longer fits a new SmartTube release must not block the release.
+          sh patches/apply.sh --lenient
 
       - uses: actions/setup-java@v4
         if: steps.check.outputs.go == 'true'

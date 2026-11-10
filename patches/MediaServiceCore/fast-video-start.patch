@@ -1,0 +1,164 @@
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt
+index 77822ad6..72bdb2a0 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt
+@@ -70,7 +70,8 @@ internal object PoTokenGate {
+     @JvmStatic
+     @JvmOverloads
+     fun getPoToken(client: AppClient, videoId: String? = null): String? {
+-        releaseOtherProviders(client)
++        // Both token makers stay open. Closing the other one each time the client changed rebuilt
++        // a WebView (several seconds) on every video that fell back from the TV client to a web one.
+         return when {
+             client.isWebPotRequired -> if (videoId != null) getWebContentPoToken(videoId) else getWebSessionPoToken()
+             client.isTvPotRequired -> getTvPoToken()
+@@ -146,10 +147,13 @@ internal object PoTokenGate {
+         return true
+     }
+ 
+-    private fun releaseOtherProviders(client: AppClient) {
+-        when {
+-            client.isWebPotRequired -> TvPoTokenProvider.release()
+-            client.isTvPotRequired -> WebPoTokenProvider.release()
++    /** Makes the token ahead of time, so the first video doesn't wait for the WebView. */
++    @JvmStatic
++    fun warmUp(client: AppClient) {
++        try {
++            getPoToken(client)
++        } catch (e: Exception) {
++            // Only a head start: the video load tries again and handles the error itself.
+         }
+     }
+ }
+\ No newline at end of file
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/potokennp2/TvPoTokenProvider.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/potokennp2/TvPoTokenProvider.kt
+index bb3945e6..8594fc9b 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/potokennp2/TvPoTokenProvider.kt
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/potokennp2/TvPoTokenProvider.kt
+@@ -18,10 +18,15 @@ internal object TvPoTokenProvider {
+     private val TAG = TvPoTokenProvider::class.simpleName
+     private val lock = Any()
+     private const val FORCE_ATT_CHALLENGE = true
++    // A failed attempt costs up to 30 s (WebView start plus BotGuard). Without this pause every
++    // video paid it again before playing without the token anyway.
++    private const val RETRY_AFTER_FAILURE_MS = 10 * 60_000L
+     private var generator: PoTokenGenerator? = null
+     private var result: PoTokenResult? = null
+     @Volatile
+     private var expirationMs: Long = -1
++    @Volatile
++    private var failedUntilMs: Long = -1
+ 
+     /**
+      * The id that should be passed to the player request: tvAppInfo.livingRoomPoTokenId
+@@ -36,21 +41,38 @@ internal object TvPoTokenProvider {
+             return null
+         }
+ 
++        if (System.currentTimeMillis() < failedUntilMs) {
++            return null
++        }
++
++        val startMs = System.currentTimeMillis()
++
+         return try {
+-            synchronized(lock) { getPoTokenSync() }
++            synchronized(lock) {
++                if (System.currentTimeMillis() < failedUntilMs) return null
++                getPoTokenSync().also { if (it == null) markFailed() }
++            }
+         } catch (e: Exception) {
+             Log.e(TAG, "Could not obtain TV poToken", e)
+             reset()
++            markFailed()
+             null
++        } finally {
++            Log.d(TAG, "TV poToken took ${System.currentTimeMillis() - startMs} ms")
+         }
+     }
+ 
++    private fun markFailed() {
++        failedUntilMs = System.currentTimeMillis() + RETRY_AFTER_FAILURE_MS
++    }
++
+     /** Clears all state, including the generator and cached tokens. The next call regenerates everything. */
+     fun reset() {
+         synchronized(lock) {
+             result = null
+             livingRoomPoTokenId = null
+             expirationMs = -1
++            failedUntilMs = -1 // a reset after a playback error means: try the token again now
+             release()
+         }
+     }
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java
+index 69a7fc14..e57f36b8 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java
+@@ -15,6 +15,7 @@ import com.liskovsoft.mediaserviceinterfaces.SignInService;
+ import com.liskovsoft.sharedutils.mylogger.Log;
+ import com.liskovsoft.sharedutils.rx.RxHelper;
+ import com.liskovsoft.youtubeapi.app.AppService;
++import com.liskovsoft.youtubeapi.app.PoTokenGate;
+ import com.liskovsoft.youtubeapi.app.ReloadPlaybackGate;
+ import com.liskovsoft.youtubeapi.channelgroups.ChannelGroupServiceImpl;
+ import com.liskovsoft.googlecommon.common.locale.LocaleManager;
+@@ -130,7 +131,10 @@ public class YouTubeServiceManager implements ServiceManager {
+         }
+ 
+         mRefreshCoreDataAction =
+-                RxHelper.execute(RxHelper.fromRunnable(() -> getAppService().refreshCacheIfNeeded(getVideoInfoService().getClient())));
++                RxHelper.execute(RxHelper.fromRunnable(() -> {
++                    getAppService().refreshCacheIfNeeded(getVideoInfoService().getClient());
++                    PoTokenGate.warmUp(getVideoInfoService().getClient());
++                }));
+     }
+ 
+     @NonNull
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
+index 29e7de1e..99b4bc6f 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
+@@ -76,6 +76,8 @@ public class VideoInfoService extends VideoInfoServiceBase {
+ 
+         mUseAuth = true;
+ 
++        long startMs = System.currentTimeMillis();
++
+         VideoInfo result = firstPlayable(videoId, clickTrackingParams);
+ 
+         if (result == null) {
+@@ -83,10 +85,17 @@ public class VideoInfoService extends VideoInfoServiceBase {
+             return null;
+         }
+ 
++        long playerMs = System.currentTimeMillis();
++
+         applyFixesIfNeeded(result, videoId, clickTrackingParams);
+ 
++        long fixesMs = System.currentTimeMillis();
++
+         transformFormats(result);
+ 
++        Log.d(TAG, "Video start timing for %s via %s: player request %s ms, extras %s ms, urls and token %s ms",
++                videoId, result.getClient(), playerMs - startMs, fixesMs - playerMs, System.currentTimeMillis() - fixesMs);
++
+         persistRecentTypeIfNeeded(result);
+ 
+         mIsUnplayable = result.isUnplayable();
+@@ -120,12 +129,15 @@ public class VideoInfoService extends VideoInfoServiceBase {
+         AppClient nextClient = beginClient;
+ 
+         do {
++            long startMs = System.currentTimeMillis();
+             VideoInfo result = getVideoInfoWithRentFix(nextClient, videoId, clickTrackingParams);
+ 
+             if (result != null && infoTester.test(result)) {
+                 return result;
+             }
+ 
++            Log.d(TAG, "Client %s refused %s after %s ms", nextClient, videoId, System.currentTimeMillis() - startMs);
++
+             nextClient = Helpers.getNextValue(CLIENT_LIST, nextClient);
+         } while (nextClient != beginClient);
+ 
