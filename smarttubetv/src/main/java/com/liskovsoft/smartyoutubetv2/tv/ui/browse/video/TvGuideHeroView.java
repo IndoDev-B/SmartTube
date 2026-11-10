@@ -66,6 +66,66 @@ public class TvGuideHeroView extends FrameLayout {
     private static final long PREVIEW_CHECK_MS = 6_000;
     private static final int PREVIEW_MAX_TRIES = 4;
     private final Runnable mStartPreview = this::startPreview;
+    private TextView mAbout;
+    /** The program the description line is for. */
+    private String mAboutId;
+    private Video mAboutVideo;
+    /** The focus must rest this long before a description is fetched, so scrolling fetches nothing. */
+    private static final long ABOUT_DELAY_MS = 1_200;
+    private static final int ABOUT_CHARS = 320;
+    private final Runnable mLoadAbout = () -> {
+        final Video video = mAboutVideo;
+
+        if (video != null && isAttachedToWindow()) {
+            TvModeService.instance(getContext()).loadInfo(video, (videoId, description) -> {
+                if (videoId.equals(mAboutId)) {
+                    mAbout.setText(shorten(description));
+                }
+            });
+        }
+    };
+
+    /** A description as one short paragraph: line breaks and runs of spaces become single spaces. */
+    private static String shorten(String description) {
+        if (description == null) {
+            return "";
+        }
+
+        String text = description.replace('\n', ' ').replace('\r', ' ').trim();
+
+        while (text.contains("  ")) {
+            text = text.replace("  ", " ");
+        }
+
+        return text.length() > ABOUT_CHARS ? text.substring(0, ABOUT_CHARS) : text;
+    }
+
+    /** Shows the description of a program if it is known, and asks for it after a moment if not. */
+    private void about(Video video) {
+        String id = video != null ? video.videoId : null;
+
+        if (id == null) {
+            removeCallbacks(mLoadAbout);
+            mAboutId = null;
+            mAboutVideo = null;
+            mAbout.setText("");
+            return;
+        }
+
+        if (id.equals(mAboutId)) {
+            return; // the same program as a moment ago: shown, or on its way
+        }
+
+        removeCallbacks(mLoadAbout);
+        mAboutId = id;
+        mAboutVideo = video;
+        String known = TvModeService.instance(getContext()).getInfo(id);
+        mAbout.setText(shorten(known));
+
+        if (known == null) {
+            postDelayed(mLoadAbout, ABOUT_DELAY_MS);
+        }
+    }
 
     public TvGuideHeroView(Context context) {
         super(context);
@@ -118,6 +178,13 @@ public class TvGuideHeroView extends FrameLayout {
         mProgress = new View(context);
         mProgress.setBackground(rounded(RED, 0, dp(2)));
         bar.addView(mProgress, new LayoutParams(0, LayoutParams.MATCH_PARENT));
+
+        // What the program is about: the start of its description, once the focus has rested on it.
+        mAbout = text(12.5f, 0xFFB0B0B0, 3);
+        mAbout.setLineSpacing(dp(2), 1f);
+        LinearLayout.LayoutParams aboutParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        aboutParams.topMargin = dp(9);
+        info.addView(mAbout, aboutParams);
 
         // Bottom left: the two things OK does here
         LinearLayout hint = new LinearLayout(context);
@@ -202,6 +269,7 @@ public class TvGuideHeroView extends FrameLayout {
             mPreviewIcon.setImageResource(TvActionCardPresenter.iconOf(video));
             mPreviewIcon.setVisibility(VISIBLE);
             previewChannel(null);
+            about(null);
             return;
         }
 
@@ -212,6 +280,7 @@ public class TvGuideHeroView extends FrameLayout {
         }
 
         previewChannel(channel);
+        about(video);
 
         boolean live = service.isLive(channel);
         int index = channel.indexOf(video.videoId);

@@ -475,6 +475,7 @@ public class TvModeService {
             fill(channel, null);
         }
 
+        checkNext(channel);
         save();
 
         if (toBlock != null) {
@@ -832,6 +833,8 @@ public class TvModeService {
                 position = state.positionMs;
             }
         }
+
+        checkNext(channel);
 
         Video copy = Video.from(onNow);
         copy.author = onNow.author;
@@ -1811,6 +1814,124 @@ public class TvModeService {
                 channel.emptyFills = 0;
                 fill(channel, onDone, false);
             }
+        }
+    }
+
+    // ---------------- program info ----------------
+
+    public interface OnInfo {
+        void onInfo(String videoId, String description);
+    }
+
+    private static final int MAX_DESCRIPTIONS = 300;
+    /** Descriptions already fetched, by video id. Main thread only. */
+    private final Map<String, String> mDescriptions = new java.util.LinkedHashMap<String, String>(64, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+            return size() > MAX_DESCRIPTIONS;
+        }
+    };
+    private final Set<String> mDescriptionsAsked = new HashSet<>();
+    private final ExecutorService mInfoWorker = Executors.newSingleThreadExecutor();
+
+    /** A program's description if it was fetched before, or null. */
+    public String getInfo(String videoId) {
+        return videoId != null ? mDescriptions.get(videoId) : null;
+    }
+
+    /**
+     * Fetches a program's description: one small request, off the main thread, once for a video.
+     * Search results don't carry descriptions, so this is asked only for a program the viewer
+     * rests on in the guide and for the program a channel has on next.<br/>
+     * The description also says more about the language than the title does. A video whose
+     * description shows another language than its channel's leaves the lineup.
+     */
+    public void loadInfo(final Video video, final OnInfo onInfo) {
+        final String id = video != null ? video.videoId : null;
+
+        if (id == null) {
+            return;
+        }
+
+        String known = mDescriptions.get(id);
+
+        if (known != null) {
+            if (onInfo != null) {
+                onInfo.onInfo(id, known);
+            }
+            return;
+        }
+
+        if (!mDescriptionsAsked.add(id)) {
+            return; // on its way
+        }
+
+        mInfoWorker.execute(() -> {
+            String text = "";
+
+            try {
+                com.liskovsoft.mediaserviceinterfaces.data.MediaItemMetadata metadata =
+                        YouTubeServiceManager.instance().getMediaItemService().getMetadata(id);
+                if (metadata != null && metadata.getDescription() != null) {
+                    text = metadata.getDescription();
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "No description for %s: %s", id, e.getMessage());
+            }
+
+            final String description = text;
+
+            mMain.post(() -> {
+                mDescriptionsAsked.remove(id);
+                mDescriptions.put(id, description);
+                checkDescription(video, description);
+
+                if (onInfo != null) {
+                    onInfo.onInfo(id, description);
+                }
+            });
+        });
+    }
+
+    /** Takes a video out of its channel when its description shows another language than the channel's. */
+    private void checkDescription(Video video, String description) {
+        TvChannel channel = findChannel(video);
+
+        if (channel == null || description == null || description.isEmpty() || channel.language().isEmpty()) {
+            return;
+        }
+
+        // The start of the description is about the video. Further down come links and boilerplate.
+        String start = description.length() > 400 ? description.substring(0, 400) : description;
+        String language = TvLanguage.detect(start);
+        String channelLanguage = channel.language();
+        boolean latinOnHindi = "en".equals(language) && !"en".equals(channelLanguage);
+
+        if (language == null || channelLanguage.equals(language) || latinOnHindi) {
+            return;
+        }
+
+        int index = channel.indexOf(video.videoId);
+
+        if (index > channel.pos) {
+            channel.durations.remove(channel.lineup.remove(index).videoId);
+        } else if (index == channel.pos && channel.ahead() > 0 && !video.videoId.equals(channel.startedId)) {
+            channel.durations.remove(channel.lineup.remove(index).videoId);
+            channel.liveStartMs = 0;
+        } else {
+            return;
+        }
+
+        Log.d(TAG, "%s: \"%s\" left, its description reads as %s", channel.name, video.getTitle(), language);
+        channel.group = null;
+        topUp(channel);
+        save();
+    }
+
+    /** Checks the description of what a channel has on next, so a video in the wrong language is gone before its turn. */
+    private void checkNext(TvChannel channel) {
+        if (!channel.language().isEmpty() && channel.ahead() > 0) {
+            loadInfo(channel.lineup.get(channel.pos + 1), null);
         }
     }
 
