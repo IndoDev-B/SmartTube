@@ -110,6 +110,7 @@ public class TvGuideFragment extends VideoRowsFragment {
     }
 
     private int dp(float value) {
-        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics()));
+        // The system metrics: this is called before the fragment is attached and has resources of its own.
+        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, android.content.res.Resources.getSystem().getDisplayMetrics()));
     }
 }
