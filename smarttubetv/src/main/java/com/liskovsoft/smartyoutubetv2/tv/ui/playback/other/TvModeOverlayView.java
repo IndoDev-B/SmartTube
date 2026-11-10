@@ -431,6 +431,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         private final Random mRandom = new Random();
         private Bitmap mFrame;
         private boolean mIsRealFrame;
+        /** Where down the screen the tracking band starts, 0 to 1. */
+        private float mBandStart;
 
         VhsView(Context context) {
             super(context);
@@ -460,6 +462,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         void setFrame(Bitmap frame, boolean real) {
             if (frame != null && !real && mIsRealFrame) {
                 return;
+            }
+
+            if (mFrame == null && frame != null) {
+                mBandStart = mRandom.nextFloat(); // a new channel change: the band starts at a new height
             }
 
             mFrame = frame;
@@ -493,9 +499,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             canvas.drawBitmap(frame, null, mTarget, mBlue);
 
             // Tracking band: a strip pulled sideways and full of noise, rolling down the screen.
-            float bandHeight = height * 0.07f;
-            float bandTop = (time % 2600) / 2600f * (height + bandHeight) - bandHeight;
-            tear(canvas, frame, width, height, bandTop, bandHeight, width * (0.02f + 0.03f * mRandom.nextFloat()), 14);
+            // Thin, and it starts somewhere else on every channel change.
+            float bandHeight = Math.max(6, height * 0.012f);
+            float bandTop = ((time % 2600) / 2600f + mBandStart) % 1f * (height + bandHeight) - bandHeight;
+            tear(canvas, frame, width, height, bandTop, bandHeight, width * (0.02f + 0.03f * mRandom.nextFloat()), 5);
 
             // Head-switching noise: the bottom edge of a tape picture is always torn.
             float edge = height * 0.035f;
