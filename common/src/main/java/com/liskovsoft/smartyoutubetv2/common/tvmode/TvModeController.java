@@ -141,8 +141,6 @@ public class TvModeController extends BasePlayerController {
         TvModeOverlay overlay = sOverlay.get();
 
         if (getPlayer() != null && overlay != null && isRandom(getVideo())) {
-            getPlayer().showOverlay(true);
-            overlay.showTopButtons(true);
             overlay.focusRandomButton();
         }
     };
@@ -184,7 +182,7 @@ public class TvModeController extends BasePlayerController {
                 Utils.removeCallbacks(mKeepRandom);
                 Utils.postDelayed(mKeepRandom, 400);
             } else if (overlay != null) {
-                overlay.showTopButtons(false);
+                overlay.dropTopButtons();
             }
             return;
         }
@@ -277,6 +275,11 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onPlay() {
+        if (isRandom(getVideo())) {
+            Utils.removeCallbacks(mKeepRandom);
+            Utils.post(mKeepRandom); // the player took the focus while it loaded
+        }
+
         alignLive(); // a pause or a slow start: the schedule follows what is on screen
         liftSwitching(FIRST_FRAME_MS); // playing: give the first frame a moment to reach the screen
         Utils.removeCallbacks(mPreloadNeighbours);
@@ -453,11 +456,6 @@ public class TvModeController extends BasePlayerController {
     @Override
     public boolean onKeyDown(int keyCode) {
         Video current = getVideo();
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            com.liskovsoft.sharedutils.mylogger.Log.d("TvModeController", "Up: topButtons=%s player=%s controls=%s overlay=%s", hasTopButtons(current), getPlayer() != null,
-                    getPlayer() != null && getPlayer().isControlsShown(), getPlayer() != null && getPlayer().isOverlayShown());
-        }
 
         // isControlsShown: the buttons and seek bar are focused, not the rows of videos under them.
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP && hasTopButtons(current) && getPlayer() != null && getPlayer().isControlsShown()) {

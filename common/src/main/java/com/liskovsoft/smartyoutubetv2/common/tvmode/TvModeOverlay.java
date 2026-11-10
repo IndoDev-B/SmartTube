@@ -35,8 +35,14 @@ public interface TvModeOverlay {
      */
     boolean focusTopButtons();
 
-    /** Puts the focus on the Random button, so OK again plays another one. */
+    /**
+     * Puts the focus back on the Random button if the cursor was resting on the top buttons, so
+     * OK again plays another video. Loading a video takes the focus away for a moment.
+     */
     void focusRandomButton();
+
+    /** Hides the top buttons even when the cursor is on them: a video that isn't TV mode's started. */
+    void dropTopButtons();
 
     /** Dims the screen after the sleep timer, with a line of text. */
     void showSleep(String message);

@@ -80,6 +80,11 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     private final TextView mSettingsButton;
     /** The control the focus came from, to hand it back on Down. */
     private java.lang.ref.WeakReference<View> mReturnFocus = new java.lang.ref.WeakReference<>(null);
+    /**
+     * The cursor is resting on the top buttons. They then stay on screen by themselves, also after
+     * the player's controls fade out, so Random can be pressed again and again.
+     */
+    private boolean mTopHeld;
 
     /** Adds the overlay on top of the player screen and hands it to TV mode. */
     public static void attach(ViewGroup playerRoot) {
@@ -234,8 +239,9 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         });
         button.setOnKeyListener((view, keyCode, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
-                // The matching key-up of OK must not reach anything else either.
-                return keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER;
+                // The matching key-up must not reach anything else either.
+                return keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_BACK;
             }
 
             switch (keyCode) {
@@ -254,13 +260,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
                 case android.view.KeyEvent.KEYCODE_DPAD_UP:
                     return true; // nothing above
                 case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
-                    View back = mReturnFocus.get();
-                    if (back == null || !back.isShown() || !back.requestFocus()) {
-                        View below = view.focusSearch(View.FOCUS_DOWN);
-                        if (below != null) {
-                            below.requestFocus();
-                        }
-                    }
+                case android.view.KeyEvent.KEYCODE_BACK:
+                    leaveTopButtons();
                     return true;
             }
 
@@ -269,17 +270,36 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         return button;
     }
 
-    @Override
-    public void showTopButtons(boolean show) {
-        if (!show && (mRandomButton.isFocused() || mSettingsButton.isFocused())) {
-            View back = mReturnFocus.get();
-            if (back != null && back.isShown()) {
-                back.requestFocus(); // the controls are going: don't leave the focus on a hidden button
-            }
+    /** Down or Back on a top button: the cursor goes back to the player. */
+    private void leaveTopButtons() {
+        mTopHeld = false;
+        View back = mReturnFocus.get();
+
+        if (back != null && back.isShown() && back.requestFocus()) {
+            return; // the controls are still up: the buttons stay with them
         }
 
-        mRandomButton.setVisibility(show ? VISIBLE : GONE);
-        mSettingsButton.setVisibility(show ? VISIBLE : GONE);
+        setTopButtonsVisible(false); // the controls are gone: only the video is left
+    }
+
+    private void setTopButtonsVisible(boolean visible) {
+        mRandomButton.setVisibility(visible ? VISIBLE : GONE);
+        mSettingsButton.setVisibility(visible ? VISIBLE : GONE);
+    }
+
+    @Override
+    public void showTopButtons(boolean show) {
+        if (!show && mTopHeld) {
+            return; // the cursor is on them: they stay when the controls fade out
+        }
+
+        setTopButtonsVisible(show);
+    }
+
+    @Override
+    public void dropTopButtons() {
+        mTopHeld = false;
+        setTopButtonsVisible(false);
     }
 
     @Override
@@ -289,7 +309,6 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         }
 
         View focused = getRootView().findFocus();
-        Log.d(TAG, "Up to top buttons: focused=%s", focused);
 
         if (focused == null || focused == mRandomButton || focused == mSettingsButton) {
             return false;
@@ -305,18 +324,14 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         }
 
         mReturnFocus = new java.lang.ref.WeakReference<>(focused);
-        boolean moved = mRandomButton.requestFocus();
-        Log.d(TAG, "Up to top buttons: y=%s of %s, moved=%s, now=%s", place[1], getHeight(), moved, getRootView().findFocus());
-        return moved;
+        mTopHeld = mRandomButton.requestFocus();
+        return mTopHeld;
     }
 
     @Override
     public void focusRandomButton() {
-        if (mRandomButton.getVisibility() == VISIBLE && !mRandomButton.isFocused()) {
-            View focused = getRootView().findFocus();
-            if (focused != null && focused != mSettingsButton) {
-                mReturnFocus = new java.lang.ref.WeakReference<>(focused);
-            }
+        if (mTopHeld && !mRandomButton.isFocused() && !mSettingsButton.isFocused()) {
+            setTopButtonsVisible(true);
             mRandomButton.requestFocus();
         }
     }
