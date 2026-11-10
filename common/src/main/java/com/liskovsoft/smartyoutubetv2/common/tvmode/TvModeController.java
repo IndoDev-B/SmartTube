@@ -20,7 +20,8 @@ import java.util.Date;
  */
 public class TvModeController extends BasePlayerController {
     private static final long DIGITS_TIMEOUT_MS = 1_500;
-    private static final long SWITCHING_MAX_MS = 8_000;
+    private static final long SWITCHING_MAX_MS = 20_000;
+    private static final long FIRST_FRAME_MS = 150;
     private static WeakReference<TvModeController> sInstance = new WeakReference<>(null);
     private static WeakReference<TvModeOverlay> sOverlay = new WeakReference<>(null);
     private String mDigits = "";
@@ -195,11 +196,27 @@ public class TvModeController extends BasePlayerController {
                 video.getTitle(), subtitle, nextLabel, next != null ? next.getTitle() : null);
     }
 
+    // The static stays up until the video really plays. "Loaded" comes seconds earlier, while the
+    // player is still buffering, and lifting it then showed the loading circle in between.
+
     @Override
-    public void onVideoLoaded(Video item) {
-        // The picture is ready: lift the static.
+    public void onPlay() {
+        liftSwitching(FIRST_FRAME_MS); // playing: give the first frame a moment to reach the screen
+    }
+
+    @Override
+    public void onPause() {
+        liftSwitching(0); // started paused: nothing more to wait for
+    }
+
+    @Override
+    public void onEngineError(int type, int rendererIndex, Throwable error) {
+        liftSwitching(0); // the error message must be readable
+    }
+
+    private void liftSwitching(long delayMs) {
         Utils.removeCallbacks(mHideSwitching);
-        Utils.postDelayed(mHideSwitching, 350);
+        Utils.postDelayed(mHideSwitching, delayMs);
     }
 
     @Override
