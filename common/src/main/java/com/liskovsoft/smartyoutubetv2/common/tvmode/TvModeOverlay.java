@@ -12,6 +12,16 @@ public interface TvModeOverlay {
     /** Covers the picture while the next video loads. effect: TvModeService.FX_STATIC or FX_BLACK. */
     void showSwitching(String effect);
 
+    /**
+     * Covers the picture with a frame of the video that is loading, taken from YouTube's seek
+     * previews at this position and given a VHS look. fallbackImageUrl is shown until that frame
+     * arrives, and instead of it when the video has no seek previews.
+     */
+    void showPreview(String videoId, long positionMs, String fallbackImageUrl);
+
+    /** Fetches the frame {@link #showPreview} would show, so a later channel change has it at once. */
+    void preloadPreview(String videoId, long positionMs);
+
     void hideSwitching();
 
     void setScanlines(boolean enabled);

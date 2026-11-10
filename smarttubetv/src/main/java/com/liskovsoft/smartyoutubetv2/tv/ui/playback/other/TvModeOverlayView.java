@@ -4,6 +4,14 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
+import android.os.SystemClock;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Shader;
@@ -18,7 +26,23 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.RequestManager;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.request.transition.Transition;
+import com.liskovsoft.mediaserviceinterfaces.data.MediaItemStoryboard;
+import com.liskovsoft.sharedutils.mylogger.Log;
+import com.liskovsoft.sharedutils.rx.RxHelper;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeController;
+import com.liskovsoft.smartyoutubetv2.tv.ui.playback.previewtimebar.GlideThumbnailTransformation;
+import com.liskovsoft.youtubeapi.service.YouTubeServiceManager;
+
+import io.reactivex.disposables.Disposable;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeOverlay;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 
@@ -30,9 +54,16 @@ import java.util.Random;
  * Never takes focus or touches, so the player works exactly as before underneath it.
  */
 public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
+    private static final String TAG = TvModeOverlayView.class.getSimpleName();
     private static final int RED = 0xFFE62117;
     private static final long BANNER_MS = 5_000;
     private final StaticView mStatic;
+    private final VhsView mVhs;
+    /** The video the VHS preview is for. A frame that arrives for another one is dropped. */
+    private String mPreviewId;
+    private CustomTarget<Bitmap> mFrameTarget;
+    private CustomTarget<Bitmap> mFallbackTarget;
+    private Disposable mStoryboardAction;
     private final View mBlack;
     private final View mScanlines;
     private final FrameLayout mBanner;
@@ -67,6 +98,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mStatic = new StaticView(context);
         mStatic.setVisibility(GONE);
         addView(mStatic, matchParent());
+
+        mVhs = new VhsView(context);
+        mVhs.setVisibility(GONE);
+        addView(mVhs, matchParent());
 
         mScanlines = new ScanlinesView(context);
         mScanlines.setVisibility(GONE);
@@ -185,6 +220,118 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     public void hideSwitching() {
         mStatic.setVisibility(GONE);
         mBlack.setVisibility(GONE);
+        mVhs.setVisibility(GONE);
+        mVhs.setFrame(null, false);
+        mPreviewId = null;
+        RxHelper.disposeActions(mStoryboardAction);
+        clearTargets();
+    }
+
+    private void clearTargets() {
+        // The view lets go of a picture before Glide takes it back.
+        RequestManager glide = Glide.with(getContext().getApplicationContext());
+        if (mFrameTarget != null) {
+            glide.clear(mFrameTarget);
+            mFrameTarget = null;
+        }
+        if (mFallbackTarget != null) {
+            glide.clear(mFallbackTarget);
+            mFallbackTarget = null;
+        }
+    }
+
+    @Override
+    public void showPreview(final String videoId, final long positionMs, String fallbackImageUrl) {
+        hideSwitching();
+
+        if (videoId == null) {
+            showSwitching(TvModeService.FX_STATIC);
+            return;
+        }
+
+        mPreviewId = videoId;
+        // Static shows through until the first picture is in, so the screen is never blank.
+        mStatic.setVisibility(VISIBLE);
+        mVhs.setVisibility(VISIBLE);
+
+        if (fallbackImageUrl != null) {
+            mFallbackTarget = new CustomTarget<Bitmap>() {
+                @Override
+                public void onResourceReady(@NonNull Bitmap picture, @Nullable Transition<? super Bitmap> transition) {
+                    if (videoId.equals(mPreviewId)) {
+                        mVhs.setFrame(picture, false); // kept only until the real frame arrives
+                    }
+                }
+
+                @Override
+                public void onLoadCleared(@Nullable Drawable placeholder) {
+                    // NOP
+                }
+            };
+            Glide.with(getContext().getApplicationContext()).asBitmap().load(fallbackImageUrl).into(mFallbackTarget);
+        }
+
+        mStoryboardAction = loadStoryboard(videoId, storyboard -> {
+            if (!videoId.equals(mPreviewId)) {
+                return;
+            }
+
+            mFrameTarget = new CustomTarget<Bitmap>() {
+                @Override
+                public void onResourceReady(@NonNull Bitmap frame, @Nullable Transition<? super Bitmap> transition) {
+                    if (videoId.equals(mPreviewId)) {
+                        mVhs.setFrame(frame, true);
+                    }
+                }
+
+                @Override
+                public void onLoadCleared(@Nullable Drawable placeholder) {
+                    // NOP
+                }
+            };
+            frameRequest(storyboard, positionMs).into(mFrameTarget);
+        });
+    }
+
+    @Override
+    public void preloadPreview(String videoId, final long positionMs) {
+        if (videoId == null) {
+            return;
+        }
+
+        // Same request as showPreview, so the picture sheet is in Glide's cache when it's needed.
+        loadStoryboard(videoId, storyboard -> frameRequest(storyboard, positionMs).preload());
+    }
+
+    private interface OnStoryboard {
+        void onStoryboard(MediaItemStoryboard storyboard);
+    }
+
+    /** YouTube's seek previews for a video. Comes from the video info, which TV mode loads ahead for nearby channels. */
+    private Disposable loadStoryboard(String videoId, final OnStoryboard callback) {
+        return YouTubeServiceManager.instance().getMediaItemService().getStoryboardObserve(videoId)
+                .subscribe(storyboard -> post(() -> {
+                    // Every number here is divided by later on, so a video without usable seek previews stops here.
+                    if (storyboard != null && storyboard.getGroupDurationMS() > 0 && storyboard.getGroupSize() != null
+                            && storyboard.getGroupSize().getDurationEachMS() > 0
+                            && storyboard.getGroupSize().getRowCount() > 0 && storyboard.getGroupSize().getColCount() > 0) {
+                        callback.onStoryboard(storyboard);
+                    }
+                }), error -> Log.e(TAG, "No seek previews for the VHS preview: %s", error.getMessage()));
+    }
+
+    /** One frame cut out of the sheet of seek previews that covers this position. */
+    private RequestBuilder<Bitmap> frameRequest(MediaItemStoryboard storyboard, long positionMs) {
+        int group = (int) (positionMs / storyboard.getGroupDurationMS());
+        long inGroupMs = positionMs % storyboard.getGroupDurationMS();
+        MediaItemStoryboard.Size size = storyboard.getGroupSize();
+
+        return Glide.with(getContext().getApplicationContext())
+                .asBitmap()
+                .load(storyboard.getGroupUrl(group))
+                .override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
+                .transform(new GlideThumbnailTransformation(inGroupMs, size.getWidth(), size.getHeight(),
+                        size.getRowCount(), size.getColCount(), size.getDurationEachMS()));
     }
 
     @Override
@@ -264,6 +411,138 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             if (getVisibility() == VISIBLE) {
                 postInvalidateOnAnimation();
             }
+        }
+    }
+
+    /**
+     * A still frame made to look like a paused VHS tape: washed-out colour that bleeds sideways,
+     * a band of tracking noise rolling down, tearing at the bottom edge, specks, scanlines and
+     * the recorder's own PLAY text. The frames YouTube gives are small, and the look hides that.
+     */
+    private static class VhsView extends View {
+        private final Paint mPicture = new Paint(Paint.FILTER_BITMAP_FLAG);
+        private final Paint mRed = new Paint(Paint.FILTER_BITMAP_FLAG);
+        private final Paint mBlue = new Paint(Paint.FILTER_BITMAP_FLAG);
+        private final Paint mLines = new Paint();
+        private final Paint mSpeck = new Paint();
+        private final Paint mText = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path mPlayMark = new Path();
+        private final RectF mTarget = new RectF();
+        private final Random mRandom = new Random();
+        private Bitmap mFrame;
+        private boolean mIsRealFrame;
+
+        VhsView(Context context) {
+            super(context);
+
+            ColorMatrix washedOut = new ColorMatrix();
+            washedOut.setSaturation(0.7f);
+            mPicture.setColorFilter(new ColorMatrixColorFilter(washedOut));
+
+            // Colour bleed: a faint red copy to the right and a blue one to the left.
+            mRed.setColorFilter(new ColorMatrixColorFilter(new float[] {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.30f, 0}));
+            mRed.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
+            mBlue.setColorFilter(new ColorMatrixColorFilter(new float[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.30f, 0}));
+            mBlue.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
+
+            Bitmap tile = Bitmap.createBitmap(1, 4, Bitmap.Config.ARGB_8888);
+            tile.setPixel(0, 0, 0x66000000);
+            tile.setPixel(0, 1, 0x26000000);
+            mLines.setShader(new BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
+
+            mSpeck.setColor(0xD9FFFFFF);
+            mText.setColor(0xF2FFFFFF);
+            mText.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+            mText.setShadowLayer(6, 3, 3, 0xFF000000);
+        }
+
+        /** real: a frame of the video itself. A stand-in picture never replaces one. */
+        void setFrame(Bitmap frame, boolean real) {
+            if (frame != null && !real && mIsRealFrame) {
+                return;
+            }
+
+            mFrame = frame;
+            mIsRealFrame = frame != null && real;
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            Bitmap frame = mFrame;
+
+            if (frame == null || frame.isRecycled()) {
+                return; // the static underneath shows
+            }
+
+            int width = getWidth();
+            int height = getHeight();
+            long time = SystemClock.uptimeMillis();
+
+            canvas.drawColor(0xFF000000);
+
+            // The whole picture trembles a little from side to side.
+            float jitter = (mRandom.nextFloat() - 0.5f) * width * 0.004f;
+            mTarget.set(jitter, 0, width + jitter, height);
+            canvas.drawBitmap(frame, null, mTarget, mPicture);
+
+            float bleed = width * 0.006f;
+            mTarget.offset(bleed, 0);
+            canvas.drawBitmap(frame, null, mTarget, mRed);
+            mTarget.offset(-2 * bleed, 0);
+            canvas.drawBitmap(frame, null, mTarget, mBlue);
+
+            // Tracking band: a strip pulled sideways and full of noise, rolling down the screen.
+            float bandHeight = height * 0.07f;
+            float bandTop = (time % 2600) / 2600f * (height + bandHeight) - bandHeight;
+            tear(canvas, frame, width, height, bandTop, bandHeight, width * (0.02f + 0.03f * mRandom.nextFloat()), 14);
+
+            // Head-switching noise: the bottom edge of a tape picture is always torn.
+            float edge = height * 0.035f;
+            tear(canvas, frame, width, height, height - edge, edge, width * 0.08f * (mRandom.nextFloat() - 0.3f), 26);
+
+            for (int i = 0; i < 5; i++) {
+                speck(canvas, width, mRandom.nextFloat() * height);
+            }
+
+            canvas.drawRect(0, 0, width, height, mLines);
+
+            // The recorder's own text, top left.
+            float size = height * 0.058f;
+            float left = width * 0.06f;
+            float base = height * 0.13f;
+            mText.setTextSize(size);
+            canvas.drawText("PLAY", left, base, mText);
+            float markLeft = left + mText.measureText("PLAY ");
+            mPlayMark.rewind();
+            mPlayMark.moveTo(markLeft, base - size * 0.72f);
+            mPlayMark.lineTo(markLeft + size * 0.62f, base - size * 0.36f);
+            mPlayMark.lineTo(markLeft, base);
+            mPlayMark.close();
+            canvas.drawPath(mPlayMark, mText);
+
+            if (getVisibility() == VISIBLE) {
+                postInvalidateOnAnimation();
+            }
+        }
+
+        /** Redraws one horizontal strip of the picture shifted sideways, with noise over it. */
+        private void tear(Canvas canvas, Bitmap frame, int width, int height, float top, float stripHeight, float shift, int specks) {
+            canvas.save();
+            canvas.clipRect(0, top, width, top + stripHeight);
+            canvas.drawColor(0xFF000000);
+            mTarget.set(shift, 0, width + shift, height);
+            canvas.drawBitmap(frame, null, mTarget, mPicture);
+            canvas.drawColor(0x2EFFFFFF);
+            for (int i = 0; i < specks; i++) {
+                speck(canvas, width, top + mRandom.nextFloat() * stripHeight);
+            }
+            canvas.restore();
+        }
+
+        private void speck(Canvas canvas, int width, float y) {
+            float x = mRandom.nextFloat() * width;
+            canvas.drawRect(x, y, x + width * (0.01f + 0.05f * mRandom.nextFloat()), y + 3, mSpeck);
         }
     }
 

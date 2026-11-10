@@ -55,6 +55,7 @@ public class TvModeService {
     public static final String FX_STATIC = "static";
     public static final String FX_BLACK = "black";
     public static final String FX_NONE = "none";
+    public static final String FX_VHS = "vhs";
     public static final String OPEN_GUIDE = "guide";
     public static final String OPEN_LAST = "play";
     private static final String STATE_FILE = "tv_mode_state.json";
@@ -633,6 +634,34 @@ public class TvModeService {
         }
 
         return null;
+    }
+
+    /**
+     * Where in a video the "VHS preview" switching effect takes its frame: where the video will
+     * start (a live channel's clock, or where it was left). A video starting from the top uses a
+     * frame a little way in, since the very first frames are usually a logo or black.
+     */
+    public long previewPositionMs(Video video) {
+        TvChannel channel = findChannel(video);
+
+        if (channel == null || video.videoId == null) {
+            return 0;
+        }
+
+        long position = 0;
+        Video onNow = channel.onNow();
+
+        if (isLive(channel) && onNow != null && video.videoId.equals(onNow.videoId)) {
+            position = liveOffsetMs(channel);
+        } else {
+            com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.State state =
+                    com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.instance(mContext).getByVideoId(video.videoId);
+            if (state != null) {
+                position = state.positionMs;
+            }
+        }
+
+        return position > 0 ? position : Math.min(channel.durationOf(video) / 10, 60_000);
     }
 
     /** The first video of the fresh lineup after a shuffle, ready to play. */

@@ -179,7 +179,11 @@ public class TvModeController extends BasePlayerController {
         String effect = getService().getSwitchEffect();
 
         if (!TvModeService.FX_NONE.equals(effect)) {
-            overlay.showSwitching(effect);
+            if (TvModeService.FX_VHS.equals(effect)) {
+                overlay.showPreview(item.videoId, getService().previewPositionMs(item), item.cardImageUrl);
+            } else {
+                overlay.showSwitching(effect);
+            }
             Utils.removeCallbacks(mHideSwitching);
             Utils.postDelayed(mHideSwitching, SWITCHING_MAX_MS); // never leave the picture covered
         }

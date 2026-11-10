@@ -116,7 +116,7 @@ public class TvModeMenu {
                 TvModeService.OPEN_GUIDE, "Show the guide", TvModeService.OPEN_LAST, "Play the last channel"));
 
         mDialog.appendRadioCategory("Switching effect", options(mService.getSwitchEffect(), mService::setSwitchEffect,
-                TvModeService.FX_STATIC, "TV static", TvModeService.FX_BLACK, "Black screen", TvModeService.FX_NONE, "Loading circle"));
+                TvModeService.FX_STATIC, "TV static", TvModeService.FX_VHS, "VHS preview", TvModeService.FX_BLACK, "Black screen", TvModeService.FX_NONE, "Loading circle"));
 
         mDialog.appendSingleSwitch(UiOptionItem.from("Retro TV scanlines",
                 option -> mService.setScanlinesEnabled(option.isSelected()), mService.isScanlinesEnabled()));
