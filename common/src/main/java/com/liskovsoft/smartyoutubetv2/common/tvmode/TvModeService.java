@@ -413,6 +413,45 @@ public class TvModeService {
         return null;
     }
 
+    /**
+     * What {@link #surf} would tune to, without tuning: no group building, no start position set.
+     * Used to load the next channels' video info ahead, so a channel change starts sooner.
+     */
+    public Video peek(Video current, int dir) {
+        TvChannel from = findChannel(current);
+
+        if (from == null || mChannels.size() < 2) {
+            return null;
+        }
+
+        int start = mChannels.indexOf(from);
+        boolean favOnly = false;
+
+        if (mFavOnly) {
+            for (TvChannel channel : mChannels) {
+                favOnly |= channel.fav;
+            }
+        }
+
+        for (int n = 1; n < mChannels.size(); n++) {
+            int index = ((start + dir * n) % mChannels.size() + mChannels.size()) % mChannels.size();
+            TvChannel channel = mChannels.get(index);
+
+            if (favOnly && !channel.fav) {
+                continue;
+            }
+
+            syncLive(channel); // a live channel's "on now" follows the clock
+            Video onNow = channel.onNow();
+
+            if (onNow != null) {
+                return onNow;
+            }
+        }
+
+        return null;
+    }
+
     private void remember(String videoId) {
         if (videoId == null) {
             return;

@@ -1,0 +1,65 @@
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt
+index e3be9530..a860a6b3 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt
+@@ -12,7 +12,12 @@ import com.liskovsoft.youtubeapi.service.data.YouTubeMediaItemFormatInfo
+ import com.liskovsoft.youtubeapi.videoinfo.V2.VideoInfoService
+ 
+ internal object FormatInfoWrapper {
+-    private var mCachedFormatInfo: MediaItemFormatInfo? = null
++    // A few videos, not one: the next video and TV mode's neighbour channels are loaded ahead
++    // while a video plays, and a single slot let each of them push out the others.
++    private const val CACHE_SIZE = 4
++    private val mCachedFormatInfos = object : LinkedHashMap<String, MediaItemFormatInfo>(CACHE_SIZE + 1, 0.75f, true) {
++        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MediaItemFormatInfo>?): Boolean = size > CACHE_SIZE
++    }
+     private var mTryInnertubeFirst: Boolean = false
+     private val mInnertubeResult = object { var isUnplayable: Boolean = false; var client: AppClient? = null }
+     private val mInnertubeProvider: (String, String?) -> MediaItemFormatInfo? =
+@@ -62,7 +67,9 @@ internal object FormatInfoWrapper {
+ 
+     @JvmStatic
+     fun invalidateCache() {
+-        mCachedFormatInfo = null
++        synchronized(lock) {
++            mCachedFormatInfos.clear()
++        }
+     }
+ 
+     @JvmStatic
+@@ -142,16 +149,31 @@ internal object FormatInfoWrapper {
+     }
+ 
+     private fun getCachedFormatInfo(videoId: String?): MediaItemFormatInfo? {
+-        return mCachedFormatInfo?.takeIf { videoId != null && it.getVideoId() == videoId && it.isCacheActual() }
++        if (videoId == null)
++            return null
++
++        val cached = mCachedFormatInfos[videoId] ?: return null
++
++        if (!cached.isCacheActual()) {
++            mCachedFormatInfos.remove(videoId)
++            return null
++        }
++
++        return cached
+     }
+ 
+     private fun setCachedFormatInfo(formatInfo: MediaItemFormatInfo?, clickTrackingParams: String?) {
+-        if (formatInfo == null || formatInfo.isUnplayable()) {
+-            mCachedFormatInfo = null
++        if (formatInfo == null)
++            return
++
++        val videoId = formatInfo.getVideoId() ?: return
++
++        if (formatInfo.isUnplayable()) {
++            mCachedFormatInfos.remove(videoId)
+             return
+         }
+ 
+-        mCachedFormatInfo = formatInfo
++        mCachedFormatInfos[videoId] = formatInfo
+         formatInfo.setClickTrackingParams(clickTrackingParams)
+     }
+ 

@@ -109,7 +109,10 @@ public class ExoPlayerInitializer {
         // Default values
         int minBufferMs = 30_000;
         int maxBufferMs = 30_000;
-        int bufferForPlaybackMs = 2_500;
+        // Start after 1 s of video instead of 2.5 s. Measured on a BRAVIA: with the first frame already
+        // decoded, a 4K start sat waiting about 1 s for the rest of the 2.5 s. The rebuffer value
+        // below stays high, so a slow connection still recovers with a full buffer.
+        int bufferForPlaybackMs = 1_000;
         int bufferForPlaybackAfterRebufferMs = 5_000;
 
         switch (mPlayerData.getVideoBufferType()) {

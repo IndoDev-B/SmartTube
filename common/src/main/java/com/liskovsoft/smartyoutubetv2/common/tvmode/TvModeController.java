@@ -4,15 +4,21 @@ import android.content.Context;
 import android.text.format.DateFormat;
 import android.view.KeyEvent;
 
+import com.liskovsoft.mediaserviceinterfaces.MediaItemService;
+import com.liskovsoft.sharedutils.helpers.Helpers;
 import com.liskovsoft.sharedutils.helpers.MessageHelpers;
+import com.liskovsoft.sharedutils.rx.RxHelper;
 import com.liskovsoft.smartyoutubetv2.common.R;
 import com.liskovsoft.smartyoutubetv2.common.app.models.data.Video;
 import com.liskovsoft.smartyoutubetv2.common.app.models.playback.BasePlayerController;
 import com.liskovsoft.smartyoutubetv2.common.app.presenters.BrowsePresenter;
 import com.liskovsoft.smartyoutubetv2.common.utils.Utils;
+import com.liskovsoft.youtubeapi.service.YouTubeServiceManager;
 
 import java.lang.ref.WeakReference;
 import java.util.Date;
+
+import io.reactivex.disposables.Disposable;
 
 /**
  * Player side of TV mode. Does nothing unless the playing video came from a TV mode channel.<br/>
@@ -29,6 +35,9 @@ public class TvModeController extends BasePlayerController {
     private String mBannerWaitingId;
     private boolean mSleeping;
     private final Runnable mTuneDigits = this::tuneDigits;
+    private static final long PRELOAD_DELAY_MS = 4_000;
+    private final Runnable mPreloadNeighbours = this::preloadNeighbours;
+    private Disposable mPreloadAction;
     private final Runnable mHideSwitching = () -> {
         TvModeOverlay overlay = sOverlay.get();
         if (overlay != null) {
@@ -202,6 +211,36 @@ public class TvModeController extends BasePlayerController {
     @Override
     public void onPlay() {
         liftSwitching(FIRST_FRAME_MS); // playing: give the first frame a moment to reach the screen
+        Utils.removeCallbacks(mPreloadNeighbours);
+        Utils.postDelayed(mPreloadNeighbours, PRELOAD_DELAY_MS);
+    }
+
+    /**
+     * Loads the video info of the channels above and below while this one plays, so Up/Down starts
+     * about 1 to 2 s sooner. Waits a few seconds first: the playing video gets the bandwidth while it starts.
+     */
+    private void preloadNeighbours() {
+        Video current = getVideo();
+
+        // Only while the video stays out of YouTube history: loading video info renews the playback
+        // id that history updates read, so the playing video's history would be sent under a new id.
+        if (!isTvVideo(current) || !current.incognito || RxHelper.isAnyActionRunning(mPreloadAction)) {
+            return;
+        }
+
+        Video down = getService().peek(current, 1);
+        Video up = getService().peek(current, -1);
+        final String downId = down != null ? down.videoId : null;
+        final String upId = up != null && !Helpers.equals(up.videoId, downId) ? up.videoId : null;
+
+        mPreloadAction = RxHelper.execute(RxHelper.fromRunnable(() -> {
+            MediaItemService service = YouTubeServiceManager.instance().getMediaItemService();
+            for (String videoId : new String[] {downId, upId}) {
+                if (videoId != null) {
+                    service.getFormatInfo(videoId);
+                }
+            }
+        }));
     }
 
     @Override

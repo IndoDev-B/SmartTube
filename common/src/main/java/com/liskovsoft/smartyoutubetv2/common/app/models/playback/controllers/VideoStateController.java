@@ -600,8 +600,9 @@ public class VideoStateController extends BasePlayerController {
             state = new State(item, getPlayer().getDurationMs() - getLiveBufferMs());
         }
 
-        // Do I need to check that item isn't live? (state != null && !item.isLive)
-        if (state != null) {
+        // A pending position (time code link, TV mode "on now") wins and is applied right after this.
+        // Seeking to the saved position first made the player jump there and back, reloading twice.
+        if (state != null && item.pendingPosMs <= 0) {
             seekIfNeeded(state.positionMs);
         }
 
