@@ -22,8 +22,12 @@ import java.util.List;
 public class StartLowTrackSelection extends BaseTrackSelection {
     /** {@link TrackSelection.Definition#data} of a definition that should start low */
     public static final Object START_LOW = new Object();
-    /** Step up once this much is buffered: playback is safe and the low part covers the first seconds */
-    private static final long STEP_UP_BUFFERED_US = 4_000_000;
+    /**
+     * Step up once this much is buffered. Measured on a BRAVIA: one 5 s piece of 4K60 is ~22 MB and took 6.6 s
+     * to arrive, so with only 4 s buffered the picture stalled. 1080p pieces arrive in under a second,
+     * so waiting for 10 s costs nothing at the start.
+     */
+    private static final long STEP_UP_BUFFERED_US = 10_000_000;
     private final int mHighIndex;
     private int mSelectedIndex;
 
