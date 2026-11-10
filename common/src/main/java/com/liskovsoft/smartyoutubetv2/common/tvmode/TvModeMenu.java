@@ -259,6 +259,16 @@ public class TvModeMenu {
             }
         }));
 
+        if (video != null && video.videoId != null) {
+            // The whole description, to scroll through. The guide itself shows only its first lines.
+            mDialog.appendSingleButton(UiOptionItem.from("Program info", option -> mService.loadInfo(video, (videoId, description) -> {
+                String title = video.getTitle() != null ? video.getTitle() : "";
+                mDialog.appendLongTextCategory(title, UiOptionItem.from(
+                        description == null || description.isEmpty() ? "This program has no description." : description));
+                mDialog.showDialog(title);
+            })));
+        }
+
         mDialog.appendSingleButton(UiOptionItem.from("Edit channel", option -> showEditor(channel)));
 
         mDialog.appendSingleButton(UiOptionItem.from("Shuffle", option -> {
