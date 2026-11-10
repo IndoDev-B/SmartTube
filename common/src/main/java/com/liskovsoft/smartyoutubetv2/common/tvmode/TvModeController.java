@@ -70,6 +70,12 @@ public class TvModeController extends BasePlayerController {
     public static final int TOP_BUTTON_RANDOM = 0;
     public static final int TOP_BUTTON_SETTINGS = 1;
 
+    /** The player's own controls are on screen. */
+    public static boolean isControlsUp() {
+        TvModeController controller = sInstance.get();
+        return controller != null && controller.getPlayer() != null && controller.getPlayer().isOverlayShown();
+    }
+
     /** One of the buttons at the top of the player was pressed. */
     public static void onTopButton(int button) {
         TvModeController controller = sInstance.get();

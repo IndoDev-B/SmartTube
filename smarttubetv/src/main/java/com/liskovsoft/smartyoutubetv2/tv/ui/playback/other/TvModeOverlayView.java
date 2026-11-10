@@ -285,12 +285,18 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         removeCallbacks(mTopTimeout);
         mTopHeld = false;
         View back = mReturnFocus.get();
+        boolean controlsUp = TvModeController.isControlsUp();
 
-        if (back != null && back.isShown() && back.requestFocus()) {
-            return; // the controls are still up: the buttons stay with them
+        if (back != null && back.isShown()) {
+            back.requestFocus();
         }
 
-        setTopButtonsVisible(false); // the controls are gone: only the video is left
+        if (!controlsUp) {
+            // The controls have faded out: only the video is left. Their views still exist, so the
+            // control that takes the focus back would pop up its name label over the picture.
+            setTopButtonsVisible(false);
+            com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.playerglue.tooltips.TooltipCompatHandler.hideAll();
+        }
     }
 
     private void setTopButtonsVisible(boolean visible) {

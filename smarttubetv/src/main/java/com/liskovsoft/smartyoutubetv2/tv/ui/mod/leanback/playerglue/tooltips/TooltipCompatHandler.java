@@ -170,6 +170,15 @@ public class TooltipCompatHandler implements View.OnLongClickListener, View.OnHo
         return false;
     }
 
+    /** Hides the label that is showing and drops one that is about to show. */
+    public static void hideAll() {
+        setPendingHandler(null);
+
+        if (sActiveHandler != null) {
+            sActiveHandler.hide();
+        }
+    }
+
     @Override
     public void onFocusChange(View v, boolean hasFocus) {
         if (hasFocus) {
