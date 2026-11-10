@@ -143,7 +143,13 @@ public class TvGuideFragment extends VideoRowsFragment {
         hideAppTitle();
 
         if (mHero != null) {
-            mHero.show(video);
+            // Focus changes arrive in the middle of a layout pass, where a text change can't resize its view.
+            // Posting it runs the update right after.
+            mHero.post(() -> {
+                if (mHero != null) {
+                    mHero.show(mSelected);
+                }
+            });
         }
     }
 
