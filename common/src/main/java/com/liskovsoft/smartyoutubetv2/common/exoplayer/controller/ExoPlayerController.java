@@ -26,6 +26,7 @@ import com.liskovsoft.smartyoutubetv2.common.app.models.playback.listener.Player
 import com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.LiveStateProvider;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.ExoMediaSourceFactory;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.errors.TrackErrorFixer;
+import com.liskovsoft.smartyoutubetv2.common.exoplayer.other.StartTimingTrace;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.other.VolumeBooster;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.selector.ExoFormatItem;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.selector.FormatItem;
@@ -69,6 +70,8 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
     private boolean mHasStartPosition;
     /** The source being opened may start in a lower quality (see StartLowTrackSelection) */
     private boolean mStartLowNext;
+    /** Dev app only, else null */
+    private StartTimingTrace mStartTrace;
 
     public ExoPlayerController(Context context, PlayerEventListener eventListener) {
         PlayerTweaksData playerTweaksData = PlayerTweaksData.instance(context);
@@ -196,6 +199,9 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
         // Keep a start position set during onSourceChanged (a resumed video). The first requests
         // then load from there. Seeking after the load threw away the first download and cost
         // another round trip to YouTube: 5 to 12 s on a resumed 4K video.
+        if (mStartTrace != null) {
+            mStartTrace.start();
+        }
         mPlayer.prepare(mediaSource, !mHasStartPosition, true);
     }
 
@@ -306,6 +312,11 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
     public void setPlayer(SimpleExoPlayer player) {
         mPlayer = player;
         player.addListener(this);
+
+        if (mContext.getResources().getBoolean(com.liskovsoft.smartyoutubetv2.common.R.bool.start_timing_shown)) {
+            mStartTrace = new StartTimingTrace(); // dev app: log each step of a video start
+            player.addAnalyticsListener(mStartTrace);
+        }
     }
 
     //@Override
@@ -597,6 +608,10 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
 
         try {
             mPlayer.removeListener(this);
+            if (mStartTrace != null) {
+                mPlayer.removeAnalyticsListener(mStartTrace);
+                mStartTrace = null;
+            }
             mPlayer.stop(true); // Cause input lags due to high cpu load?
             mPlayer.clearVideoSurface();
             mPlayer.release();
