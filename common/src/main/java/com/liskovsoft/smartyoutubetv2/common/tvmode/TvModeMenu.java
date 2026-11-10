@@ -222,6 +222,12 @@ public class TvModeMenu {
         mDialog.appendSingleSwitch(UiOptionItem.from("Save to YouTube history",
                 option -> mService.setYtHistoryEnabled(option.isSelected()), mService.isYtHistoryEnabled()));
 
+        mDialog.appendSingleButton(UiOptionItem.from("Refresh channels", option -> {
+            mDialog.closeDialog();
+            mService.refreshChannels(this::refreshGuide);
+            toast("Getting the latest channel list and new videos");
+        }));
+
         appendConfirm("Shuffle all channels", "Yes, new lineups on every channel", () -> {
             mService.shuffleAll(this::refreshGuide);
             toast("New lineups on every channel");

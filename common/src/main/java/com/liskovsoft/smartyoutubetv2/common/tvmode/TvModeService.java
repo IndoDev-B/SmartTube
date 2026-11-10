@@ -1782,8 +1782,112 @@ public class TvModeService {
         }
     }
 
+    /**
+     * "Refresh channels" in TV settings: fetch the channel list now instead of at the next start,
+     * take out queued videos that no longer fit their channel, and top every channel up.
+     * onChanged runs each time something arrived, so the guide can redraw.
+     */
+    public void refreshChannels(final Runnable onChanged) {
+        ensureLoaded();
+        mConfigCheckedMs = 0;
+        refreshConfig(() -> {
+            fillLow(null); // the guide redraws by itself every few seconds
+            if (onChanged != null) {
+                onChanged.run();
+            }
+        });
+
+        for (TvChannel channel : mChannels) {
+            purge(channel);
+        }
+
+        fillLow(null); // the guide redraws by itself every few seconds
+        save();
+    }
+
+    private void fillLow(Runnable onDone) {
+        for (TvChannel channel : mChannels) {
+            if (channel.ahead() < mMinAhead && !channel.loading) {
+                channel.emptyFills = 0;
+                fill(channel, onDone, false);
+            }
+        }
+    }
+
+    /**
+     * True when a video that is already in a lineup no longer fits its channel: the title has
+     * a skip word, reads as another language, or the creator is blocked. The same checks as
+     * {@link #accept}, for the ones a saved video still has the data for.
+     */
+    private boolean stale(TvChannel channel, Video video) {
+        String title = video.getTitle();
+
+        if (title == null) {
+            return false;
+        }
+
+        String lower = title.toLowerCase(Locale.ROOT);
+
+        if (containsAny(lower, channel.skipWords) || containsAny(lower, mGlobalSkipWords)) {
+            return true;
+        }
+
+        String channelLanguage = channel.language();
+
+        if (!channelLanguage.isEmpty()) {
+            String language = TvLanguage.detect(title);
+            boolean latinOnHindi = "en".equals(language) && !"en".equals(channelLanguage);
+            if (language != null && !channelLanguage.equals(language) && !latinOnHindi) {
+                return true;
+            }
+        }
+
+        String author = creatorOf(video.author);
+
+        if (author != null) {
+            for (String blocked : channel.blocked) {
+                if (author.equalsIgnoreCase(blocked)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Takes videos that no longer fit out of a channel's lineup, after its skip words or language
+     * rules changed. What's on now goes too, unless it is the video that was started in the player.
+     */
+    private void purge(TvChannel channel) {
+        boolean removed = false;
+
+        for (int i = channel.lineup.size() - 1; i > channel.pos; i--) {
+            if (stale(channel, channel.lineup.get(i))) {
+                channel.durations.remove(channel.lineup.remove(i).videoId);
+                removed = true;
+            }
+        }
+
+        Video onNow = channel.onNow();
+
+        if (onNow != null && channel.ahead() > 0 && stale(channel, onNow) && !onNow.videoId.equals(channel.startedId)) {
+            channel.durations.remove(channel.lineup.remove(channel.pos).videoId);
+            channel.liveStartMs = 0; // a live channel joins the video that takes its place part-way in
+            removed = true;
+        }
+
+        if (removed) {
+            channel.group = null;
+        }
+    }
+
     /** Downloads the preset list in the background. A change applies now and is kept for the next start. */
     private void refreshConfig() {
+        refreshConfig(null);
+    }
+
+    private void refreshConfig(final Runnable onChanged) {
         long now = System.currentTimeMillis();
 
         if (now - mConfigCheckedMs < CONFIG_CHECK_PERIOD_MS) {
@@ -1812,6 +1916,9 @@ public class TvModeService {
                     if (!text.equals(mConfigText) && applyConfig(text)) {
                         mWorker.execute(() -> writeFile(new File(mContext.getFilesDir(), CONFIG_CACHE_FILE), text));
                         save();
+                        if (onChanged != null) {
+                            onChanged.run();
+                        }
                     }
                 });
             } catch (Throwable e) {
@@ -1917,6 +2024,7 @@ public class TvModeService {
                 channel.readSettings(preset);
 
                 if (!before.equals(channel.searchKey())) {
+                    purge(channel); // what the new rules would not have let in goes first
                     dropComingUp(channel);
                 }
             }
