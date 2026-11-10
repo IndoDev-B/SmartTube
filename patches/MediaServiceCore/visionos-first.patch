@@ -1,0 +1,20 @@
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
+index 99b4bc6f..cf5d581a 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
+@@ -30,9 +30,14 @@ public class VideoInfoService extends VideoInfoServiceBase {
+     private static VideoInfoService sInstance;
+     private final VideoInfoApi mVideoInfoApi;
+     // TODO: TV clients are broken because of recently introduced '-tcl' player variant (different nParam and nSignature)
++    // SmartTube Plus: VISIONOS first. It returns plain DASH links that need no token and no URL
++    // decoding, so a video starts about 1 s sooner than on TV (SABR). Measured on a BRAVIA:
++    // video info 0.6-1.2 s vs 2.0 s, player 0.5-0.8 s vs 1-5 s. It isn't signed in, which history
++    // handles (FormatInfoWrapper.syncWithAuthInfoIfNeeded), and age-restricted or members-only
++    // videos fall through to TV, which is next in the list.
+     private final static AppClient[] CLIENT_LIST = {
+-            AppClient.TV, // Supports auth. Fixes "please sign in" bug! (the best for Premium users)
+             AppClient.VISIONOS, // no url formats
++            AppClient.TV, // Supports auth. Fixes "please sign in" bug! (the best for Premium users)
+             AppClient.TV_DOWNGRADED, // works with old UAs like old Cobalt and old Xbox (non-tcl players)
+             AppClient.WEB, // Fix video clip blocked in current location
+             AppClient.WEB_EMBED, // Restricted (18+) videos (not working)
