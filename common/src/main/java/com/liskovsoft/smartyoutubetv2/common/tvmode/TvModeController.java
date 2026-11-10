@@ -25,6 +25,7 @@ public class TvModeController extends BasePlayerController {
     private static WeakReference<TvModeOverlay> sOverlay = new WeakReference<>(null);
     private String mDigits = "";
     private String mDecoratedId;
+    private String mBannerWaitingId;
     private boolean mSleeping;
     private final Runnable mTuneDigits = this::tuneDigits;
     private final Runnable mHideSwitching = () -> {
@@ -167,8 +168,10 @@ public class TvModeController extends BasePlayerController {
             Utils.postDelayed(mHideSwitching, SWITCHING_MAX_MS); // never leave the picture covered
         }
 
-        if (getPlayer() == null || !getPlayer().isOverlayShown()) { // the controls show the same things
+        if (getPlayer() == null || !getPlayer().isOverlayShown()) {
             showBanner(overlay, channel, item);
+        } else {
+            mBannerWaitingId = item.videoId; // the controls are up and show the same things: banner once they go
         }
     }
 
@@ -203,9 +206,25 @@ public class TvModeController extends BasePlayerController {
     public void onControlsShown(boolean shown) {
         TvModeOverlay overlay = sOverlay.get();
 
-        if (shown && overlay != null) {
-            overlay.hideBanner(); // the controls show the same things
+        if (overlay == null) {
+            return;
         }
+
+        if (shown) {
+            overlay.hideBanner(); // the controls show the same things
+            return;
+        }
+
+        Video current = getVideo();
+
+        if (mBannerWaitingId != null && isTvVideo(current) && mBannerWaitingId.equals(current.videoId)) {
+            TvChannel channel = getService().findChannel(current);
+            if (channel != null) {
+                showBanner(overlay, channel, current);
+            }
+        }
+
+        mBannerWaitingId = null;
     }
 
     @Override
