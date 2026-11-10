@@ -34,6 +34,10 @@ android {
             targetSdkVersion project.properties.compileSdkVersion
             versionCode plusVersionCode
             versionNameSuffix "-dev.${plusBuild}"
+            // x86 as well, so the dev APK runs on the emulator that plus-uitest.yml tests it on.
+            ndk {
+                abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86'
+            }
             // Library modules only define stbeta/ststable/stfdroid; build them as stable.
             matchingFallbacks = ['ststable']
         }

@@ -1,0 +1,68 @@
+name: SmartTube Plus dev screen test
+
+# Installs the published dev APK on an Android TV emulator, presses the remote buttons listed in
+# "steps" and saves a screenshot wherever a step says "shot". Screenshots and the app log come back
+# as the "uitest" artifact. Run by hand; it never publishes anything.
+#
+# steps: separated by ";"
+#   key DPAD_DOWN      press a button (Android KEYCODE name without the prefix)
+#   key DPAD_DOWN 3    press it 3 times
+#   hold DPAD_CENTER   long press
+#   text hello         type text
+#   sleep 5            wait seconds
+#   shot guide         save a screenshot as NN-guide.png
+
+on:
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: 'Remote steps, separated by ";"'
+        required: false
+        default: 'sleep 5; shot start'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plus-uitest
+  cancel-in-progress: true
+
+jobs:
+  uitest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STEPS: ${{ inputs.steps }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+
+      - name: Download the dev APK
+        run: gh release download dev -R "$GITHUB_REPOSITORY" -p 'smarttubeplus_dev_universal.apk' -O app.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on an Android TV emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash .github/uitest.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uitest
+          path: out
+          retention-days: 3
