@@ -67,6 +67,8 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
     /** Inside onSourceChanged: a position set now becomes the start position of the new source */
     private boolean mIsSourceChanging;
     private boolean mHasStartPosition;
+    /** The source being opened may start in a lower quality (see StartLowTrackSelection) */
+    private boolean mStartLowNext;
 
     public ExoPlayerController(Context context, PlayerEventListener eventListener) {
         PlayerTweaksData playerTweaksData = PlayerTweaksData.instance(context);
@@ -106,6 +108,9 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
 
     public void openDash(MediaItemFormatInfo formatInfo) {
         MediaSource mediaSource = mMediaSourceFactory.fromDashFormatInfo(formatInfo);
+        // Regular DASH steps from the start quality to the chosen one inside the running stream.
+        // SABR asks the server for one fixed quality, so it keeps starting at the chosen one.
+        mStartLowNext = !formatInfo.isLive();
         openMediaSource(mediaSource);
     }
 
@@ -177,6 +182,8 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
         setQualityInfo("");
 
         mTrackSelectorManager.setMergedSource(mediaSource instanceof MergingMediaSource);
+        mTrackSelectorManager.setStartLowEnabled(mStartLowNext);
+        mStartLowNext = false; // only for the source the caller just built
         mTrackSelectorManager.invalidate();
         mOnSourceChanged = true;
         mHasStartPosition = false;

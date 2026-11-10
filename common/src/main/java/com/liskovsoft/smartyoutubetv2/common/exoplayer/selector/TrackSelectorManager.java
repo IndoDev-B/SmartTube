@@ -5,6 +5,7 @@ import android.os.Build;
 import android.text.TextUtils;
 import android.util.Pair;
 
+import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.source.TrackGroup;
 import com.google.android.exoplayer2.source.TrackGroupArray;
@@ -50,6 +51,9 @@ public class TrackSelectorManager implements TrackSelectorCallback {
     private final Renderer[] mRenderers = new Renderer[3];
     private final MediaTrack[] mSelectedTracks = new MediaTrack[3];
     private boolean mIsMergedSource;
+    /** The first seconds play at most at this height, then the chosen quality (see {@link StartLowTrackSelection}) */
+    private static final int START_LOW_MAX_HEIGHT = 1080;
+    private boolean mStartLowEnabled;
 
     public TrackSelectorManager(Context context) {
         mContext = context.getApplicationContext();
@@ -319,7 +323,11 @@ public class TrackSelectorManager implements TrackSelectorCallback {
         MediaTrack matchedTrack = findBestMatch(selectedTrack);
 
         if (matchedTrack.groupIndex != -1) {
-            Definition definition = new Definition(groups.get(matchedTrack.groupIndex), matchedTrack.trackIndex);
+            MediaTrack startTrack = mStartLowEnabled ? findStartLowTrack(matchedTrack) : null;
+            Definition definition = startTrack != null
+                    ? new Definition(groups.get(matchedTrack.groupIndex), new int[] {matchedTrack.trackIndex, startTrack.trackIndex},
+                        C.SELECTION_REASON_INITIAL, StartLowTrackSelection.START_LOW)
+                    : new Definition(groups.get(matchedTrack.groupIndex), matchedTrack.trackIndex);
             definitionPair = new Pair<>(definition, matchedTrack);
             setSelection(matchedTrack.rendererIndex, matchedTrack.groupIndex, matchedTrack.trackIndex);
         } else {
@@ -327,6 +335,64 @@ public class TrackSelectorManager implements TrackSelectorCallback {
         }
 
         return definitionPair;
+    }
+
+    /** Start low only for the sources that can step up without a reload (see {@link StartLowTrackSelection}) */
+    public void setStartLowEnabled(boolean enabled) {
+        mStartLowEnabled = enabled;
+    }
+
+    /**
+     * The track to play the first seconds in: the best one up to 1080p with the same codec and frame rate
+     * as the chosen one. Same frame rate, so auto frame rate doesn't switch the display mode mid-play.
+     * Null when the chosen quality is 1080p or lower, or nothing fits.
+     */
+    private MediaTrack findStartLowTrack(MediaTrack chosen) {
+        if (chosen.rendererIndex != RENDERER_INDEX_VIDEO || chosen.format == null || chosen.format.height <= START_LOW_MAX_HEIGHT) {
+            return null;
+        }
+
+        Renderer renderer = mRenderers[RENDERER_INDEX_VIDEO];
+
+        if (renderer == null || renderer.mediaTracks == null || chosen.groupIndex >= renderer.mediaTracks.length) {
+            return null;
+        }
+
+        MediaTrack[] group = renderer.mediaTracks[chosen.groupIndex];
+        MediaTrack best = null;
+
+        if (group == null) {
+            return null;
+        }
+
+        for (MediaTrack track : group) {
+            if (track == null || track == chosen || track.format == null) {
+                continue;
+            }
+
+            Format format = track.format;
+
+            boolean fits = format.height > 0 && format.height <= START_LOW_MAX_HEIGHT
+                    && Math.abs(format.frameRate - chosen.format.frameRate) < 1
+                    && Helpers.equals(codecFamily(format.codecs), codecFamily(chosen.format.codecs));
+
+            if (fits && (best == null || format.height > best.format.height
+                    || (format.height == best.format.height && format.bitrate > best.format.bitrate))) {
+                best = track;
+            }
+        }
+
+        return best;
+    }
+
+    /** "vp09.00.51.08" and "vp9" are both VP9: compare the first letters only */
+    private static String codecFamily(String codecs) {
+        if (codecs == null) {
+            return null;
+        }
+
+        String lower = codecs.toLowerCase();
+        return lower.startsWith("vp9") || lower.startsWith("vp09") ? "vp9" : lower.substring(0, Math.min(4, lower.length()));
     }
 
     private Pair<Definition, MediaTrack> createRendererSelection(int rendererIndex, TrackGroupArray groups, Parameters params) {

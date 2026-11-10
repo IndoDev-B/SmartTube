@@ -483,7 +483,8 @@ public class PlaybackFragment extends SeekModePlaybackFragment implements Playba
 
     private void createPlayer() {
         // Use default or pass your bandwidthMeter here: bandwidthMeter = new DefaultBandwidthMeter.Builder(getContext()).build()
-        DefaultTrackSelector trackSelector = new RestoreTrackSelector(new AdaptiveTrackSelection.Factory());
+        // StartLowTrackSelection.Factory: the usual adaptive selections, plus "start in 1080p, then the chosen quality"
+        DefaultTrackSelector trackSelector = new RestoreTrackSelector(new com.liskovsoft.smartyoutubetv2.common.exoplayer.selector.StartLowTrackSelection.Factory());
         mExoPlayerController.setTrackSelector(trackSelector);
 
         DefaultRenderersFactory renderersFactory = new CustomOverridesRenderersFactory(getContext());
