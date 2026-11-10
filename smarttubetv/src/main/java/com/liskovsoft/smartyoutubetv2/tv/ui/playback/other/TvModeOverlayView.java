@@ -85,6 +85,14 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
      * the player's controls fade out, so Random can be pressed again and again.
      */
     private boolean mTopHeld;
+    /** The top buttons go away by themselves when no button was pressed on them for this long. */
+    private static final long TOP_BUTTONS_MS = 8_000;
+    private final Runnable mTopTimeout = this::leaveTopButtons;
+
+    private void restartTopTimeout() {
+        removeCallbacks(mTopTimeout);
+        postDelayed(mTopTimeout, TOP_BUTTONS_MS);
+    }
 
     /** Adds the overlay on top of the player screen and hands it to TV mode. */
     public static void attach(ViewGroup playerRoot) {
@@ -244,6 +252,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
                         || keyCode == android.view.KeyEvent.KEYCODE_BACK;
             }
 
+            restartTopTimeout();
+
             switch (keyCode) {
                 case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
                 case android.view.KeyEvent.KEYCODE_ENTER:
@@ -272,6 +282,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
     /** Down or Back on a top button: the cursor goes back to the player. */
     private void leaveTopButtons() {
+        removeCallbacks(mTopTimeout);
         mTopHeld = false;
         View back = mReturnFocus.get();
 
@@ -298,6 +309,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
     @Override
     public void dropTopButtons() {
+        removeCallbacks(mTopTimeout);
         mTopHeld = false;
         setTopButtonsVisible(false);
     }
@@ -325,6 +337,9 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
         mReturnFocus = new java.lang.ref.WeakReference<>(focused);
         mTopHeld = mRandomButton.requestFocus();
+        if (mTopHeld) {
+            restartTopTimeout();
+        }
         return mTopHeld;
     }
 

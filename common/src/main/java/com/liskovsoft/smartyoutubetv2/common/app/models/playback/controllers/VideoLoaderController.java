@@ -173,8 +173,7 @@ public class VideoLoaderController extends BasePlayerController {
                 (mTimeInfoMs - engineMs) / 1000f, (nowMs - mTimeInfoMs) / 1000f,
                 mTimeFormat, mTimeClient, mTimeLoads > 1 ? ", " + mTimeLoads + " tries" : "");
 
-        Log.d(TAG, msg);
-        MessageHelpers.showLongMessage(getContext(), msg);
+        Log.d(TAG, msg); // the log only: the on-screen message got in the way of watching
     }
 
     @Override
