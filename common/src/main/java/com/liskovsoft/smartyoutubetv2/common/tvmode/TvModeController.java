@@ -224,7 +224,8 @@ public class TvModeController extends BasePlayerController {
 
         // Only while the video stays out of YouTube history: loading video info renews the playback
         // id that history updates read, so the playing video's history would be sent under a new id.
-        if (!isTvVideo(current) || !current.incognito || RxHelper.isAnyActionRunning(mPreloadAction)) {
+        // The setting, not video.incognito: VideoStateController clears that flag once it has read it.
+        if (!isTvVideo(current) || getService().isYtHistoryEnabled() || RxHelper.isAnyActionRunning(mPreloadAction)) {
             return;
         }
 
