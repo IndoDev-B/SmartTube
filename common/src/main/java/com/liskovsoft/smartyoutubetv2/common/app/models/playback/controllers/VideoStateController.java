@@ -291,6 +291,40 @@ public class VideoStateController extends BasePlayerController {
     public void onSourceChanged(Video item) {
         // At this stage video isn't loaded yet. So format switch isn't take any resources.
         restoreFormats();
+        setStartPosition(item);
+    }
+
+    /**
+     * Resumed video: start loading at the saved position instead of at 0:00.<br/>
+     * The full restore in {@link #restorePosition()} still runs after the load and skips the seek when already there.
+     */
+    private void setStartPosition(Video item) {
+        if (getPlayer() == null || item == null || item.isLive || isEmbedPlayer()) {
+            return;
+        }
+
+        long startMs = -1;
+
+        if (item.pendingPosMs > 0) {
+            startMs = item.pendingPosMs;
+        } else {
+            State state = getStateService().getByVideoId(item.videoId);
+            // Only a clear mid-video position. Near the end the full restore decides what happens.
+            if (state != null && !isStateOutdated(state, item) && state.durationMs - state.positionMs > 30_000) {
+                startMs = state.positionMs;
+            }
+        }
+
+        if (startMs > 0) {
+            getPlayer().setPositionMs(startMs);
+        }
+    }
+
+    /** Skips a seek to where the player already is: it would drop the buffer and load it again. */
+    private void seekIfNeeded(long positionMs) {
+        if (Math.abs(getPlayer().getPositionMs() - positionMs) > 1_000) {
+            getPlayer().setPositionMs(positionMs);
+        }
     }
 
     @Override
@@ -568,7 +602,7 @@ public class VideoStateController extends BasePlayerController {
 
         // Do I need to check that item isn't live? (state != null && !item.isLive)
         if (state != null) {
-            getPlayer().setPositionMs(state.positionMs);
+            seekIfNeeded(state.positionMs);
         }
 
         if (!mIsPlayBlocked) {
@@ -603,7 +637,7 @@ public class VideoStateController extends BasePlayerController {
         Video item = getVideo();
 
         if (item.pendingPosMs > 0) {
-            getPlayer().setPositionMs(item.pendingPosMs);
+            seekIfNeeded(item.pendingPosMs);
             item.pendingPosMs = 0;
         }
     }

@@ -64,6 +64,9 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
     private VolumeBooster mVolumeBooster;
     private boolean mIsEnded;
     private Runnable mOnVideoLoaded;
+    /** Inside onSourceChanged: a position set now becomes the start position of the new source */
+    private boolean mIsSourceChanging;
+    private boolean mHasStartPosition;
 
     public ExoPlayerController(Context context, PlayerEventListener eventListener) {
         PlayerTweaksData playerTweaksData = PlayerTweaksData.instance(context);
@@ -176,8 +179,17 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
         mTrackSelectorManager.setMergedSource(mediaSource instanceof MergingMediaSource);
         mTrackSelectorManager.invalidate();
         mOnSourceChanged = true;
-        mEventListener.onSourceChanged(getVideo());
-        mPlayer.prepare(mediaSource);
+        mHasStartPosition = false;
+        mIsSourceChanging = true;
+        try {
+            mEventListener.onSourceChanged(getVideo());
+        } finally {
+            mIsSourceChanging = false;
+        }
+        // Keep a start position set during onSourceChanged (a resumed video). The first requests
+        // then load from there. Seeking after the load threw away the first download and cost
+        // another round trip to YouTube: 5 to 12 s on a resumed 4K video.
+        mPlayer.prepare(mediaSource, !mHasStartPosition, true);
     }
 
     public long getPositionMs() {
@@ -206,6 +218,14 @@ public class ExoPlayerController implements Player.EventListener, LiveStateProvi
 
         // NOTE: Url list videos at load stage has undefined (-1) duration
         // NOTE: Avoid to check live streams duration here as ones may have undefined (-1) duration on loading stage.
+        if (mPlayer != null && positionMs > 0 && mIsSourceChanging) {
+            // On an empty player the seek is kept as the start position of the coming prepare
+            mPlayer.stop(true);
+            mPlayer.seekTo(positionMs);
+            mHasStartPosition = true;
+            return;
+        }
+
         if (mPlayer != null && positionMs >= 0) {
             mPlayer.seekTo(positionMs);
             // When we are dealing with SABR live that doesn't exceed 24 hours in length, we can set the duration right here
