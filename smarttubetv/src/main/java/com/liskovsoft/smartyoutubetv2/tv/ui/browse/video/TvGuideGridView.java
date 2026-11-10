@@ -70,9 +70,16 @@ public class TvGuideGridView extends View {
     private long mScrollMs;
     private int mTopRow;
     private boolean mLongPressed;
+    /** The focus is on what a channel has on now. When the channel moves to its next video, the focus goes with it. */
+    private boolean mOnNowFocused = true;
     private final Runnable mTick = new Runnable() {
         @Override
         public void run() {
+            Video before = getFocused();
+            followNow();
+            if (getFocused() != before) {
+                notifyFocus();
+            }
             invalidate(); // the now line and the live channels move on
             postDelayed(this, 20_000);
         }
@@ -127,8 +134,24 @@ public class TvGuideGridView extends View {
             }
         }
 
+        followNow();
         fixFocus();
         invalidate();
+    }
+
+    /** A channel moved on to its next video while the focus was on what it had on: stay on what is on. */
+    private void followNow() {
+        List<TvChannel> channels = mService.getChannels();
+
+        if (mRow >= 0 && mRow < channels.size() && mOnNowFocused) {
+            TvChannel channel = channels.get(mRow);
+            mService.onNowStartMs(channel, System.currentTimeMillis()); // moves a live channel to where the clock is
+            if (channel.onNow() != null && mProgram != channel.pos) {
+                mProgram = channel.pos;
+                mFocusTimeMs = 0;
+                fixFocus();
+            }
+        }
     }
 
     /** The video the focus is on, for the part of the guide above the grid. */
@@ -376,6 +399,8 @@ public class TvGuideGridView extends View {
 
     private void moved() {
         fixFocus();
+        List<TvChannel> channels = mService.getChannels();
+        mOnNowFocused = mRow < 0 || (mRow < channels.size() && mProgram == channels.get(mRow).pos);
         invalidate();
         notifyFocus();
     }
