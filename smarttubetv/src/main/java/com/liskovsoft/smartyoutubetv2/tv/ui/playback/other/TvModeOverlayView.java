@@ -415,8 +415,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     }
 
     /**
-     * A still frame made to look like a paused VHS tape: washed-out colour that bleeds sideways,
-     * a band of tracking noise rolling down, tearing at the bottom edge, specks, scanlines and
+     * A still frame made to look like a paused VHS tape: red and cyan colour fringes, grain,
+     * two thin broken lines drifting down, tearing at the bottom edge, scanlines and
      * the recorder's own PLAY text. The frames YouTube gives are small, and the look hides that.
      */
     private static class VhsView extends View {
@@ -425,6 +425,9 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         private final Paint mBlue = new Paint(Paint.FILTER_BITMAP_FLAG);
         private final Paint mLines = new Paint();
         private final Paint mSpeck = new Paint();
+        private final Paint mGrain = new Paint();
+        private final android.graphics.Matrix mGrainMatrix = new android.graphics.Matrix();
+        private BitmapShader mGrainShader;
         private final Paint mText = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path mPlayMark = new Path();
         private final RectF mTarget = new RectF();
@@ -441,11 +444,24 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             washedOut.setSaturation(0.7f);
             mPicture.setColorFilter(new ColorMatrixColorFilter(washedOut));
 
-            // Colour bleed: a faint red copy to the right and a blue one to the left.
-            mRed.setColorFilter(new ColorMatrixColorFilter(new float[] {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.30f, 0}));
-            mRed.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
-            mBlue.setColorFilter(new ColorMatrixColorFilter(new float[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.30f, 0}));
-            mBlue.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
+            // Colour split: the red part of the picture sits a little to the right, the green and
+            // blue part (cyan) a little to the left. Added together they give the picture back,
+            // with red and cyan fringes on every edge.
+            mRed.setColorFilter(new ColorMatrixColorFilter(new float[] {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0}));
+            mRed.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));
+            mBlue.setColorFilter(new ColorMatrixColorFilter(new float[] {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0}));
+            mBlue.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));
+
+            // Grain: a small tile of random dots, laid over the picture at a new offset every frame.
+            Bitmap grain = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888);
+            for (int x = 0; x < 96; x++) {
+                for (int y = 0; y < 96; y++) {
+                    int value = mRandom.nextInt(256);
+                    grain.setPixel(x, y, (mRandom.nextInt(46) << 24) | (value << 16) | (value << 8) | value);
+                }
+            }
+            mGrainShader = new BitmapShader(grain, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
+            mGrain.setShader(mGrainShader);
 
             Bitmap tile = Bitmap.createBitmap(1, 4, Bitmap.Config.ARGB_8888);
             tile.setPixel(0, 0, 0x66000000);
@@ -489,28 +505,36 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
             // The whole picture trembles a little from side to side.
             float jitter = (mRandom.nextFloat() - 0.5f) * width * 0.004f;
-            mTarget.set(jitter, 0, width + jitter, height);
-            canvas.drawBitmap(frame, null, mTarget, mPicture);
-
-            float bleed = width * 0.006f;
-            mTarget.offset(bleed, 0);
+            float split = width * 0.0055f;
+            mTarget.set(jitter + split, 0, width + jitter + split, height);
             canvas.drawBitmap(frame, null, mTarget, mRed);
-            mTarget.offset(-2 * bleed, 0);
+            mTarget.offset(-2 * split, 0);
             canvas.drawBitmap(frame, null, mTarget, mBlue);
 
             // Tracking band: a strip pulled sideways and full of noise, rolling down the screen.
-            // Thin, and it starts somewhere else on every channel change.
-            float bandHeight = Math.max(6, height * 0.012f);
-            float bandTop = ((time % 2600) / 2600f + mBandStart) % 1f * (height + bandHeight) - bandHeight;
-            tear(canvas, frame, width, height, bandTop, bandHeight, width * (0.02f + 0.03f * mRandom.nextFloat()), 5);
+            // Two hair-thin broken white lines, each drifting down slowly. They start somewhere else
+            // on every channel change.
+            float lineHeight = Math.max(2, height * 0.003f);
+            for (int i = 0; i < 2; i++) {
+                float top = ((time % 9000) / 9000f + mBandStart + i * 0.37f) % 1f * height;
+                for (float x = mRandom.nextFloat() * width * 0.03f; x < width; ) {
+                    float dash = width * (0.004f + 0.02f * mRandom.nextFloat());
+                    canvas.drawRect(x, top, x + dash, top + lineHeight, mSpeck);
+                    x += dash + width * (0.002f + 0.012f * mRandom.nextFloat());
+                }
+            }
 
             // Head-switching noise: the bottom edge of a tape picture is always torn.
             float edge = height * 0.035f;
             tear(canvas, frame, width, height, height - edge, edge, width * 0.08f * (mRandom.nextFloat() - 0.3f), 26);
 
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 2; i++) {
                 speck(canvas, width, mRandom.nextFloat() * height);
             }
+
+            mGrainMatrix.setTranslate(mRandom.nextInt(96), mRandom.nextInt(96));
+            mGrainShader.setLocalMatrix(mGrainMatrix);
+            canvas.drawRect(0, 0, width, height, mGrain);
 
             canvas.drawRect(0, 0, width, height, mLines);
 
