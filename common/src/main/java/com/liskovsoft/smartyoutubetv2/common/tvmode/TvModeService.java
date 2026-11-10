@@ -99,6 +99,8 @@ public class TvModeService {
     private boolean mSleepTurnsOff;
     private String mOpenMode = OPEN_GUIDE;
     private String mLastChannelId;
+    /** Languages every channel plays unless it has its own setting. Empty = any. */
+    private final List<String> mLanguages = new ArrayList<>();
     private int mSleepMinutes;
     private long mSleepAtMs;
     private final Runnable mSleep = () -> {
@@ -775,6 +777,62 @@ public class TvModeService {
         return channel.lineup.get(channel.pos + 1);
     }
 
+    // ---------------- languages ----------------
+
+    public List<String> getLanguages() {
+        ensureLoaded();
+        return mLanguages;
+    }
+
+    /** The languages a channel plays: its own setting, or TV settings. Empty = any. */
+    public List<String> languagesOf(TvChannel channel) {
+        if (channel.languages.isEmpty()) {
+            return mLanguages;
+        }
+
+        return channel.languages.contains(TvLanguage.ANY) ? Collections.<String>emptyList() : channel.languages;
+    }
+
+    /** Switches a language on or off in TV settings. The channels follow a moment later, all at once. */
+    public void setLanguage(String code, boolean on) {
+        mLanguages.remove(code);
+
+        if (on) {
+            mLanguages.add(code);
+        }
+
+        save();
+        mMain.removeCallbacks(mApplyLanguages);
+        mMain.postDelayed(mApplyLanguages, 3_000); // several boxes are usually ticked in a row
+    }
+
+    private final Runnable mApplyLanguages = () -> {
+        for (TvChannel channel : mChannels) {
+            if (channel.languages.isEmpty()) { // channels with their own setting aren't touched
+                rebuildComingUp(channel);
+                fill(channel, null, false);
+            }
+        }
+        save();
+    };
+
+    /** Keeps what a channel has on and drops the rest, so the next search builds it again. */
+    private void rebuildComingUp(TvChannel channel) {
+        dropComingUp(channel);
+
+        while (channel.lineup.size() > channel.pos + 1) {
+            channel.durations.remove(channel.lineup.remove(channel.lineup.size() - 1).videoId);
+        }
+
+        channel.missed.clear();
+        String prefix = channel.id + "|";
+        for (String key : new ArrayList<>(mPages.keySet())) {
+            if (key.startsWith(prefix)) {
+                mPages.remove(key);
+            }
+        }
+    }
+
     public int getSleepMinutes() {
         return mSleepMinutes;
     }
@@ -1073,7 +1131,13 @@ public class TvModeService {
                 && TvChannel.ANY.equals(channel.uploaded) && TvChannel.ORDER_MIXED.equals(channel.order);
         channel.fills++;
         final int options = fromCreator ? 0 : recent ? SearchOptions.UPLOAD_DATE_THIS_WEEK : searchOptions(channel);
-        final String pageKey = channel.id + "|" + (fromCreator ? "@" : "") + term + "|" + options;
+        // A plain search returns mostly English. With a language filter the searches take turns
+        // between the languages, each with the language's name added, or the filter would throw
+        // nearly everything away and the channel would run dry.
+        final List<String> languages = languagesOf(channel);
+        final String languageWord = fromCreator || languages.isEmpty() ? "" : TvLanguage.searchWord(languages.get(channel.fills % languages.size()));
+        final String query = languageWord.isEmpty() ? term : term + " " + languageWord;
+        final String pageKey = channel.id + "|" + (fromCreator ? "@" : "") + query + "|" + options;
         final String searchKey = channel.searchKey();
 
         (urgent ? mWorker : mBackground).execute(() -> {
@@ -1094,7 +1158,7 @@ public class TvModeService {
                     }
                     groups = creatorId[0] != null ? service.getChannelObserve(creatorId[0]).blockingFirst() : new ArrayList<MediaGroup>();
                 } else {
-                    groups = service.getSearch(term, options);
+                    groups = service.getSearch(query, options);
                 }
 
                 MediaGroup lastPage = null;
@@ -1331,6 +1395,15 @@ public class TvModeService {
             }
         }
 
+        List<String> languages = languagesOf(channel);
+
+        if (!languages.isEmpty()) {
+            String language = TvLanguage.detect(item.getTitle());
+            if (language != null && !languages.contains(language)) {
+                return false;
+            }
+        }
+
         String title = item.getTitle().toLowerCase(Locale.ROOT);
 
         if (containsAny(title, channel.skipWords) || containsAny(title, mGlobalSkipWords)) {
@@ -1521,6 +1594,23 @@ public class TvModeService {
                 }
             }
 
+            // A preset that left the list goes from the TV too, unless it was edited here.
+            if (presets != null && presets.length() > 0) {
+                Set<String> listed = new HashSet<>();
+                for (int i = 0; i < presets.length(); i++) {
+                    JSONObject preset = presets.optJSONObject(i);
+                    if (preset != null) {
+                        listed.add(preset.optString("id", ""));
+                    }
+                }
+                for (java.util.Iterator<TvChannel> it = mChannels.iterator(); it.hasNext();) {
+                    TvChannel channel = it.next();
+                    if (channel.preset && !channel.edited && !listed.contains(channel.id)) {
+                        it.remove();
+                    }
+                }
+            }
+
             mConfigText = text;
             return true;
         } catch (Throwable e) {
@@ -1573,6 +1663,10 @@ public class TvModeService {
                 mSleepTurnsOff = settings.optBoolean("sleepTurnsOff", mSleepTurnsOff);
                 mOpenMode = settings.optString("openMode", mOpenMode);
                 mLastChannelId = settings.isNull("lastChannel") ? null : settings.optString("lastChannel", null);
+                JSONArray languages = settings.optJSONArray("languages");
+                for (int i = 0; languages != null && i < languages.length(); i++) {
+                    mLanguages.add(languages.optString(i));
+                }
             }
 
             addAll(state.optJSONArray("watched"), mWatched);
@@ -1620,6 +1714,7 @@ public class TvModeService {
             settings.put("sleepTurnsOff", mSleepTurnsOff);
             settings.put("openMode", mOpenMode);
             settings.put("lastChannel", mLastChannelId);
+            settings.put("languages", new JSONArray(mLanguages));
 
             // Copies of the lists, so the worker can turn them into text while the channels go on changing.
             final List<TvChannel> channels = new ArrayList<>();

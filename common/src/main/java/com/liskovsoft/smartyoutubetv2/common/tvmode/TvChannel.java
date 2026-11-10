@@ -48,6 +48,11 @@ public class TvChannel {
     public final Map<String, Integer> skips = new HashMap<>();
     public final List<String> skipWords = new ArrayList<>();
     public final List<String> blocked = new ArrayList<>();
+    /**
+     * Languages this channel plays, as codes from TvLanguage. Empty = whatever TV settings say.
+     * TvLanguage.ANY = any language: music and ambience channels have no language to filter by.
+     */
+    public final List<String> languages = new ArrayList<>();
     public String mode = MODE_DEFAULT;
     public boolean fav;
     /** Came from the preset list. */
@@ -118,7 +123,7 @@ public class TvChannel {
 
     /** The part of a channel that decides what it plays. A change here means the coming-up lineup is stale. */
     public String searchKey() {
-        return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + quality + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews;
+        return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + quality + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages;
     }
 
     public JSONObject toJson() throws JSONException {
@@ -138,6 +143,7 @@ public class TvChannel {
         o.put("skipWords", new JSONArray(skipWords));
         o.put("blocked", new JSONArray(blocked));
         o.put("mode", mode);
+        o.put("languages", new JSONArray(languages));
         o.put("fav", fav);
         o.put("preset", preset);
         o.put("edited", edited);
@@ -204,6 +210,7 @@ public class TvChannel {
         c.skipWords.addAll(skipWords);
         c.blocked.addAll(blocked);
         c.mode = mode;
+        c.languages.addAll(languages);
         c.fav = fav;
         c.preset = preset;
         c.edited = edited;
@@ -264,6 +271,7 @@ public class TvChannel {
         readList(o.optJSONArray("skipWords"), skipWords);
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);
+        readList(o.optJSONArray("languages"), languages);
     }
 
     private static void readList(JSONArray array, List<String> out) {

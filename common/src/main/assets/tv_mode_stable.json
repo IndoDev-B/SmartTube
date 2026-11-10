@@ -50,7 +50,10 @@
         "city walking tour 4k",
         "travel documentary"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "cooking",
@@ -69,7 +72,10 @@
         "tiny desk concert",
         "live acoustic session"
       ],
-      "mode": "live"
+      "mode": "live",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "comedy",
@@ -165,7 +171,10 @@
         "railway documentary",
         "train journey scenic"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "ships-and-sea",
@@ -453,7 +462,10 @@
         "antique restoration",
         "tool restoration"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "metalwork",
@@ -564,12 +576,14 @@
       "length": "medium"
     },
     {
-      "id": "movie-trailers",
-      "name": "Movie Trailers",
+      "id": "magic",
+      "name": "Magic",
       "terms": [
-        "official trailer",
-        "new movie trailers this week"
-      ]
+        "magic tricks revealed",
+        "street magic",
+        "illusionist show"
+      ],
+      "length": "medium"
     },
     {
       "id": "short-films",
@@ -599,7 +613,10 @@
         "anime review",
         "anime opening compilation"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "stand-up-comedy",
@@ -778,7 +795,10 @@
         "language learning tips",
         "learn spanish"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "book-reviews",
@@ -848,7 +868,10 @@
         "symphony orchestra full",
         "piano recital"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "jazz",
@@ -858,7 +881,10 @@
         "jazz club session",
         "jazz full album"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "rock",
@@ -868,7 +894,10 @@
         "rock live performance",
         "classic rock live"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "pop-hits",
@@ -878,7 +907,10 @@
         "top hits playlist",
         "pop live performance"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "hip-hop",
@@ -888,7 +920,10 @@
         "rap music video",
         "hip hop documentary"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "electronic",
@@ -898,7 +933,10 @@
         "electronic music mix",
         "techno boiler room"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "lo-fi-and-chill",
@@ -908,7 +946,10 @@
         "chill beats mix",
         "study music"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "indian-classical",
@@ -918,7 +959,10 @@
         "carnatic music concert",
         "sitar recital"
       ],
-      "length": "long"
+      "length": "long",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "bollywood-songs",
@@ -928,7 +972,10 @@
         "hindi songs jukebox",
         "bollywood live concert"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "devotional",
@@ -938,7 +985,10 @@
         "devotional songs",
         "kirtan live"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "world-music",
@@ -948,7 +998,10 @@
         "folk music traditional",
         "flamenco live"
       ],
-      "length": "medium"
+      "length": "medium",
+      "languages": [
+        "*"
+      ]
     },
     {
       "id": "music-lessons",

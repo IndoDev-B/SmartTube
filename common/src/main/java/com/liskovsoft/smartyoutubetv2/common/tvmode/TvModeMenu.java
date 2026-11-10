@@ -134,6 +134,13 @@ public class TvModeMenu {
         int left = mService.getSleepMinutesLeft();
         mDialog.appendRadioCategory(left > 0 ? "Sleep timer: stops in " + left + " min" : "Sleep timer: off", sleep);
 
+        List<OptionItem> languages = new ArrayList<>();
+        for (String[] language : TvLanguage.LANGUAGES) {
+            final String code = language[0];
+            languages.add(UiOptionItem.from(language[1], option -> mService.setLanguage(code, option.isSelected()), mService.getLanguages().contains(code)));
+        }
+        mDialog.appendCheckedCategory("Languages: " + languageNames(mService.getLanguages()), languages);
+
         mDialog.appendSingleSwitch(UiOptionItem.from("Save to YouTube history",
                 option -> mService.setYtHistoryEnabled(option.isSelected()), mService.isYtHistoryEnabled()));
 
@@ -355,6 +362,19 @@ public class TvModeMenu {
             });
         }));
 
+        List<String> languageChoices = new ArrayList<>(Arrays.asList("", "Same as TV settings", TvLanguage.ANY, "Any language"));
+        for (String[] language : TvLanguage.LANGUAGES) {
+            languageChoices.add(language[0]);
+            languageChoices.add(language[1]);
+        }
+        mDialog.appendRadioCategory("Language", options(channel.languages.isEmpty() ? "" : channel.languages.get(0), value -> {
+            channel.languages.clear();
+            if (!value.isEmpty()) {
+                channel.languages.add(value);
+            }
+            searchChanged(channel, null);
+        }, languageChoices.toArray(new String[0])));
+
         mDialog.appendRadioCategory("Mode", modeOptions(channel.mode, true, mode -> {
             mService.setMode(channel, mode);
             refreshGuide();
@@ -435,6 +455,19 @@ public class TvModeMenu {
     }
 
     // ---------------- helpers ----------------
+
+    private static String languageNames(List<String> codes) {
+        if (codes.isEmpty()) {
+            return "any";
+        }
+
+        StringBuilder names = new StringBuilder();
+        for (String code : codes) {
+            names.append(names.length() > 0 ? ", " : "").append(TvLanguage.nameOf(code));
+        }
+
+        return names.toString();
+    }
 
     /** values: pairs of value, label. */
     private static List<OptionItem> options(String current, Setter setter, String... values) {
