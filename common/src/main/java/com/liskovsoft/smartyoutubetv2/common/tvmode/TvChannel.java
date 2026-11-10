@@ -216,7 +216,7 @@ public class TvChannel {
     private void videosFromJson(JSONArray items, List<Video> out) {
         for (int i = 0; items != null && i < items.length(); i++) {
             JSONObject item = items.optJSONObject(i);
-            Video video = item != null ? Video.fromString(item.optString("v", null)) : null;
+            Video video = item != null ? parseVideo(item.optString("v", null)) : null;
             if (video == null || video.videoId == null) {
                 continue;
             }
@@ -229,6 +229,56 @@ public class TvChannel {
             out.add(video);
         }
     }
+
+    private static final String FIELD_END = "&vi;";
+
+    /**
+     * Reads a video saved by Video.toString(). Video.fromString() does the same but builds a
+     * search pattern for every number it reads. With some 200 channels that took over five
+     * seconds on the TV, on the main thread, and Android closed the app for not answering.
+     * This reads only the fields a lineup uses, by position, with no patterns.
+     */
+    private static Video parseVideo(String text) {
+        if (text == null) {
+            return null;
+        }
+
+        List<String> fields = new ArrayList<>(24);
+        int from = 0;
+        int at;
+
+        while ((at = text.indexOf(FIELD_END, from)) != -1) {
+            fields.add(text.substring(from, at));
+            from = at + FIELD_END.length();
+        }
+
+        fields.add(text.substring(from));
+
+        if (fields.size() < 20) {
+            return Video.fromString(text); // an unexpected shape: the slow way knows more of them
+        }
+
+        Video video = new Video();
+        video.title = field(fields, 2);
+        video.videoId = field(fields, 3);
+        video.channelId = field(fields, 6);
+        video.bgImageUrl = field(fields, 7);
+        video.cardImageUrl = field(fields, 8);
+        video.secondTitle = field(fields, 14);
+        video.previewUrl = field(fields, 15);
+        video.badge = field(fields, 19);
+        video.isLive = "true".equals(field(fields, 20));
+        return video;
+    }
+
+    private static String field(List<String> fields, int index) {
+        String value = index < fields.size() ? fields.get(index) : null;
+        return value == null || value.isEmpty() || "null".equals(value) ? null : value;
+    }
+
+    /** How many coming-up videos are saved for a channel. The rest is found again by the next search. */
+    private static final int SAVED_AHEAD = 30;
+    private static final int SAVED_MISSED = 20;
 
     /**
      * A copy with its own lists, for saving on another thread while this one keeps changing.
@@ -259,8 +309,9 @@ public class TvChannel {
         c.fav = fav;
         c.preset = preset;
         c.edited = edited;
-        c.lineup.addAll(lineup);
-        c.missed.addAll(missed);
+        // Not everything: a long saved lineup on every channel made the file slow to read back.
+        c.lineup.addAll(lineup.subList(0, Math.min(lineup.size(), Math.max(0, pos) + 1 + SAVED_AHEAD)));
+        c.missed.addAll(missed.subList(Math.max(0, missed.size() - SAVED_MISSED), missed.size()));
         c.pos = pos;
         c.termCursor = termCursor;
         c.liveStartMs = liveStartMs;
