@@ -1,0 +1,3 @@
+# Patches must keep the line endings of the files they change: some MediaServiceCore files use CRLF.
+# Git converting a patch to LF makes it stop applying.
+*.patch -text
