@@ -294,10 +294,12 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             return false;
         }
 
-        // Only from the top of the controls: when a control or a row is above, Up belongs to the player.
-        View above = focused.focusSearch(View.FOCUS_UP);
+        // Only from the top row of the controls. The row under the seek bar sits in the lowest part
+        // of the screen, and Up from there belongs to the player.
+        int[] place = new int[2];
+        focused.getLocationOnScreen(place);
 
-        if (above != null && above != focused && above != mRandomButton && above != mSettingsButton) {
+        if (place[1] + focused.getHeight() / 2 > getHeight() * 0.8f) {
             return false;
         }
 
