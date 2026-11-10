@@ -39,10 +39,11 @@ public class TvModeController extends BasePlayerController {
             dir = -1;
         } else if (!getPlayer().isOverlayShown()) {
             // With only the video on screen, Up/Down surf channels (most streaming remotes have no CH buttons).
+            // Down goes to the next channel number, the same way the guide list runs down the screen.
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                dir = 1;
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                 dir = -1;
+            } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                dir = 1;
             }
         }
 
