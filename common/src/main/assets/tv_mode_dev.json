@@ -162,6 +162,13 @@
         "tech review",
         "gadget review"
       ]
+    },
+    {
+      "name": "Chess",
+      "terms": [
+        "chess game analysis",
+        "chess grandmaster"
+      ]
     }
   ]
 }
