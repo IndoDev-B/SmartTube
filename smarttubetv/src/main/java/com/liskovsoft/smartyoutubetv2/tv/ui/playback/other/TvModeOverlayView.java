@@ -287,13 +287,18 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         View back = mReturnFocus.get();
         boolean controlsUp = TvModeController.isControlsUp();
 
-        if (back != null && back.isShown()) {
-            back.requestFocus();
-        }
-
-        if (!controlsUp) {
-            // The controls have faded out: only the video is left. Their views still exist, so the
-            // control that takes the focus back would pop up its name label over the picture.
+        if (controlsUp) {
+            if (back != null && back.isShown()) {
+                back.requestFocus(); // back to the control the cursor came from
+            }
+        } else {
+            // The controls have faded out: only the video is left. The player keeps the cursor on
+            // its seek bar while they are hidden, and the first key press then brings the controls
+            // up with the cursor on Pause. Leaving it on any other control breaks that.
+            View seekBar = getRootView().findViewById(com.liskovsoft.smartyoutubetv2.tv.R.id.playback_progress);
+            if (seekBar != null) {
+                seekBar.requestFocus();
+            }
             setTopButtonsVisible(false);
             com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.playerglue.tooltips.TooltipCompatHandler.hideAll();
         }
@@ -345,28 +350,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mTopHeld = mRandomButton.requestFocus();
         if (mTopHeld) {
             restartTopTimeout();
-            finishKeyPress(focused);
         }
         return mTopHeld;
-    }
-
-    /**
-     * The Up press that moved the cursor here was pressed in the player's controls, but its
-     * release arrives at the top button. The player waits for a release before it takes the next
-     * press, so without one it would ignore the first key after the cursor comes back.
-     */
-    private void finishKeyPress(View control) {
-        View controls = null;
-
-        for (android.view.ViewParent parent = control.getParent(); parent instanceof View; parent = parent.getParent()) {
-            if (parent instanceof androidx.leanback.widget.BaseGridView) {
-                controls = (View) parent; // the outermost one is the list the player listens on
-            }
-        }
-
-        if (controls != null) {
-            controls.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_DPAD_UP));
-        }
     }
 
     @Override
