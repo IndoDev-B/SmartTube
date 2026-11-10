@@ -337,8 +337,6 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         int[] place = new int[2];
         focused.getLocationOnScreen(place);
 
-        Log.d(TAG, "Up to top buttons: from %s at y=%s", focused.getClass().getSimpleName(), place[1]);
-
         if (place[1] + focused.getHeight() / 2 > getHeight() * 0.8f) {
             return false;
         }
@@ -347,8 +345,28 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mTopHeld = mRandomButton.requestFocus();
         if (mTopHeld) {
             restartTopTimeout();
+            finishKeyPress(focused);
         }
         return mTopHeld;
+    }
+
+    /**
+     * The Up press that moved the cursor here was pressed in the player's controls, but its
+     * release arrives at the top button. The player waits for a release before it takes the next
+     * press, so without one it would ignore the first key after the cursor comes back.
+     */
+    private void finishKeyPress(View control) {
+        View controls = null;
+
+        for (android.view.ViewParent parent = control.getParent(); parent instanceof View; parent = parent.getParent()) {
+            if (parent instanceof androidx.leanback.widget.BaseGridView) {
+                controls = (View) parent; // the outermost one is the list the player listens on
+            }
+        }
+
+        if (controls != null) {
+            controls.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_DPAD_UP));
+        }
     }
 
     @Override
