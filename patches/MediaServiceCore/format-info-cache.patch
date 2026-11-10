@@ -1,22 +1,23 @@
 diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt
-index e3be9530..a860a6b3 100644
+index e3be9530..c5863844 100644
 --- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt
 +++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/internal/FormatInfoWrapper.kt
-@@ -12,7 +12,12 @@ import com.liskovsoft.youtubeapi.service.data.YouTubeMediaItemFormatInfo
+@@ -12,7 +12,13 @@ import com.liskovsoft.youtubeapi.service.data.YouTubeMediaItemFormatInfo
  import com.liskovsoft.youtubeapi.videoinfo.V2.VideoInfoService
  
  internal object FormatInfoWrapper {
 -    private var mCachedFormatInfo: MediaItemFormatInfo? = null
 +    // A few videos, not one: the next video and TV mode's neighbour channels are loaded ahead
 +    // while a video plays, and a single slot let each of them push out the others.
-+    private const val CACHE_SIZE = 4
++    // 8 = the playing video, 3 channels each way, and the next video.
++    private const val CACHE_SIZE = 8
 +    private val mCachedFormatInfos = object : LinkedHashMap<String, MediaItemFormatInfo>(CACHE_SIZE + 1, 0.75f, true) {
 +        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MediaItemFormatInfo>?): Boolean = size > CACHE_SIZE
 +    }
      private var mTryInnertubeFirst: Boolean = false
      private val mInnertubeResult = object { var isUnplayable: Boolean = false; var client: AppClient? = null }
      private val mInnertubeProvider: (String, String?) -> MediaItemFormatInfo? =
-@@ -62,7 +67,9 @@ internal object FormatInfoWrapper {
+@@ -62,7 +68,9 @@ internal object FormatInfoWrapper {
  
      @JvmStatic
      fun invalidateCache() {
@@ -27,7 +28,7 @@ index e3be9530..a860a6b3 100644
      }
  
      @JvmStatic
-@@ -142,16 +149,31 @@ internal object FormatInfoWrapper {
+@@ -142,16 +150,31 @@ internal object FormatInfoWrapper {
      }
  
      private fun getCachedFormatInfo(videoId: String?): MediaItemFormatInfo? {

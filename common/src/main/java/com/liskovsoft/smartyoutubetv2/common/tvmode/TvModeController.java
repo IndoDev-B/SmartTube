@@ -16,7 +16,10 @@ import com.liskovsoft.smartyoutubetv2.common.utils.Utils;
 import com.liskovsoft.youtubeapi.service.YouTubeServiceManager;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 import io.reactivex.disposables.Disposable;
 
@@ -38,6 +41,9 @@ public class TvModeController extends BasePlayerController {
     private static final long PRELOAD_DELAY_MS = 4_000;
     private final Runnable mPreloadNeighbours = this::preloadNeighbours;
     private Disposable mPreloadAction;
+    /** Channels pre-loaded each way. Must stay within FormatInfoWrapper's cache (8 videos) with room for the playing one. */
+    private static final int PRELOAD_DEPTH = 3;
+    private volatile int mPreloadGeneration;
     private final Runnable mHideSwitching = () -> {
         TvModeOverlay overlay = sOverlay.get();
         if (overlay != null) {
@@ -225,21 +231,35 @@ public class TvModeController extends BasePlayerController {
         // Only while the video stays out of YouTube history: loading video info renews the playback
         // id that history updates read, so the playing video's history would be sent under a new id.
         // The setting, not video.incognito: VideoStateController clears that flag once it has read it.
-        if (!isTvVideo(current) || getService().isYtHistoryEnabled() || RxHelper.isAnyActionRunning(mPreloadAction)) {
+        if (!isTvVideo(current) || getService().isYtHistoryEnabled()) {
             return;
         }
 
-        Video down = getService().peek(current, 1);
-        Video up = getService().peek(current, -1);
-        final String downId = down != null ? down.videoId : null;
-        final String upId = up != null && !Helpers.equals(up.videoId, downId) ? up.videoId : null;
+        // Nearest first, both directions in turn: CH+ pressed a few times quickly lands 2 or 3 channels away.
+        List<Video> down = getService().peek(current, 1, PRELOAD_DEPTH);
+        List<Video> up = getService().peek(current, -1, PRELOAD_DEPTH);
+        final List<String> ids = new ArrayList<>();
+
+        for (int i = 0; i < PRELOAD_DEPTH; i++) {
+            for (List<Video> side : Arrays.asList(down, up)) {
+                String videoId = i < side.size() ? side.get(i).videoId : null;
+                if (videoId != null && !videoId.equals(current.videoId) && !ids.contains(videoId)) {
+                    ids.add(videoId);
+                }
+            }
+        }
+
+        // A new channel replaces the previous channel's list: what's loaded so far stays in the cache.
+        RxHelper.disposeActions(mPreloadAction);
+        final int generation = ++mPreloadGeneration;
 
         mPreloadAction = RxHelper.execute(RxHelper.fromRunnable(() -> {
             MediaItemService service = YouTubeServiceManager.instance().getMediaItemService();
-            for (String videoId : new String[] {downId, upId}) {
-                if (videoId != null) {
-                    service.getFormatInfo(videoId);
+            for (String videoId : ids) {
+                if (generation != mPreloadGeneration) {
+                    return;
                 }
+                service.getFormatInfo(videoId);
             }
         }));
     }

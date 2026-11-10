@@ -418,10 +418,20 @@ public class TvModeService {
      * Used to load the next channels' video info ahead, so a channel change starts sooner.
      */
     public Video peek(Video current, int dir) {
+        List<Video> ahead = peek(current, dir, 1);
+        return ahead.isEmpty() ? null : ahead.get(0);
+    }
+
+    /**
+     * The videos on now on the next {@code count} channels in that direction, nearest first, without tuning.
+     * Several, because CH+ pressed a few times quickly skips past the nearest channel.
+     */
+    public List<Video> peek(Video current, int dir, int count) {
+        List<Video> result = new ArrayList<>();
         TvChannel from = findChannel(current);
 
         if (from == null || mChannels.size() < 2) {
-            return null;
+            return result;
         }
 
         int start = mChannels.indexOf(from);
@@ -444,12 +454,16 @@ public class TvModeService {
             syncLive(channel); // a live channel's "on now" follows the clock
             Video onNow = channel.onNow();
 
-            if (onNow != null) {
-                return onNow;
+            if (onNow != null && !result.contains(onNow)) {
+                result.add(onNow);
+
+                if (result.size() >= count) {
+                    break;
+                }
             }
         }
 
-        return null;
+        return result;
     }
 
     private void remember(String videoId) {
