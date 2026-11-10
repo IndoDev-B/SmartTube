@@ -1907,7 +1907,23 @@ public class TvModeService {
         String channelLanguage = channel.language();
         boolean latinOnHindi = "en".equals(language) && !"en".equals(channelLanguage);
 
-        if (language == null || channelLanguage.equals(language) || latinOnHindi) {
+        // A film from India is often titled and described in English. Its description still names
+        // its language or its industry somewhere, in the text or in a hashtag.
+        List<String> hints = mForeignHints.get(channelLanguage);
+        String hint = null;
+        if (hints != null) {
+            String lower = description.toLowerCase(Locale.ROOT);
+            for (String word : hints) {
+                if (lower.contains(word)) {
+                    hint = word;
+                    break;
+                }
+            }
+        }
+
+        if (hint != null) {
+            language = "\"" + hint + "\"";
+        } else if (language == null || channelLanguage.equals(language) || latinOnHindi) {
             return;
         }
 
@@ -1930,10 +1946,21 @@ public class TvModeService {
 
     /** Checks the description of what a channel has on next, so a video in the wrong language is gone before its turn. */
     private void checkNext(TvChannel channel) {
-        if (!channel.language().isEmpty() && channel.ahead() > 0) {
-            loadInfo(channel.lineup.get(channel.pos + 1), null);
+        if (channel.language().isEmpty()) {
+            return;
+        }
+
+        // What's on and the two after it: a wrong one is gone before the viewer gets to it.
+        for (int i = channel.pos; i <= channel.pos + 2 && i >= 0 && i < channel.lineup.size(); i++) {
+            loadInfo(channel.lineup.get(i), null);
         }
     }
+
+    /**
+     * Words that give a video away as being in another language, by the language of the channel
+     * it is on. Looked for in the description. From the preset list's "foreignHints".
+     */
+    private final Map<String, List<String>> mForeignHints = new java.util.HashMap<>();
 
     /**
      * True when a video that is already in a lineup no longer fits its channel: the title has
@@ -2073,6 +2100,23 @@ public class TvModeService {
                     mGlobalSkipWords.add(words.optString(i, ""));
                 }
                 mGlobalSkipWords.removeAll(Collections.singletonList(""));
+            }
+
+            JSONObject hints = config.optJSONObject("foreignHints");
+            mForeignHints.clear();
+            if (hints != null) {
+                for (java.util.Iterator<String> it = hints.keys(); it.hasNext();) {
+                    String code = it.next();
+                    JSONArray words = hints.optJSONArray(code);
+                    List<String> list = new ArrayList<>();
+                    for (int i = 0; words != null && i < words.length(); i++) {
+                        String word = words.optString(i, "").toLowerCase(Locale.ROOT);
+                        if (!word.isEmpty()) {
+                            list.add(word);
+                        }
+                    }
+                    mForeignHints.put(code, list);
+                }
             }
 
             JSONArray genres = config.optJSONArray("genres");
