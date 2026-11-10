@@ -121,8 +121,8 @@
       "id": "westerns",
       "name": "Westerns",
       "terms": [
-        "hollywood western full movie english",
-        "classic western movie full length english"
+        "english hollywood western full movie",
+        "english classic western movie full length"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -134,6 +134,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -146,9 +154,9 @@
       "id": "classic-movies",
       "name": "Classic Movies",
       "terms": [
-        "classic hollywood full movie english",
-        "old hollywood full movie",
-        "black and white hollywood full movie"
+        "english classic hollywood full movie",
+        "english old hollywood full movie",
+        "english black and white hollywood full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -160,6 +168,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -172,8 +188,8 @@
       "id": "retro-80s-movies",
       "name": "Retro 80s Movies",
       "terms": [
-        "80s hollywood full movie english",
-        "1980s english movie full length"
+        "english 80s hollywood full movie",
+        "english 1980s movie full length"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -185,6 +201,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -197,8 +221,8 @@
       "id": "retro-90s-movies",
       "name": "Retro 90s Movies",
       "terms": [
-        "90s hollywood full movie english",
-        "1990s english movie full length"
+        "english 90s hollywood full movie",
+        "english 1990s movie full length"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -210,6 +234,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -222,8 +254,8 @@
       "id": "action-movies",
       "name": "Action Movies",
       "terms": [
-        "hollywood action full movie english",
-        "action thriller full movie english"
+        "english hollywood action full movie",
+        "english action thriller full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -235,6 +267,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -247,8 +287,8 @@
       "id": "comedy-movies",
       "name": "Comedy Movies",
       "terms": [
-        "hollywood comedy full movie english",
-        "romantic comedy full movie english"
+        "english hollywood comedy full movie",
+        "english romantic comedy full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -260,6 +300,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -272,8 +320,8 @@
       "id": "sci-fi-movies",
       "name": "Sci-fi Movies",
       "terms": [
-        "sci fi full movie english",
-        "science fiction full movie english"
+        "english sci fi full movie",
+        "english science fiction full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -285,6 +333,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -297,8 +353,8 @@
       "id": "horror-movies",
       "name": "Horror Movies",
       "terms": [
-        "hollywood horror full movie english",
-        "thriller full movie english"
+        "english hollywood horror full movie",
+        "english thriller full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -310,6 +366,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
@@ -322,8 +386,8 @@
       "id": "family-movies",
       "name": "Family Movies",
       "terms": [
-        "family full movie english",
-        "adventure family movie full english"
+        "english family full movie",
+        "english adventure family movie full"
       ],
       "type": "movie",
       "minMinutes": 60,
@@ -335,6 +399,14 @@
         "telugu",
         "punjabi",
         "bhojpuri",
+        "malayalam",
+        "kannada",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "urdu",
+        "eng sub",
+        "english sub",
         "subtitulada",
         "completa"
       ],
