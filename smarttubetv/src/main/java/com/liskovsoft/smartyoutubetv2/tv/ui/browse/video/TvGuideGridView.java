@@ -487,7 +487,7 @@ public class TvGuideGridView extends View {
             mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFFD6D6D6);
             String name = channel.name.toUpperCase() + (channel.fav ? "  ★" : "");
             float nameLeft = left + dp(42);
-            canvas.drawText(TextUtils.ellipsize(name, mName, dp(150) - dp(48), TextUtils.TruncateAt.END).toString(),
+            canvas.drawText(fit(name, mName, dp(150) - dp(48)),
                     nameLeft, top + (live ? dp(18) : dp(24)), mName);
             if (live) {
                 mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFFFF8A80);
@@ -546,7 +546,7 @@ public class TvGuideGridView extends View {
                 if (room > dp(24)) {
                     mTitle.setColor(on ? 0xFF111111 : dimmed ? 0xFF9A9A9A : 0xFFFFFFFF);
                     mTitle.setTypeface(onNow ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-                    canvas.drawText(TextUtils.ellipsize(video.getTitle() != null ? video.getTitle() : "", mTitle, room, TextUtils.TruncateAt.END).toString(),
+                    canvas.drawText(fit(video.getTitle() != null ? video.getTitle() : "", mTitle, room),
                             textLeft, top + dp(17), mTitle);
 
                     String author = video.getAuthor();
@@ -555,7 +555,7 @@ public class TvGuideGridView extends View {
                         meta += (meta.isEmpty() ? "" : "  •  ") + video.badge;
                     }
                     mMeta.setColor(on ? 0xFF333333 : dimmed ? 0xFF808080 : 0xFFBDBDBD);
-                    canvas.drawText(TextUtils.ellipsize(meta, mMeta, room, TextUtils.TruncateAt.END).toString(), textLeft, top + dp(32), mMeta);
+                    canvas.drawText(fit(meta, mMeta, room), textLeft, top + dp(32), mMeta);
                 }
             }
 
@@ -610,6 +610,28 @@ public class TvGuideGridView extends View {
         }
 
         return thumb;
+    }
+
+    /** Titles cut to fit, kept by text and width. Measuring text for every program on every frame made scrolling stutter. */
+    private final java.util.Map<String, String> mFitted = new java.util.HashMap<>();
+
+    private String fit(String text, TextPaint paint, float room) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        String key = (paint.getTypeface() == Typeface.DEFAULT_BOLD ? "b" : "n") + (int) paint.getTextSize() + "|" + (int) room + "|" + text;
+        String fitted = mFitted.get(key);
+
+        if (fitted == null) {
+            if (mFitted.size() > 1_500) {
+                mFitted.clear();
+            }
+            fitted = TextUtils.ellipsize(text, paint, room, TextUtils.TruncateAt.END).toString();
+            mFitted.put(key, fitted);
+        }
+
+        return fitted;
     }
 
     private String time(long timeMs) {

@@ -8,7 +8,8 @@
       "reaction",
       "trailer",
       "teaser"
-    ]
+    ],
+    "recentEvery": 3
   },
   "channels": [
     {
@@ -96,22 +97,911 @@
         "hand tool woodworking",
         "woodworking project build"
       ]
-    }
-  ],
-  "ideas": [
+    },
     {
+      "id": "space",
       "name": "Space",
       "terms": [
         "space documentary",
-        "universe explained"
+        "universe explained",
+        "nasa mission documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "terms": [
+        "history documentary",
+        "ancient history documentary",
+        "world war documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "true-crime",
+      "name": "True Crime",
+      "terms": [
+        "true crime documentary",
+        "crime investigation documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "technology",
+      "name": "Technology",
+      "terms": [
+        "technology explained",
+        "how it works engineering",
+        "tech documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "engineering",
+      "name": "Engineering",
+      "terms": [
+        "megaprojects engineering",
+        "how it's made factory",
+        "engineering documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "aviation",
+      "name": "Aviation",
+      "terms": [
+        "aviation documentary",
+        "air crash investigation",
+        "cockpit landing 4k"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "trains",
+      "name": "Trains",
+      "terms": [
+        "train cab ride 4k",
+        "railway documentary",
+        "train journey scenic"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "ships-and-sea",
+      "name": "Ships and Sea",
+      "terms": [
+        "ship documentary",
+        "ocean voyage",
+        "life at sea documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "cars",
+      "name": "Cars",
+      "terms": [
+        "car review",
+        "car restoration",
+        "supercar documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "motorcycles",
+      "name": "Motorcycles",
+      "terms": [
+        "motorcycle touring",
+        "motorcycle review",
+        "motorcycle restoration"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "formula-1",
+      "name": "Formula 1",
+      "terms": [
+        "formula 1 race highlights",
+        "f1 documentary",
+        "f1 onboard"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "cricket",
+      "name": "Cricket",
+      "terms": [
+        "cricket highlights",
+        "cricket classic match",
+        "cricket documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "football",
+      "name": "Football",
+      "terms": [
+        "football highlights",
+        "football documentary",
+        "best goals"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "tennis",
+      "name": "Tennis",
+      "terms": [
+        "tennis highlights",
+        "tennis classic match"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "basketball",
+      "name": "Basketball",
+      "terms": [
+        "nba highlights",
+        "basketball documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "combat-sports",
+      "name": "Combat Sports",
+      "terms": [
+        "ufc full fight",
+        "boxing full fight",
+        "martial arts documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "extreme-sports",
+      "name": "Extreme Sports",
+      "terms": [
+        "extreme sports 4k",
+        "red bull documentary",
+        "mountain bike downhill"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "fitness",
+      "name": "Fitness",
+      "terms": [
+        "full body workout",
+        "home workout no equipment",
+        "yoga for beginners"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "yoga-and-meditation",
+      "name": "Yoga and Meditation",
+      "terms": [
+        "yoga flow",
+        "guided meditation",
+        "breathing exercise"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "running-and-cycling",
+      "name": "Running and Cycling",
+      "terms": [
+        "marathon documentary",
+        "cycling race highlights",
+        "trail running film"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "hiking-and-camping",
+      "name": "Hiking and Camping",
+      "terms": [
+        "solo camping",
+        "hiking documentary",
+        "bushcraft overnight"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "fishing",
+      "name": "Fishing",
+      "terms": [
+        "fishing trip",
+        "deep sea fishing",
+        "fly fishing film"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "terms": [
+        "survival challenge",
+        "wilderness survival",
+        "primitive technology"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "mountains",
+      "name": "Mountains",
+      "terms": [
+        "mountaineering documentary",
+        "everest documentary",
+        "alpine climb film"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "oceans",
+      "name": "Oceans",
+      "terms": [
+        "ocean documentary 4k",
+        "deep sea creatures",
+        "coral reef 4k"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "animals",
+      "name": "Animals",
+      "terms": [
+        "animal documentary",
+        "funny animals compilation",
+        "zoo keeper"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "dogs-and-cats",
+      "name": "Dogs and Cats",
+      "terms": [
+        "dog training",
+        "cat videos compilation",
+        "puppy rescue"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "birds",
+      "name": "Birds",
+      "terms": [
+        "bird documentary",
+        "birdwatching 4k",
+        "bird song nature"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "farming",
+      "name": "Farming",
+      "terms": [
+        "farm life vlog",
+        "modern farming machines",
+        "harvest documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "gardening",
+      "name": "Gardening",
+      "terms": [
+        "gardening for beginners",
+        "vegetable garden tour",
+        "garden makeover"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "home-renovation",
+      "name": "Home Renovation",
+      "terms": [
+        "home renovation",
+        "house flip before after",
+        "diy home improvement"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "interior-design",
+      "name": "Interior Design",
+      "terms": [
+        "interior design ideas",
+        "home tour",
+        "apartment makeover"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "architecture",
+      "name": "Architecture",
+      "terms": [
+        "architecture documentary",
+        "modern house tour",
+        "famous buildings explained"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "tiny-homes",
+      "name": "Tiny Homes",
+      "terms": [
+        "tiny house tour",
+        "van life tour",
+        "cabin build"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "diy-and-crafts",
+      "name": "DIY and Crafts",
+      "terms": [
+        "diy projects",
+        "craft ideas",
+        "handmade restoration"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "restoration",
+      "name": "Restoration",
+      "terms": [
+        "restoration video",
+        "antique restoration",
+        "tool restoration"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "metalwork",
+      "name": "Metalwork",
+      "terms": [
+        "blacksmith forging",
+        "knife making",
+        "welding project"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "electronics",
+      "name": "Electronics",
+      "terms": [
+        "electronics repair",
+        "electronics project",
+        "circuit explained"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "programming",
+      "name": "Programming",
+      "terms": [
+        "programming tutorial",
+        "coding explained",
+        "software engineering talk"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "ai-and-robots",
+      "name": "AI and Robots",
+      "terms": [
+        "artificial intelligence explained",
+        "robotics documentary",
+        "machine learning lecture"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "gadgets",
+      "name": "Gadgets",
+      "terms": [
+        "gadget review",
+        "smartphone review",
+        "tech unboxing"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "gaming",
+      "name": "Gaming",
+      "terms": [
+        "gameplay walkthrough",
+        "game review",
+        "gaming documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "retro-gaming",
+      "name": "Retro Gaming",
+      "terms": [
+        "retro games",
+        "classic console review",
+        "arcade history"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "esports",
+      "name": "Esports",
+      "terms": [
+        "esports tournament highlights",
+        "esports documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "chess",
+      "name": "Chess",
+      "terms": [
+        "chess game analysis",
+        "chess grandmaster",
+        "chess tournament"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "board-games",
+      "name": "Board Games",
+      "terms": [
+        "board game review",
+        "how to play board game"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "movies-explained",
+      "name": "Movies Explained",
+      "terms": [
+        "movie explained",
+        "film analysis",
+        "behind the scenes film"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "movie-trailers",
+      "name": "Movie Trailers",
+      "terms": [
+        "official trailer",
+        "new movie trailers this week"
       ]
     },
     {
-      "name": "True crime",
+      "id": "short-films",
+      "name": "Short Films",
       "terms": [
-        "true crime documentary"
-      ]
+        "award winning short film",
+        "animated short film",
+        "sci fi short film"
+      ],
+      "length": "medium"
     },
+    {
+      "id": "animation",
+      "name": "Animation",
+      "terms": [
+        "animation short",
+        "how animation is made",
+        "classic cartoons"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "anime",
+      "name": "Anime",
+      "terms": [
+        "anime explained",
+        "anime review",
+        "anime opening compilation"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "stand-up-comedy",
+      "name": "Stand-up Comedy",
+      "terms": [
+        "stand up comedy special",
+        "stand up comedy full show"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "sketch-comedy",
+      "name": "Sketch Comedy",
+      "terms": [
+        "sketch comedy",
+        "comedy skits",
+        "improv comedy"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "talk-shows",
+      "name": "Talk Shows",
+      "terms": [
+        "late night show interview",
+        "celebrity interview",
+        "talk show full episode"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "podcasts",
+      "name": "Podcasts",
+      "terms": [
+        "podcast full episode",
+        "long form interview",
+        "conversation podcast"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "news-analysis",
+      "name": "News Analysis",
+      "terms": [
+        "news explained",
+        "current affairs analysis",
+        "geopolitics explained"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "terms": [
+        "business documentary",
+        "company story",
+        "entrepreneur interview"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "economics",
+      "name": "Economics",
+      "terms": [
+        "economics explained",
+        "economy documentary",
+        "how money works"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "investing",
+      "name": "Investing",
+      "terms": [
+        "investing for beginners",
+        "stock market explained",
+        "personal finance"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "startups",
+      "name": "Startups",
+      "terms": [
+        "startup story",
+        "founder interview",
+        "how i built this"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "science-experiments",
+      "name": "Science Experiments",
+      "terms": [
+        "science experiments",
+        "physics experiment",
+        "chemistry demonstration"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "mathematics",
+      "name": "Mathematics",
+      "terms": [
+        "math explained",
+        "mathematics lecture",
+        "number theory visual"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "physics",
+      "name": "Physics",
+      "terms": [
+        "physics lecture",
+        "quantum mechanics explained",
+        "relativity explained"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "biology",
+      "name": "Biology",
+      "terms": [
+        "biology documentary",
+        "human body explained",
+        "evolution documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "medicine",
+      "name": "Medicine",
+      "terms": [
+        "medical documentary",
+        "surgery explained",
+        "doctor explains"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "psychology",
+      "name": "Psychology",
+      "terms": [
+        "psychology explained",
+        "human behavior documentary",
+        "psychology lecture"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy",
+      "terms": [
+        "philosophy lecture",
+        "stoicism explained",
+        "philosophy documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "lectures",
+      "name": "Lectures",
+      "terms": [
+        "university lecture",
+        "ted talk",
+        "public lecture"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "languages",
+      "name": "Languages",
+      "terms": [
+        "learn english conversation",
+        "language learning tips",
+        "learn spanish"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "book-reviews",
+      "name": "Book Reviews",
+      "terms": [
+        "book review",
+        "book summary",
+        "author interview"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "art",
+      "name": "Art",
+      "terms": [
+        "art documentary",
+        "painting tutorial",
+        "art history explained"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "painting-and-drawing",
+      "name": "Painting and Drawing",
+      "terms": [
+        "oil painting demo",
+        "drawing tutorial",
+        "watercolor landscape"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "photography",
+      "name": "Photography",
+      "terms": [
+        "photography tutorial",
+        "street photography",
+        "photo editing"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "filmmaking",
+      "name": "Filmmaking",
+      "terms": [
+        "filmmaking tutorial",
+        "cinematography breakdown",
+        "video editing"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "fashion",
+      "name": "Fashion",
+      "terms": [
+        "fashion show",
+        "fashion documentary",
+        "style guide"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "classical-music",
+      "name": "Classical Music",
+      "terms": [
+        "classical music concert",
+        "symphony orchestra full",
+        "piano recital"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "jazz",
+      "name": "Jazz",
+      "terms": [
+        "jazz live concert",
+        "jazz club session",
+        "jazz full album"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "rock",
+      "name": "Rock",
+      "terms": [
+        "rock concert full",
+        "rock live performance",
+        "classic rock live"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "pop-hits",
+      "name": "Pop Hits",
+      "terms": [
+        "pop music video",
+        "top hits playlist",
+        "pop live performance"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "hip-hop",
+      "name": "Hip Hop",
+      "terms": [
+        "hip hop live",
+        "rap music video",
+        "hip hop documentary"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "electronic",
+      "name": "Electronic",
+      "terms": [
+        "dj set live",
+        "electronic music mix",
+        "techno boiler room"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "lo-fi-and-chill",
+      "name": "Lo-fi and Chill",
+      "terms": [
+        "lofi hip hop mix",
+        "chill beats mix",
+        "study music"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "indian-classical",
+      "name": "Indian Classical",
+      "terms": [
+        "hindustani classical concert",
+        "carnatic music concert",
+        "sitar recital"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "bollywood-songs",
+      "name": "Bollywood Songs",
+      "terms": [
+        "bollywood songs",
+        "hindi songs jukebox",
+        "bollywood live concert"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "devotional",
+      "name": "Devotional",
+      "terms": [
+        "bhajan",
+        "devotional songs",
+        "kirtan live"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "world-music",
+      "name": "World Music",
+      "terms": [
+        "world music live",
+        "folk music traditional",
+        "flamenco live"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "music-lessons",
+      "name": "Music Lessons",
+      "terms": [
+        "guitar lesson",
+        "piano tutorial",
+        "music theory explained"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "baking",
+      "name": "Baking",
+      "terms": [
+        "baking recipe",
+        "bread baking",
+        "cake decorating"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "world-cuisine",
+      "name": "World Cuisine",
+      "terms": [
+        "authentic recipe",
+        "restaurant kitchen",
+        "chef cooking at home"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "indian-cooking",
+      "name": "Indian Cooking",
+      "terms": [
+        "indian recipe",
+        "indian street food",
+        "home style curry"
+      ],
+      "length": "medium"
+    },
+    {
+      "id": "barbecue",
+      "name": "Barbecue",
+      "terms": [
+        "bbq brisket",
+        "grilling recipe",
+        "smoked meat"
+      ],
+      "length": "medium"
+    }
+  ],
+  "ideas": [
     {
       "name": "Wildlife",
       "terms": [
@@ -161,13 +1051,6 @@
       "terms": [
         "tech review",
         "gadget review"
-      ]
-    },
-    {
-      "name": "Chess",
-      "terms": [
-        "chess game analysis",
-        "chess grandmaster"
       ]
     }
   ]

@@ -65,6 +65,14 @@ public class TvModeService {
     private static final long CONFIG_CHECK_PERIOD_MS = 5 * 60 * 1_000;
     private static final int MAX_PAST = 20;
     private static final int PAST_SHOWN = 8;
+    private static final int MAX_MISSED = 80;
+    /** Channels at the top of the guide get their first videos before the rest. */
+    private static final int GUIDE_FIRST = 8;
+    /** Under the player's controls: this many channels, each with this many videos. More made scrolling there drag. */
+    private static final int PLAYER_ROWS = 6;
+    private static final int PLAYER_ROW_VIDEOS = 8;
+    private static final long TOP_UP_PERIOD_MS = 60_000;
+    private static final long SAVE_DELAY_MS = 2_000;
     private static final long SKIP_WINDOW_MS = 30_000;
     private static final int MAX_WATCHED = 3_000;
     @SuppressLint("StaticFieldLeak")
@@ -72,6 +80,8 @@ public class TvModeService {
     private final Context mContext;
     private final Handler mMain = new Handler(Looper.getMainLooper());
     private final ExecutorService mWorker = Executors.newSingleThreadExecutor();
+    /** Searches nobody is waiting for: channels far down the guide, top-ups. They never hold up the urgent ones. */
+    private final ExecutorService mBackground = Executors.newSingleThreadExecutor();
     private final List<TvChannel> mChannels = new ArrayList<>();
     private final Set<String> mWatched = new LinkedHashSet<>();
     private final Set<String> mDeletedPresets = new HashSet<>();
@@ -99,6 +109,8 @@ public class TvModeService {
     private int mMinAhead = 12;
     private int mMaxPerCreatorInRow = 2;
     private int mSkipsToBlock = 3;
+    /** One search in this many asks YouTube for this week's uploads. 0 = never. */
+    private int mRecentEvery = 3;
     private long mMinViews;
     private boolean mLoaded;
     private String mConfigText;
@@ -139,34 +151,42 @@ public class TvModeService {
 
         mSection = section;
         final int token = ++mGuideToken;
+        final VideoGroup changed = buildActionGroup();
         boolean waiting = false;
 
-        onGroup.onGroup(buildActionGroup());
+        // The guide draws straight from the channels, so one small row is sent just to say "draw".
+        onGroup.onGroup(changed);
 
         for (int i = 0; i < mChannels.size(); i++) {
             final TvChannel channel = mChannels.get(i);
-            final int index = i;
 
             if (channel.onNow() != null) {
-                onGroup.onGroup(buildGroup(channel, index + 1));
-                if (channel.ahead() < mMinAhead) {
-                    fill(channel, null);
-                }
-            } else {
-                waiting = true;
-                fill(channel, () -> {
-                    if (token == mGuideToken && channel.onNow() != null) {
-                        onGroup.onGroup(buildGroup(channel, mChannels.indexOf(channel) + 1));
-                    }
-                    if (token == mGuideToken && onReady != null) {
+                topUp(channel);
+                continue;
+            }
+
+            // A channel without videos yet. The ones at the top are fetched first.
+            final boolean first = i < GUIDE_FIRST;
+            waiting |= first;
+            fill(channel, () -> {
+                if (token == mGuideToken) {
+                    onGroup.onGroup(changed);
+                    if (first && onReady != null) {
                         onReady.run();
                     }
-                });
-            }
+                }
+            }, first);
         }
 
         if (!waiting && onReady != null) {
             onReady.run();
+        }
+    }
+
+    /** Fetches more videos for a channel that is running low. At most once a minute for each channel. */
+    private void topUp(TvChannel channel) {
+        if (channel.ahead() < mMinAhead && !channel.loading && System.currentTimeMillis() - channel.lastFillMs > TOP_UP_PERIOD_MS) {
+            fill(channel, null, false);
         }
     }
 
@@ -290,6 +310,12 @@ public class TvModeService {
 
         remember(video.videoId);
 
+        // The player takes "next" from the video's row, which must be the channel's whole lineup.
+        if (channel.group == null || !channel.group.contains(video) || video.getGroup() != channel.group) {
+            buildGroup(channel, mChannels.indexOf(channel) + 1);
+            video.setGroup(channel.group);
+        }
+
         // Skipping a creator's videos within the first seconds, several times, blocks that creator here.
         // Watching one longer forgives the earlier skips.
         String note = null;
@@ -362,7 +388,7 @@ public class TvModeService {
 
         int start = mChannels.indexOf(from);
 
-        for (int n = 1; n < mChannels.size(); n++) {
+        for (int n = 1; n < mChannels.size() && rows.size() < PLAYER_ROWS; n++) {
             int index = (start + n) % mChannels.size();
             TvChannel channel = mChannels.get(index);
             syncLive(channel);
@@ -371,13 +397,13 @@ public class TvModeService {
                 continue;
             }
 
-            if (channel.group == null || !channel.group.contains(channel.onNow())) {
-                buildGroup(channel, index + 1);
-            }
-
-            channel.group.setTitle(title(channel));
-            channel.group.setPosition(-1); // the player adds rows in the order they arrive
-            rows.add(channel.group);
+            // A short row of its own. The videos keep pointing at their channel's lineup.
+            int end = Math.min(channel.lineup.size(), channel.pos + PLAYER_ROW_VIDEOS);
+            VideoGroup row = VideoGroup.from(new ArrayList<>(channel.lineup.subList(channel.pos, end)), null, -1);
+            row.setId(("tv_mode:player:" + channel.id).hashCode());
+            row.setTitle(title(channel));
+            row.setPosition(-1); // the player adds rows in the order they arrive
+            rows.add(row);
         }
 
         return rows;
@@ -523,18 +549,30 @@ public class TvModeService {
         }
 
         while (channel.ahead() > 0 && now - channel.liveStartMs >= durationOf(channel, channel.onNow())) {
-            channel.liveStartMs += durationOf(channel, channel.onNow());
-            remember(channel.onNow().videoId);
+            Video passed = channel.onNow();
+            channel.liveStartMs += durationOf(channel, passed);
             channel.pos++;
+
+            // It ran, but nobody saw it: it may come back later. Only what was watched is gone for good.
+            if (!mWatched.contains(passed.videoId) && !channel.missed.contains(passed)) {
+                channel.missed.add(passed);
+                if (channel.missed.size() > MAX_MISSED) {
+                    channel.missed.remove(0);
+                }
+            }
+        }
+
+        // A channel left running for days must not keep everything it ever played.
+        while (channel.pos > MAX_PAST) {
+            channel.lineup.remove(0);
+            channel.pos--;
         }
 
         if (channel.ahead() == 0 && now - channel.liveStartMs >= durationOf(channel, channel.onNow())) {
             channel.liveStartMs = now; // ran out of lineup: hold on the last video until more arrives
         }
 
-        if (channel.ahead() < mMinAhead) {
-            fill(channel, null);
-        }
+        topUp(channel);
     }
 
     /** How far into the video on now a live channel is. */
@@ -1002,7 +1040,12 @@ public class TvModeService {
     // ---------------- lineups ----------------
 
     /** Adds one page of search results to the end of the channel's lineup. */
-    private void fill(final TvChannel channel, final Runnable onDone) {
+    private void fill(TvChannel channel, Runnable onDone) {
+        fill(channel, onDone, true);
+    }
+
+    /** urgent: somebody is waiting for this channel. Otherwise it queues behind the other background searches. */
+    private void fill(final TvChannel channel, final Runnable onDone, final boolean urgent) {
         if (channel.terms.isEmpty() && channel.creators.isEmpty()) {
             if (onDone != null) {
                 onDone.run();
@@ -1018,16 +1061,22 @@ public class TvModeService {
         }
 
         channel.loading = true;
+        channel.lastFillMs = System.currentTimeMillis();
         // Sources take turns: each search term, then each YouTube channel.
         final int turn = Math.abs(channel.termCursor++) % (channel.terms.size() + channel.creators.size());
         final boolean fromCreator = turn >= channel.terms.size();
         final String term = fromCreator ? channel.creators.get(turn - channel.terms.size()) : channel.terms.get(turn);
         final String knownCreatorId = fromCreator ? channel.creatorIds.get(term) : null;
-        final int options = fromCreator ? 0 : searchOptions(channel);
+        // Every few searches one asks for this week's uploads, so a channel isn't only YouTube's
+        // evergreen results. Not when the channel has its own date or order setting.
+        final boolean recent = !fromCreator && mRecentEvery > 0 && channel.fills % mRecentEvery == mRecentEvery - 1
+                && TvChannel.ANY.equals(channel.uploaded) && TvChannel.ORDER_MIXED.equals(channel.order);
+        channel.fills++;
+        final int options = fromCreator ? 0 : recent ? SearchOptions.UPLOAD_DATE_THIS_WEEK : searchOptions(channel);
         final String pageKey = channel.id + "|" + (fromCreator ? "@" : "") + term + "|" + options;
         final String searchKey = channel.searchKey();
 
-        mWorker.execute(() -> {
+        (urgent ? mWorker : mBackground).execute(() -> {
             final List<MediaItem> found = new ArrayList<>();
             final String[] creatorId = {knownCreatorId};
 
@@ -1081,22 +1130,22 @@ public class TvModeService {
                 // The channel was edited while the search ran. These results no longer apply.
                 if (mChannels.contains(channel) && searchKey.equals(channel.searchKey())) {
                     int added = append(channel, found, fromCreator ? term : null);
-                    Log.d(TAG, "%s: +%s videos from \"%s\"", channel.name, added, term);
+                    Log.d(TAG, "%s: +%s videos from \"%s\"%s", channel.name, added, term, recent ? " (this week)" : "");
 
-                    if (added == 0) {
+                    if (added > 0) {
+                        channel.emptyFills = 0;
+                        save();
+                    } else if (!recent) { // a quiet week says nothing about the channel running dry
                         channel.emptyFills++;
                         // Every term came back with nothing new: let watched videos return.
                         if (channel.emptyFills >= channel.sources() * 2) {
                             channel.exhausted = true;
                         }
-                    } else {
-                        channel.emptyFills = 0;
-                        save();
                     }
 
                     // One page is often not enough after filtering. Bounded so a dead search can't loop.
                     if (channel.ahead() < mMinAhead && channel.emptyFills < channel.sources() * 3) {
-                        fill(channel, null);
+                        fill(channel, null, urgent);
                     }
                 }
 
@@ -1211,6 +1260,22 @@ public class TvModeService {
                 video.author = creator;
             }
             fresh.add(video);
+        }
+
+        // Videos that ran while nobody watched rejoin here, at the end, mixed with the new ones:
+        // about one for every three new, or a batch of them when the search found nothing new.
+        int rejoin = fresh.isEmpty() ? 10 : Math.max(1, fresh.size() / 3);
+
+        for (java.util.Iterator<Video> it = channel.missed.iterator(); it.hasNext() && rejoin > 0;) {
+            Video video = it.next();
+
+            if (mWatched.contains(video.videoId)) {
+                it.remove(); // it was watched after all
+            } else if (seen.add(video.videoId)) { // not while it is still in the lineup
+                it.remove();
+                fresh.add(video);
+                rejoin--;
+            }
         }
 
         if (!TvChannel.ORDER_NEW.equals(channel.order) && !TvChannel.ORDER_VIEWS.equals(channel.order)) {
@@ -1393,6 +1458,7 @@ public class TvModeService {
                 mMinAhead = Math.max(3, tuning.optInt("minAhead", mMinAhead));
                 mMaxPerCreatorInRow = tuning.optInt("maxPerCreatorInRow", mMaxPerCreatorInRow);
                 mSkipsToBlock = Math.max(2, tuning.optInt("skipsToBlock", mSkipsToBlock));
+                mRecentEvery = tuning.optInt("recentEvery", mRecentEvery);
                 mMinViews = tuning.optLong("minViews", mMinViews);
                 mGlobalSkipWords.clear();
                 JSONArray words = tuning.optJSONArray("skipWords");
@@ -1526,16 +1592,25 @@ public class TvModeService {
         }
     }
 
+    private boolean mSavePending;
+    private final Runnable mSaveNow = this::saveNow;
+
+    /**
+     * Saves soon. With 100 channels a change comes every moment while they fill, and writing the
+     * whole state each time made the screen stutter.
+     */
     private void save() {
+        if (!mSavePending) {
+            mSavePending = true;
+            mMain.postDelayed(mSaveNow, SAVE_DELAY_MS);
+        }
+    }
+
+    private void saveNow() {
+        mSavePending = false;
+
         try {
-            JSONObject state = new JSONObject();
-            JSONArray channels = new JSONArray();
-
-            for (TvChannel channel : mChannels) {
-                channels.put(channel.toJson());
-            }
-
-            JSONObject settings = new JSONObject();
+            final JSONObject settings = new JSONObject();
             settings.put("defaultMode", mDefaultMode);
             settings.put("dpadSurf", mDpadSurf);
             settings.put("favOnly", mFavOnly);
@@ -1545,13 +1620,31 @@ public class TvModeService {
             settings.put("sleepTurnsOff", mSleepTurnsOff);
             settings.put("openMode", mOpenMode);
             settings.put("lastChannel", mLastChannelId);
-            state.put("settings", settings);
-            state.put("channels", channels);
-            state.put("watched", new JSONArray(mWatched));
-            state.put("deletedPresets", new JSONArray(mDeletedPresets));
 
-            final String text = state.toString();
-            mWorker.execute(() -> writeFile(new File(mContext.getFilesDir(), STATE_FILE), text));
+            // Copies of the lists, so the worker can turn them into text while the channels go on changing.
+            final List<TvChannel> channels = new ArrayList<>();
+            for (TvChannel channel : mChannels) {
+                channels.add(channel.copyForSave());
+            }
+            final List<String> watched = new ArrayList<>(mWatched);
+            final List<String> deletedPresets = new ArrayList<>(mDeletedPresets);
+
+            mWorker.execute(() -> {
+                try {
+                    JSONObject state = new JSONObject();
+                    JSONArray array = new JSONArray();
+                    for (TvChannel channel : channels) {
+                        array.put(channel.toJson());
+                    }
+                    state.put("settings", settings);
+                    state.put("channels", array);
+                    state.put("watched", new JSONArray(watched));
+                    state.put("deletedPresets", new JSONArray(deletedPresets));
+                    writeFile(new File(mContext.getFilesDir(), STATE_FILE), state.toString());
+                } catch (Throwable e) {
+                    Log.e(TAG, "Can't save the TV mode state: %s", e.getMessage());
+                }
+            });
         } catch (Throwable e) {
             Log.e(TAG, "Can't save the TV mode state: %s", e.getMessage());
         }

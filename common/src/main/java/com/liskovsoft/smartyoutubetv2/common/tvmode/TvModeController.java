@@ -520,8 +520,8 @@ public class TvModeController extends BasePlayerController {
     private boolean onDigit(int digit) {
         mDigits = (mDigits + digit);
 
-        if (mDigits.length() > 2) {
-            mDigits = mDigits.substring(mDigits.length() - 2);
+        if (mDigits.length() > 3) { // up to channel 999
+            mDigits = mDigits.substring(mDigits.length() - 3);
         }
 
         MessageHelpers.showMessage(getContext(), "CH " + mDigits);

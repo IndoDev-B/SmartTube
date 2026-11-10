@@ -55,6 +55,11 @@ public class TvChannel {
     /** Changed on this TV. The preset list never overwrites an edited channel. */
     public boolean edited;
     public final List<Video> lineup = new ArrayList<>();
+    /**
+     * Videos a Live TV channel played while nobody watched. They aren't "watched", so they come
+     * back at the end of the lineup later, mixed with new ones.
+     */
+    public final List<Video> missed = new ArrayList<>();
     public int pos;
     public int termCursor;
     /** Live TV: clock time when the video on now started. 0 = not running yet. */
@@ -69,6 +74,9 @@ public class TvChannel {
     /** Searches stopped returning new videos, so watched ones are allowed back. */
     public boolean exhausted;
     public int emptyFills;
+    /** How many searches this channel ran since the app started. Every few, one asks for recent uploads. */
+    public int fills;
+    public long lastFillMs;
     /** The video that is playing and when it started, to tell a skip from watching. */
     public String startedId;
     public long startedMs;
@@ -137,8 +145,16 @@ public class TvChannel {
         o.put("termCursor", termCursor);
         o.put("liveStartMs", liveStartMs);
 
+        o.put("lineup", videosToJson(lineup));
+        o.put("missed", videosToJson(missed));
+
+        return o;
+    }
+
+    private JSONArray videosToJson(List<Video> videos) throws JSONException {
         JSONArray items = new JSONArray();
-        for (Video video : lineup) {
+
+        for (Video video : videos) {
             JSONObject item = new JSONObject();
             item.put("v", video.toString());
             item.put("a", video.author);
@@ -146,9 +162,58 @@ public class TvChannel {
             item.put("d", duration != null ? duration : -1);
             items.put(item);
         }
-        o.put("lineup", items);
 
-        return o;
+        return items;
+    }
+
+    private void videosFromJson(JSONArray items, List<Video> out) {
+        for (int i = 0; items != null && i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            Video video = item != null ? Video.fromString(item.optString("v", null)) : null;
+            if (video == null || video.videoId == null) {
+                continue;
+            }
+            video.author = item.isNull("a") ? null : item.optString("a", null);
+            video.tvChannelId = id;
+            long duration = item.optLong("d", -1);
+            if (duration > 0) {
+                durations.put(video.videoId, duration);
+            }
+            out.add(video);
+        }
+    }
+
+    /**
+     * A copy with its own lists, for saving on another thread while this one keeps changing.
+     * The videos themselves are shared: they aren't changed once they are in a lineup.
+     */
+    public TvChannel copyForSave() {
+        TvChannel c = new TvChannel();
+        c.id = id;
+        c.name = name;
+        c.terms.addAll(terms);
+        c.creators.addAll(creators);
+        c.length = length;
+        c.uploaded = uploaded;
+        c.order = order;
+        c.quality = quality;
+        c.noShorts = noShorts;
+        c.minViews = minViews;
+        c.creatorIds.putAll(creatorIds);
+        c.skips.putAll(skips);
+        c.skipWords.addAll(skipWords);
+        c.blocked.addAll(blocked);
+        c.mode = mode;
+        c.fav = fav;
+        c.preset = preset;
+        c.edited = edited;
+        c.lineup.addAll(lineup);
+        c.missed.addAll(missed);
+        c.pos = pos;
+        c.termCursor = termCursor;
+        c.liveStartMs = liveStartMs;
+        c.durations.putAll(durations);
+        return c;
     }
 
     public static TvChannel fromJson(JSONObject o) {
@@ -178,23 +243,8 @@ public class TvChannel {
             }
         }
 
-        JSONArray items = o.optJSONArray("lineup");
-        if (items != null) {
-            for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.optJSONObject(i);
-                Video video = item != null ? Video.fromString(item.optString("v", null)) : null;
-                if (video == null || video.videoId == null) {
-                    continue;
-                }
-                video.author = item.isNull("a") ? null : item.optString("a", null);
-                video.tvChannelId = c.id;
-                long duration = item.optLong("d", -1);
-                if (duration > 0) {
-                    c.durations.put(video.videoId, duration);
-                }
-                c.lineup.add(video);
-            }
-        }
+        c.videosFromJson(o.optJSONArray("lineup"), c.lineup);
+        c.videosFromJson(o.optJSONArray("missed"), c.missed);
 
         c.pos = Math.max(0, Math.min(o.optInt("pos", 0), Math.max(0, c.lineup.size() - 1)));
 
