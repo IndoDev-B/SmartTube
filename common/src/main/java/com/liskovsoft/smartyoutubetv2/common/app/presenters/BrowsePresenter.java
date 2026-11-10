@@ -210,7 +210,7 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
         mSectionsMapping.put(MediaGroup.TYPE_PLAYBACK_QUEUE, new BrowseSection(MediaGroup.TYPE_PLAYBACK_QUEUE, getContext().getString(R.string.playback_queue_category_title), BrowseSection.TYPE_GRID, R.drawable.icon_queue, false));
 
         if (TvModeService.isEnabled(getContext())) {
-            mSectionsMapping.put(TvModeService.SECTION_ID, new BrowseSection(TvModeService.SECTION_ID, getContext().getString(R.string.header_tv_mode), BrowseSection.TYPE_ROW, R.drawable.icon_tv_mode, false));
+            mSectionsMapping.put(TvModeService.SECTION_ID, new BrowseSection(TvModeService.SECTION_ID, getContext().getString(R.string.header_tv_mode), BrowseSection.TYPE_TV_GUIDE, R.drawable.icon_tv_mode, false));
         }
 
         if (getSidebarService().isSettingsSectionEnabled()) {

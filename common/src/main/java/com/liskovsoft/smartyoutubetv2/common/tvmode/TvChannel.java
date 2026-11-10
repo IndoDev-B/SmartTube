@@ -66,6 +66,12 @@ public class TvChannel {
     /** Callers waiting for the search that is running now. */
     public final List<Runnable> waiters = new ArrayList<>();
 
+    /** Length of a video in the lineup. A guess of 10 minutes when YouTube didn't say. */
+    public long durationOf(Video video) {
+        Long duration = durations.get(video.videoId);
+        return duration != null && duration > 0 ? duration : 10 * 60_000;
+    }
+
     public Video onNow() {
         return pos >= 0 && pos < lineup.size() ? lineup.get(pos) : null;
     }

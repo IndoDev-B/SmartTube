@@ -161,8 +161,9 @@ public class TvModeMenu {
             refreshGuide();
         }, channel.fav));
 
-        if (video != null && video.author != null && !video.author.isEmpty()) {
-            final String author = video.author;
+        final String author = video != null ? TvModeService.creatorOf(video.author) : null;
+
+        if (author != null) {
             mDialog.appendSingleButton(UiOptionItem.from("Block " + author, option -> {
                 mDialog.closeDialog();
                 mService.block(channel, author);

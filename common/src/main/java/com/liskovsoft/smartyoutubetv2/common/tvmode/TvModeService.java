@@ -338,8 +338,18 @@ public class TvModeService {
     }
 
     private long durationOf(TvChannel channel, Video video) {
-        Long duration = channel.durations.get(video.videoId);
-        return duration != null && duration > 0 ? duration : 10 * 60_000;
+        return channel.durationOf(video);
+    }
+
+    /** The creator's name. Search results carry it as "name, views, age" in one string. */
+    public static String creatorOf(String author) {
+        if (author == null) {
+            return null;
+        }
+
+        int end = author.indexOf('\u2022');
+        String name = (end >= 0 ? author.substring(0, end) : author).trim();
+        return name.isEmpty() ? null : name;
     }
 
     /** Moves a live channel to the video the clock says is on now. */
@@ -506,7 +516,7 @@ public class TvModeService {
         channel.edited = true;
 
         for (int i = channel.lineup.size() - 1; i > channel.pos; i--) {
-            if (author.equalsIgnoreCase(channel.lineup.get(i).author)) {
+            if (author.equalsIgnoreCase(creatorOf(channel.lineup.get(i).author))) {
                 channel.durations.remove(channel.lineup.remove(i).videoId);
             }
         }
@@ -825,7 +835,7 @@ public class TvModeService {
             return false;
         }
 
-        String author = item.getAuthor();
+        String author = creatorOf(item.getAuthor());
 
         if (author != null) {
             for (String blocked : channel.blocked) {
@@ -850,12 +860,14 @@ public class TvModeService {
 
     /** True when the lineup already ends with the most videos one creator may have in a row. */
     private boolean creatorRunsTooLong(TvChannel channel, Video video) {
-        if (mMaxPerCreatorInRow <= 0 || video.author == null || channel.lineup.size() < mMaxPerCreatorInRow) {
+        String creator = creatorOf(video.author);
+
+        if (mMaxPerCreatorInRow <= 0 || creator == null || channel.lineup.size() < mMaxPerCreatorInRow) {
             return false;
         }
 
         for (int i = channel.lineup.size() - mMaxPerCreatorInRow; i < channel.lineup.size(); i++) {
-            if (!video.author.equals(channel.lineup.get(i).author)) {
+            if (!creator.equals(creatorOf(channel.lineup.get(i).author))) {
                 return false;
             }
         }

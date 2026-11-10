@@ -73,6 +73,19 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
 
     protected abstract VideoGroupPresenter getMainPresenter();
 
+    /** A card style of its own for this row, or null for the normal video card. */
+    protected Presenter getCustomCardPresenter(VideoGroup group) {
+        return null;
+    }
+
+    protected void onVideoItemSelected(Video video) {
+        // NOP
+    }
+
+    protected OnItemLongPressedListener createLongPressedListener() {
+        return new ItemViewLongPressedListener();
+    }
+
     private void applyPendingUpdates() {
         // prevent modification within update method
         List<VideoGroup> copyArray = new ArrayList<>(mPendingUpdates);
@@ -253,7 +266,9 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
             HeaderItem rowHeader = new HeaderItem(group.getTitle());
             int videoGroupId = group.getId(); // Create unique int from category.
 
-            VideoGroupObjectAdapter videoGroupAdapter = new VideoGroupObjectAdapter(group, group.isShorts() ? mShortsPresenter : mCardPresenter);
+            Presenter customPresenter = getCustomCardPresenter(group);
+            VideoGroupObjectAdapter videoGroupAdapter = new VideoGroupObjectAdapter(group,
+                    customPresenter != null ? customPresenter : group.isShorts() ? mShortsPresenter : mCardPresenter);
 
             mVideoGroupAdapters.put(videoGroupId, videoGroupAdapter);
 
@@ -357,6 +372,7 @@ public abstract class MultipleRowsFragment extends RowsSupportFragment implement
                 mBackgroundManager.setBackgroundFrom((Video) item);
 
                 mMainPresenter.onVideoItemSelected((Video) item);
+                onVideoItemSelected((Video) item);
 
                 checkScrollEnd((Video)item);
             }
