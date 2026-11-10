@@ -43,6 +43,7 @@ import com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.AccountCha
 import com.liskovsoft.smartyoutubetv2.common.prefs.AccountsData;
 import com.liskovsoft.smartyoutubetv2.common.prefs.BlockedChannelData;
 import com.liskovsoft.smartyoutubetv2.common.prefs.MainUIData;
+import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 import com.liskovsoft.smartyoutubetv2.common.utils.Utils;
 
 import java.util.ArrayList;
@@ -206,6 +207,10 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
         mSectionsMapping.put(MediaGroup.TYPE_USER_PLAYLISTS, new BrowseSection(MediaGroup.TYPE_USER_PLAYLISTS, getContext().getString(R.string.header_playlists), BrowseSection.TYPE_ROW, R.drawable.icon_playlist, false));
         mSectionsMapping.put(MediaGroup.TYPE_NOTIFICATIONS, new BrowseSection(MediaGroup.TYPE_NOTIFICATIONS, getContext().getString(R.string.header_notifications), BrowseSection.TYPE_GRID, R.drawable.icon_notification, false));
         mSectionsMapping.put(MediaGroup.TYPE_PLAYBACK_QUEUE, new BrowseSection(MediaGroup.TYPE_PLAYBACK_QUEUE, getContext().getString(R.string.playback_queue_category_title), BrowseSection.TYPE_GRID, R.drawable.icon_queue, false));
+
+        if (TvModeService.isEnabled(getContext())) {
+            mSectionsMapping.put(TvModeService.SECTION_ID, new BrowseSection(TvModeService.SECTION_ID, getContext().getString(R.string.header_tv_mode), BrowseSection.TYPE_ROW, R.drawable.icon_tv_mode, false));
+        }
 
         if (getSidebarService().isSettingsSectionEnabled()) {
             mSectionsMapping.put(MediaGroup.TYPE_SETTINGS, new BrowseSection(MediaGroup.TYPE_SETTINGS, getContext().getString(R.string.header_settings), BrowseSection.TYPE_SETTINGS_GRID, R.drawable.icon_settings));
@@ -485,6 +490,10 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
             return;
         }
 
+        if (item.tvChannelId != null) {
+            return; // TV mode fills its own lineups: there's no YouTube page to continue
+        }
+
         VideoGroup group = item.getGroup();
 
         continueGroup(group);
@@ -644,7 +653,38 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
         updateSection(mCurrentSection);
     }
 
+    /** TV mode: one row per channel, starting with the video that is on now. */
+    private void updateTvModeSection(BrowseSection section) {
+        disposeActions();
+
+        if (getView() == null) {
+            return;
+        }
+
+        getView().showProgressBar(true);
+
+        VideoGroup firstGroup = VideoGroup.from(section);
+        firstGroup.setAction(VideoGroup.ACTION_REPLACE);
+        getView().updateSection(firstGroup);
+
+        TvModeService.instance(getContext()).loadGuide(section, group -> {
+            if (getView() != null && mCurrentSection == section) {
+                getView().showProgressBar(false);
+                getView().updateSection(group);
+            }
+        }, () -> {
+            if (getView() != null && mCurrentSection == section) {
+                getView().showProgressBar(false);
+            }
+        });
+    }
+
     private void updateSection(BrowseSection section) {
+        if (section.getId() == TvModeService.SECTION_ID) {
+            updateTvModeSection(section);
+            return;
+        }
+
         switch (section.getType()) {
             case BrowseSection.TYPE_GRID:
             case BrowseSection.TYPE_SHORTS_GRID:

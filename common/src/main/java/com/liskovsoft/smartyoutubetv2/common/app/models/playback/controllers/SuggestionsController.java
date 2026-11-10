@@ -178,6 +178,10 @@ public class SuggestionsController extends BasePlayerController {
             return;
         }
 
+        if (group.getMediaGroup() == null && !group.isEmpty() && group.get(0).tvChannelId != null) {
+            return; // TV mode fills its own lineups: there's no YouTube page to continue
+        }
+
         Log.d(TAG, "continueGroup: start continue group: " + group.getTitle());
 
         if (showLoading) {

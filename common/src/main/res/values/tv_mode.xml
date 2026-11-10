@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SmartTube Plus TV mode. A flavor switches it on and picks its preset list by overriding these
+     (see smarttubetv/src/stdev/res/values/plus.xml). -->
+<resources>
+    <bool name="tv_mode_enabled">false</bool>
+    <string translatable="false" name="header_tv_mode">TV</string>
+    <!-- Preset channels and tuning: the copy inside the app, and where a newer one is downloaded from. -->
+    <string translatable="false" name="tv_mode_config_asset">tv_mode_stable.json</string>
+    <string translatable="false" name="tv_mode_config_url">https://raw.githubusercontent.com/IndoDev-B/SmartTube/my-features/common/src/main/assets/tv_mode_stable.json</string>
+</resources>

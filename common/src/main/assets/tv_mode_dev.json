@@ -1,0 +1,101 @@
+{
+  "comment": "SmartTube Plus TV mode: preset channels and tuning. The app downloads this file when TV mode opens. Channels edited on a TV are never overwritten.",
+  "tuning": {
+    "minAhead": 12,
+    "maxPerCreatorInRow": 2,
+    "skipWords": [
+      "#shorts",
+      "reaction",
+      "trailer",
+      "teaser"
+    ]
+  },
+  "channels": [
+    {
+      "id": "science",
+      "name": "Science",
+      "terms": [
+        "science explained documentary",
+        "physics explained",
+        "space documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "documentaries",
+      "name": "Documentaries",
+      "terms": [
+        "full documentary",
+        "history documentary full",
+        "investigative documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "nature",
+      "name": "Nature",
+      "terms": [
+        "wildlife nature documentary 4k",
+        "bbc earth animals",
+        "ocean documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "travel",
+      "name": "Travel",
+      "terms": [
+        "travel vlog walking tour",
+        "city walking tour 4k",
+        "travel documentary"
+      ],
+      "length": "long"
+    },
+    {
+      "id": "cooking",
+      "name": "Cooking",
+      "terms": [
+        "street food cooking",
+        "chef cooking recipe",
+        "food documentary"
+      ]
+    },
+    {
+      "id": "music-live",
+      "name": "Music Live",
+      "terms": [
+        "live concert full performance",
+        "tiny desk concert",
+        "live acoustic session"
+      ],
+      "mode": "live"
+    },
+    {
+      "id": "comedy",
+      "name": "Comedy",
+      "terms": [
+        "stand up comedy special",
+        "stand up comedy clip",
+        "sketch comedy"
+      ]
+    },
+    {
+      "id": "retro-tv",
+      "name": "Retro TV",
+      "terms": [
+        "90s tv commercials compilation",
+        "classic tv show full episode",
+        "80s commercials"
+      ]
+    },
+    {
+      "id": "woodworking",
+      "name": "Woodworking",
+      "terms": [
+        "japanese joinery",
+        "hand tool woodworking",
+        "woodworking project build"
+      ]
+    }
+  ]
+}

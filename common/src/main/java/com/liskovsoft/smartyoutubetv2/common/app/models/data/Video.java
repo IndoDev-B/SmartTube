@@ -98,6 +98,8 @@ public final class Video {
     public boolean isLiveEnd;
     public boolean isShuffled;
     public String searchQuery;
+    /** TV mode: the channel whose lineup this video is in. Not saved with the video. */
+    public String tvChannelId;
     private int startSegmentNum;
     private long liveDurationMs = -1;
     private long durationMs = -1;
@@ -948,6 +950,10 @@ public final class Video {
      * The section playlist intended (as a backup replacement) for cases when regular playlist not available
      */
     public boolean isSectionPlaylistEnabled(Context context) {
+        if (tvChannelId != null) { // TV mode: the channel's lineup is always the playlist
+            return true;
+        }
+
         return PlayerTweaksData.instance(context).isSectionPlaylistEnabled() && !belongsToSuggestions() && !belongsToPlaybackQueue()
                 && (!checkAllVideosHasPlaylist() || nextMediaItem == null || !isMix()) // skip hidden playlists (music videos usually)
                 && (!isRemote || remotePlaylistId == null);

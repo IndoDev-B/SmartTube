@@ -7,7 +7,9 @@ name: SmartTube Plus dev build
 on:
   push:
     branches: [ "my-features" ]
-    paths-ignore: [ "**.md", ".github/**" ]
+    # tv_mode_*.json: the TV mode preset lists. The app downloads them straight from this branch,
+    # so changing one needs no build. The next real build bundles the latest copy.
+    paths-ignore: [ "**.md", ".github/**", "common/src/main/assets/tv_mode_*.json" ]
   workflow_dispatch:
 
 permissions:

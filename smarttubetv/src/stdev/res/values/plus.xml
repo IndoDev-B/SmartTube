@@ -7,6 +7,10 @@
     <string name="settings_description">SmartTube Plus dev Videos</string>
     <!-- Must match applicationId in plus.gradle and res/xml/searchable.xml -->
     <string translatable="false" name="search_authority">org.indodev.smarttubeplus.dev</string>
+    <!-- TV mode is still being built: on in the dev app only, with its own preset list. -->
+    <bool name="tv_mode_enabled">true</bool>
+    <string translatable="false" name="tv_mode_config_asset">tv_mode_dev.json</string>
+    <string translatable="false" name="tv_mode_config_url">https://raw.githubusercontent.com/IndoDev-B/SmartTube/my-features/common/src/main/assets/tv_mode_dev.json</string>
     <string-array name="update_urls">
         <item>https://github.com/IndoDev-B/SmartTube/releases/download/dev/smarttubeplus_dev.json</item>
     </string-array>

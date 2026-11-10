@@ -10,6 +10,7 @@ import com.liskovsoft.smartyoutubetv2.common.app.models.data.Video;
 import com.liskovsoft.smartyoutubetv2.common.prefs.AppPrefs;
 import com.liskovsoft.smartyoutubetv2.common.prefs.AppPrefs.ProfileChangeListener;
 import com.liskovsoft.smartyoutubetv2.common.prefs.GeneralData;
+import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -238,6 +239,9 @@ public class SidebarService implements ProfileChangeListener {
     private void initSections() {
         mDefaultSections.put(R.string.header_notifications, MediaGroup.TYPE_NOTIFICATIONS);
         mDefaultSections.put(R.string.header_home, MediaGroup.TYPE_HOME);
+        if (TvModeService.isEnabled(mContext)) {
+            mDefaultSections.put(R.string.header_tv_mode, TvModeService.SECTION_ID);
+        }
         mDefaultSections.put(R.string.header_shorts, MediaGroup.TYPE_SHORTS);
         mDefaultSections.put(R.string.header_trending, MediaGroup.TYPE_TRENDING);
         mDefaultSections.put(R.string.header_kids_home, MediaGroup.TYPE_KIDS_HOME);
@@ -305,7 +309,33 @@ public class SidebarService implements ProfileChangeListener {
         // Backward compatibility
         enableSection(MediaGroup.TYPE_SETTINGS, true);
 
+        addTvModeSectionOnce();
+
         cleanupPinnedItems();
+    }
+
+    /**
+     * Existing installs already have a saved sidebar, so the TV section is added to it once.
+     * After that it's the user's to hide or move like any other section.
+     */
+    private void addTvModeSectionOnce() {
+        if (!TvModeService.isEnabled(mContext)) {
+            return;
+        }
+
+        java.io.File marker = new java.io.File(mContext.getFilesDir(), "tv_mode_section_added");
+
+        if (marker.exists()) {
+            return;
+        }
+
+        enableSection(TvModeService.SECTION_ID, true);
+
+        try {
+            marker.createNewFile();
+        } catch (java.io.IOException e) {
+            // Not fatal: the section is added again next start.
+        }
     }
 
     private void transferOldPinnedItems() {

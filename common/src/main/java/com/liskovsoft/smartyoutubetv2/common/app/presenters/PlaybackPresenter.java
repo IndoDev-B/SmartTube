@@ -55,6 +55,7 @@ public class PlaybackPresenter extends BasePresenter<PlaybackView> implements Pl
         super(context);
 
         // NOTE: position matters!!!
+        mEventListeners.add(new com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeController()); // first: sets incognito, takes channel keys
         mEventListeners.add(new VideoStateController());
         mEventListeners.add(new SuggestionsController());
         mEventListeners.add(new VideoLoaderController());
