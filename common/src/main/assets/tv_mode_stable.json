@@ -13,55 +13,484 @@
   },
   "channels": [
     {
-      "id": "science",
-      "name": "Science",
+      "id": "trending-english",
+      "name": "Trending English",
       "terms": [
-        "science explained documentary",
-        "physics explained",
-        "space documentary"
+        "trending this week",
+        "official video",
+        "highlights this week"
       ],
-      "length": "long"
-    },
-    {
-      "id": "documentaries",
-      "name": "Documentaries",
-      "terms": [
-        "full documentary",
-        "history documentary full",
-        "investigative documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "nature",
-      "name": "Nature",
-      "terms": [
-        "wildlife nature documentary 4k",
-        "bbc earth animals",
-        "ocean documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "travel",
-      "name": "Travel",
-      "terms": [
-        "travel vlog walking tour",
-        "city walking tour 4k",
-        "travel documentary"
-      ],
-      "length": "long",
+      "order": "trending",
+      "genre": "Trending",
       "languages": [
-        "*"
+        "en"
       ]
     },
     {
-      "id": "cooking",
-      "name": "Cooking",
+      "id": "trending-hindi",
+      "name": "Trending Hindi",
       "terms": [
-        "street food cooking",
-        "chef cooking recipe",
-        "food documentary"
+        "trending hindi",
+        "new hindi video",
+        "hindi highlights"
+      ],
+      "order": "trending",
+      "genre": "Trending",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "viral-english",
+      "name": "Viral English",
+      "terms": [
+        "viral video",
+        "caught on camera",
+        "funny moments"
+      ],
+      "order": "trending",
+      "length": "medium",
+      "genre": "Trending",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "viral-hindi",
+      "name": "Viral Hindi",
+      "terms": [
+        "viral video hindi",
+        "funny hindi video",
+        "desi viral"
+      ],
+      "order": "trending",
+      "length": "medium",
+      "genre": "Trending",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "westerns",
+      "name": "Westerns",
+      "terms": [
+        "western full movie",
+        "classic western movie full"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "classic-movies",
+      "name": "Classic Movies",
+      "terms": [
+        "classic full movie",
+        "old hollywood full movie",
+        "black and white full movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "retro-80s-movies",
+      "name": "Retro 80s Movies",
+      "terms": [
+        "80s full movie",
+        "1980s movie full"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "retro-90s-movies",
+      "name": "Retro 90s Movies",
+      "terms": [
+        "90s full movie",
+        "1990s movie full"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "action-movies",
+      "name": "Action Movies",
+      "terms": [
+        "action full movie",
+        "action thriller full movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "comedy-movies",
+      "name": "Comedy Movies",
+      "terms": [
+        "comedy full movie",
+        "romantic comedy full movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "sci-fi-movies",
+      "name": "Sci-fi Movies",
+      "terms": [
+        "sci fi full movie",
+        "science fiction full movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "horror-movies",
+      "name": "Horror Movies",
+      "terms": [
+        "horror full movie",
+        "thriller full movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "family-movies",
+      "name": "Family Movies",
+      "terms": [
+        "family full movie",
+        "adventure family movie full"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "bollywood-classics",
+      "name": "Bollywood Classics",
+      "terms": [
+        "old hindi full movie",
+        "classic bollywood movie",
+        "purani hindi film"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "creators": [
+        "Shemaroo Movies"
+      ],
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-80s",
+      "name": "Bollywood 80s",
+      "terms": [
+        "80s hindi full movie",
+        "1980s bollywood movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-90s",
+      "name": "Bollywood 90s",
+      "terms": [
+        "90s hindi full movie",
+        "1990s bollywood movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-action",
+      "name": "Bollywood Action",
+      "terms": [
+        "hindi action full movie",
+        "bollywood action movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-comedy",
+      "name": "Bollywood Comedy",
+      "terms": [
+        "hindi comedy full movie",
+        "bollywood comedy movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-romance",
+      "name": "Bollywood Romance",
+      "terms": [
+        "hindi romantic full movie",
+        "bollywood love story movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "south-dubbed",
+      "name": "South Dubbed",
+      "terms": [
+        "south indian hindi dubbed full movie",
+        "new south movie hindi dubbed"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "creators": [
+        "Goldmines"
+      ],
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hollywood-dubbed",
+      "name": "Hollywood Dubbed",
+      "terms": [
+        "hollywood hindi dubbed full movie",
+        "hollywood movie in hindi"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-family-movies",
+      "name": "Hindi Family Movies",
+      "terms": [
+        "hindi family full movie",
+        "bollywood family drama movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "genre": "Movies",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "movies-explained",
+      "name": "Movies Explained",
+      "terms": [
+        "movie explained",
+        "film analysis",
+        "behind the scenes film"
+      ],
+      "length": "medium",
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "short-films",
+      "name": "Short Films",
+      "terms": [
+        "award winning short film",
+        "animated short film",
+        "sci fi short film"
+      ],
+      "length": "medium",
+      "genre": "Movies",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "classic-hits",
+      "name": "Classic Hits",
+      "terms": [
+        "oldies 60s 70s hits",
+        "classic hits songs",
+        "golden oldies"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "retro-80s-hits",
+      "name": "Retro 80s Hits",
+      "terms": [
+        "80s hits music video",
+        "80s songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "retro-90s-hits",
+      "name": "Retro 90s Hits",
+      "terms": [
+        "90s hits music video",
+        "90s songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "2000s-hits",
+      "name": "2000s Hits",
+      "terms": [
+        "2000s hits music video",
+        "2000s songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "pop-hits",
+      "name": "Pop Hits",
+      "terms": [
+        "pop music video",
+        "top hits playlist",
+        "pop live performance"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "rock",
+      "name": "Rock",
+      "terms": [
+        "rock concert full",
+        "rock live performance",
+        "classic rock live"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hip-hop",
+      "name": "Hip Hop",
+      "terms": [
+        "hip hop live",
+        "rap music video",
+        "hip hop documentary"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "country",
+      "name": "Country",
+      "terms": [
+        "country music video",
+        "country songs hits",
+        "country live"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "en"
       ]
     },
     {
@@ -73,792 +502,24 @@
         "live acoustic session"
       ],
       "mode": "live",
+      "genre": "Songs",
       "languages": [
-        "*"
+        "en"
       ]
     },
     {
-      "id": "comedy",
-      "name": "Comedy",
+      "id": "music-lessons",
+      "name": "Music Lessons",
       "terms": [
-        "stand up comedy special",
-        "stand up comedy clip",
-        "sketch comedy"
-      ]
-    },
-    {
-      "id": "retro-tv",
-      "name": "Retro TV",
-      "terms": [
-        "90s tv commercials compilation",
-        "classic tv show full episode",
-        "80s commercials"
-      ]
-    },
-    {
-      "id": "woodworking",
-      "name": "Woodworking",
-      "terms": [
-        "japanese joinery",
-        "hand tool woodworking",
-        "woodworking project build"
-      ]
-    },
-    {
-      "id": "space",
-      "name": "Space",
-      "terms": [
-        "space documentary",
-        "universe explained",
-        "nasa mission documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "history",
-      "name": "History",
-      "terms": [
-        "history documentary",
-        "ancient history documentary",
-        "world war documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "true-crime",
-      "name": "True Crime",
-      "terms": [
-        "true crime documentary",
-        "crime investigation documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "technology",
-      "name": "Technology",
-      "terms": [
-        "technology explained",
-        "how it works engineering",
-        "tech documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "engineering",
-      "name": "Engineering",
-      "terms": [
-        "megaprojects engineering",
-        "how it's made factory",
-        "engineering documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "aviation",
-      "name": "Aviation",
-      "terms": [
-        "aviation documentary",
-        "air crash investigation",
-        "cockpit landing 4k"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "trains",
-      "name": "Trains",
-      "terms": [
-        "train cab ride 4k",
-        "railway documentary",
-        "train journey scenic"
-      ],
-      "length": "long",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "ships-and-sea",
-      "name": "Ships and Sea",
-      "terms": [
-        "ship documentary",
-        "ocean voyage",
-        "life at sea documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "cars",
-      "name": "Cars",
-      "terms": [
-        "car review",
-        "car restoration",
-        "supercar documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "motorcycles",
-      "name": "Motorcycles",
-      "terms": [
-        "motorcycle touring",
-        "motorcycle review",
-        "motorcycle restoration"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "formula-1",
-      "name": "Formula 1",
-      "terms": [
-        "formula 1 race highlights",
-        "f1 documentary",
-        "f1 onboard"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "cricket",
-      "name": "Cricket",
-      "terms": [
-        "cricket highlights",
-        "cricket classic match",
-        "cricket documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "football",
-      "name": "Football",
-      "terms": [
-        "football highlights",
-        "football documentary",
-        "best goals"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "tennis",
-      "name": "Tennis",
-      "terms": [
-        "tennis highlights",
-        "tennis classic match"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "basketball",
-      "name": "Basketball",
-      "terms": [
-        "nba highlights",
-        "basketball documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "combat-sports",
-      "name": "Combat Sports",
-      "terms": [
-        "ufc full fight",
-        "boxing full fight",
-        "martial arts documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "extreme-sports",
-      "name": "Extreme Sports",
-      "terms": [
-        "extreme sports 4k",
-        "red bull documentary",
-        "mountain bike downhill"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "fitness",
-      "name": "Fitness",
-      "terms": [
-        "full body workout",
-        "home workout no equipment",
-        "yoga for beginners"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "yoga-and-meditation",
-      "name": "Yoga and Meditation",
-      "terms": [
-        "yoga flow",
-        "guided meditation",
-        "breathing exercise"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "running-and-cycling",
-      "name": "Running and Cycling",
-      "terms": [
-        "marathon documentary",
-        "cycling race highlights",
-        "trail running film"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "hiking-and-camping",
-      "name": "Hiking and Camping",
-      "terms": [
-        "solo camping",
-        "hiking documentary",
-        "bushcraft overnight"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "fishing",
-      "name": "Fishing",
-      "terms": [
-        "fishing trip",
-        "deep sea fishing",
-        "fly fishing film"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "survival",
-      "name": "Survival",
-      "terms": [
-        "survival challenge",
-        "wilderness survival",
-        "primitive technology"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "mountains",
-      "name": "Mountains",
-      "terms": [
-        "mountaineering documentary",
-        "everest documentary",
-        "alpine climb film"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "oceans",
-      "name": "Oceans",
-      "terms": [
-        "ocean documentary 4k",
-        "deep sea creatures",
-        "coral reef 4k"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "animals",
-      "name": "Animals",
-      "terms": [
-        "animal documentary",
-        "funny animals compilation",
-        "zoo keeper"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "dogs-and-cats",
-      "name": "Dogs and Cats",
-      "terms": [
-        "dog training",
-        "cat videos compilation",
-        "puppy rescue"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "birds",
-      "name": "Birds",
-      "terms": [
-        "bird documentary",
-        "birdwatching 4k",
-        "bird song nature"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "farming",
-      "name": "Farming",
-      "terms": [
-        "farm life vlog",
-        "modern farming machines",
-        "harvest documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "gardening",
-      "name": "Gardening",
-      "terms": [
-        "gardening for beginners",
-        "vegetable garden tour",
-        "garden makeover"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "home-renovation",
-      "name": "Home Renovation",
-      "terms": [
-        "home renovation",
-        "house flip before after",
-        "diy home improvement"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "interior-design",
-      "name": "Interior Design",
-      "terms": [
-        "interior design ideas",
-        "home tour",
-        "apartment makeover"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "architecture",
-      "name": "Architecture",
-      "terms": [
-        "architecture documentary",
-        "modern house tour",
-        "famous buildings explained"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "tiny-homes",
-      "name": "Tiny Homes",
-      "terms": [
-        "tiny house tour",
-        "van life tour",
-        "cabin build"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "diy-and-crafts",
-      "name": "DIY and Crafts",
-      "terms": [
-        "diy projects",
-        "craft ideas",
-        "handmade restoration"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "restoration",
-      "name": "Restoration",
-      "terms": [
-        "restoration video",
-        "antique restoration",
-        "tool restoration"
+        "guitar lesson",
+        "piano tutorial",
+        "music theory explained"
       ],
       "length": "medium",
+      "genre": "Songs",
       "languages": [
-        "*"
+        "en"
       ]
-    },
-    {
-      "id": "metalwork",
-      "name": "Metalwork",
-      "terms": [
-        "blacksmith forging",
-        "knife making",
-        "welding project"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "electronics",
-      "name": "Electronics",
-      "terms": [
-        "electronics repair",
-        "electronics project",
-        "circuit explained"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "programming",
-      "name": "Programming",
-      "terms": [
-        "programming tutorial",
-        "coding explained",
-        "software engineering talk"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "ai-and-robots",
-      "name": "AI and Robots",
-      "terms": [
-        "artificial intelligence explained",
-        "robotics documentary",
-        "machine learning lecture"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "gadgets",
-      "name": "Gadgets",
-      "terms": [
-        "gadget review",
-        "smartphone review",
-        "tech unboxing"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "gaming",
-      "name": "Gaming",
-      "terms": [
-        "gameplay walkthrough",
-        "game review",
-        "gaming documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "retro-gaming",
-      "name": "Retro Gaming",
-      "terms": [
-        "retro games",
-        "classic console review",
-        "arcade history"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "esports",
-      "name": "Esports",
-      "terms": [
-        "esports tournament highlights",
-        "esports documentary"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "chess",
-      "name": "Chess",
-      "terms": [
-        "chess game analysis",
-        "chess grandmaster",
-        "chess tournament"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "board-games",
-      "name": "Board Games",
-      "terms": [
-        "board game review",
-        "how to play board game"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "movies-explained",
-      "name": "Movies Explained",
-      "terms": [
-        "movie explained",
-        "film analysis",
-        "behind the scenes film"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "magic",
-      "name": "Magic",
-      "terms": [
-        "magic tricks revealed",
-        "street magic",
-        "illusionist show"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "short-films",
-      "name": "Short Films",
-      "terms": [
-        "award winning short film",
-        "animated short film",
-        "sci fi short film"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "animation",
-      "name": "Animation",
-      "terms": [
-        "animation short",
-        "how animation is made",
-        "classic cartoons"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "anime",
-      "name": "Anime",
-      "terms": [
-        "anime explained",
-        "anime review",
-        "anime opening compilation"
-      ],
-      "length": "medium",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "stand-up-comedy",
-      "name": "Stand-up Comedy",
-      "terms": [
-        "stand up comedy special",
-        "stand up comedy full show"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "sketch-comedy",
-      "name": "Sketch Comedy",
-      "terms": [
-        "sketch comedy",
-        "comedy skits",
-        "improv comedy"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "talk-shows",
-      "name": "Talk Shows",
-      "terms": [
-        "late night show interview",
-        "celebrity interview",
-        "talk show full episode"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "podcasts",
-      "name": "Podcasts",
-      "terms": [
-        "podcast full episode",
-        "long form interview",
-        "conversation podcast"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "news-analysis",
-      "name": "News Analysis",
-      "terms": [
-        "news explained",
-        "current affairs analysis",
-        "geopolitics explained"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "business",
-      "name": "Business",
-      "terms": [
-        "business documentary",
-        "company story",
-        "entrepreneur interview"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "economics",
-      "name": "Economics",
-      "terms": [
-        "economics explained",
-        "economy documentary",
-        "how money works"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "investing",
-      "name": "Investing",
-      "terms": [
-        "investing for beginners",
-        "stock market explained",
-        "personal finance"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "startups",
-      "name": "Startups",
-      "terms": [
-        "startup story",
-        "founder interview",
-        "how i built this"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "science-experiments",
-      "name": "Science Experiments",
-      "terms": [
-        "science experiments",
-        "physics experiment",
-        "chemistry demonstration"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "mathematics",
-      "name": "Mathematics",
-      "terms": [
-        "math explained",
-        "mathematics lecture",
-        "number theory visual"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "physics",
-      "name": "Physics",
-      "terms": [
-        "physics lecture",
-        "quantum mechanics explained",
-        "relativity explained"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "biology",
-      "name": "Biology",
-      "terms": [
-        "biology documentary",
-        "human body explained",
-        "evolution documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "medicine",
-      "name": "Medicine",
-      "terms": [
-        "medical documentary",
-        "surgery explained",
-        "doctor explains"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "psychology",
-      "name": "Psychology",
-      "terms": [
-        "psychology explained",
-        "human behavior documentary",
-        "psychology lecture"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "philosophy",
-      "name": "Philosophy",
-      "terms": [
-        "philosophy lecture",
-        "stoicism explained",
-        "philosophy documentary"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "lectures",
-      "name": "Lectures",
-      "terms": [
-        "university lecture",
-        "ted talk",
-        "public lecture"
-      ],
-      "length": "long"
-    },
-    {
-      "id": "languages",
-      "name": "Languages",
-      "terms": [
-        "learn english conversation",
-        "language learning tips",
-        "learn spanish"
-      ],
-      "length": "medium",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "book-reviews",
-      "name": "Book Reviews",
-      "terms": [
-        "book review",
-        "book summary",
-        "author interview"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "art",
-      "name": "Art",
-      "terms": [
-        "art documentary",
-        "painting tutorial",
-        "art history explained"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "painting-and-drawing",
-      "name": "Painting and Drawing",
-      "terms": [
-        "oil painting demo",
-        "drawing tutorial",
-        "watercolor landscape"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "photography",
-      "name": "Photography",
-      "terms": [
-        "photography tutorial",
-        "street photography",
-        "photo editing"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "filmmaking",
-      "name": "Filmmaking",
-      "terms": [
-        "filmmaking tutorial",
-        "cinematography breakdown",
-        "video editing"
-      ],
-      "length": "medium"
-    },
-    {
-      "id": "fashion",
-      "name": "Fashion",
-      "terms": [
-        "fashion show",
-        "fashion documentary",
-        "style guide"
-      ],
-      "length": "medium"
     },
     {
       "id": "classical-music",
@@ -869,6 +530,7 @@
         "piano recital"
       ],
       "length": "long",
+      "genre": "Songs",
       "languages": [
         "*"
       ]
@@ -882,45 +544,7 @@
         "jazz full album"
       ],
       "length": "long",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "rock",
-      "name": "Rock",
-      "terms": [
-        "rock concert full",
-        "rock live performance",
-        "classic rock live"
-      ],
-      "length": "long",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "pop-hits",
-      "name": "Pop Hits",
-      "terms": [
-        "pop music video",
-        "top hits playlist",
-        "pop live performance"
-      ],
-      "length": "medium",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "hip-hop",
-      "name": "Hip Hop",
-      "terms": [
-        "hip hop live",
-        "rap music video",
-        "hip hop documentary"
-      ],
-      "length": "medium",
+      "genre": "Songs",
       "languages": [
         "*"
       ]
@@ -934,6 +558,7 @@
         "techno boiler room"
       ],
       "length": "long",
+      "genre": "Songs",
       "languages": [
         "*"
       ]
@@ -947,45 +572,7 @@
         "study music"
       ],
       "length": "long",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "indian-classical",
-      "name": "Indian Classical",
-      "terms": [
-        "hindustani classical concert",
-        "carnatic music concert",
-        "sitar recital"
-      ],
-      "length": "long",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "bollywood-songs",
-      "name": "Bollywood Songs",
-      "terms": [
-        "bollywood songs",
-        "hindi songs jukebox",
-        "bollywood live concert"
-      ],
-      "length": "medium",
-      "languages": [
-        "*"
-      ]
-    },
-    {
-      "id": "devotional",
-      "name": "Devotional",
-      "terms": [
-        "bhajan",
-        "devotional songs",
-        "kirtan live"
-      ],
-      "length": "medium",
+      "genre": "Songs",
       "languages": [
         "*"
       ]
@@ -999,19 +586,1268 @@
         "flamenco live"
       ],
       "length": "medium",
+      "genre": "Songs",
       "languages": [
         "*"
       ]
     },
     {
-      "id": "music-lessons",
-      "name": "Music Lessons",
+      "id": "indian-classical",
+      "name": "Indian Classical",
       "terms": [
-        "guitar lesson",
-        "piano tutorial",
-        "music theory explained"
+        "hindustani classical concert",
+        "carnatic music concert",
+        "sitar recital"
       ],
-      "length": "medium"
+      "length": "long",
+      "genre": "Songs",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "old-hindi-songs",
+      "name": "Old Hindi Songs",
+      "terms": [
+        "purane hindi gaane",
+        "old hindi songs",
+        "lata kishore rafi songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-80s-songs",
+      "name": "Bollywood 80s Songs",
+      "terms": [
+        "80s hindi songs",
+        "1980s bollywood songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-90s-songs",
+      "name": "Bollywood 90s Songs",
+      "terms": [
+        "90s hindi songs",
+        "1990s bollywood songs",
+        "kumar sanu alka yagnik songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-2000s-songs",
+      "name": "Bollywood 2000s Songs",
+      "terms": [
+        "2000s hindi songs",
+        "2000s bollywood songs"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bollywood-songs",
+      "name": "Bollywood Songs",
+      "terms": [
+        "new hindi songs",
+        "latest bollywood songs",
+        "bollywood songs jukebox"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "ghazals",
+      "name": "Ghazals",
+      "terms": [
+        "ghazal",
+        "jagjit singh ghazals",
+        "ghulam ali ghazal"
+      ],
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "sufi-and-qawwali",
+      "name": "Sufi and Qawwali",
+      "terms": [
+        "qawwali",
+        "sufi songs",
+        "nusrat fateh ali khan"
+      ],
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "devotional",
+      "name": "Devotional",
+      "terms": [
+        "bhajan",
+        "devotional songs",
+        "kirtan live"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-indie",
+      "name": "Hindi Indie",
+      "terms": [
+        "hindi indie songs",
+        "coke studio india",
+        "indie pop hindi"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "genre": "Songs",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "comedy",
+      "name": "Comedy",
+      "terms": [
+        "stand up comedy special",
+        "stand up comedy clip",
+        "sketch comedy"
+      ],
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "stand-up-comedy",
+      "name": "Stand-up Comedy",
+      "terms": [
+        "stand up comedy special",
+        "stand up comedy full show"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "sketch-comedy",
+      "name": "Sketch Comedy",
+      "terms": [
+        "sketch comedy",
+        "comedy skits",
+        "improv comedy"
+      ],
+      "length": "medium",
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "comedy-shows",
+      "name": "Comedy Shows",
+      "terms": [
+        "late night comedy show",
+        "snl sketches",
+        "comedy show full episode"
+      ],
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "reality-shows",
+      "name": "Reality Shows",
+      "terms": [
+        "reality show full episode",
+        "talent show auditions"
+      ],
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "talk-shows",
+      "name": "Talk Shows",
+      "terms": [
+        "late night show interview",
+        "celebrity interview",
+        "talk show full episode"
+      ],
+      "length": "medium",
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "retro-tv",
+      "name": "Retro TV",
+      "terms": [
+        "90s tv commercials compilation",
+        "classic tv show full episode",
+        "80s commercials"
+      ],
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "magic",
+      "name": "Magic",
+      "terms": [
+        "magic tricks revealed",
+        "street magic",
+        "illusionist show"
+      ],
+      "length": "medium",
+      "genre": "Entertainment",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-stand-up",
+      "name": "Hindi Stand-up",
+      "terms": [
+        "stand up comedy hindi",
+        "hindi stand up comedy special"
+      ],
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-comedy-shows",
+      "name": "Hindi Comedy Shows",
+      "terms": [
+        "kapil sharma show",
+        "hindi comedy show full episode"
+      ],
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-reality-shows",
+      "name": "Hindi Reality Shows",
+      "terms": [
+        "hindi reality show full episode",
+        "indian idol performance",
+        "shark tank india"
+      ],
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "kavi-sammelan",
+      "name": "Kavi Sammelan",
+      "terms": [
+        "kavi sammelan",
+        "hasya kavi sammelan"
+      ],
+      "genre": "Entertainment",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "doordarshan-classics",
+      "name": "Doordarshan Classics",
+      "terms": [
+        "doordarshan old serials",
+        "old hindi tv serial full episode"
+      ],
+      "playlists": true,
+      "genre": "Entertainment",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "cartoons",
+      "name": "Cartoons",
+      "terms": [
+        "cartoons for kids full episodes",
+        "kids cartoon"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "nursery-rhymes",
+      "name": "Nursery Rhymes",
+      "terms": [
+        "nursery rhymes",
+        "kids songs"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "kids-stories",
+      "name": "Kids Stories",
+      "terms": [
+        "bedtime stories for kids",
+        "fairy tales for kids"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "kids-learning",
+      "name": "Kids Learning",
+      "terms": [
+        "learning videos for kids",
+        "science for kids"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "animation",
+      "name": "Animation",
+      "terms": [
+        "animation short",
+        "how animation is made",
+        "classic cartoons"
+      ],
+      "length": "medium",
+      "genre": "Kids",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "anime",
+      "name": "Anime",
+      "terms": [
+        "anime explained",
+        "anime review",
+        "anime opening compilation"
+      ],
+      "length": "medium",
+      "genre": "Kids",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-cartoons",
+      "name": "Hindi Cartoons",
+      "terms": [
+        "hindi cartoon",
+        "cartoon in hindi for kids"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "bal-geet",
+      "name": "Bal Geet",
+      "terms": [
+        "hindi rhymes",
+        "bal geet",
+        "hindi nursery rhymes"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "kahaniyan",
+      "name": "Kahaniyan",
+      "terms": [
+        "hindi kahaniya",
+        "moral stories in hindi",
+        "bachon ki kahani"
+      ],
+      "playlists": true,
+      "genre": "Kids",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "documentaries",
+      "name": "Documentaries",
+      "terms": [
+        "full documentary",
+        "history documentary full",
+        "investigative documentary"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "terms": [
+        "history documentary",
+        "ancient history documentary",
+        "world war documentary"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "true-crime",
+      "name": "True Crime",
+      "terms": [
+        "true crime documentary",
+        "crime investigation documentary"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "war",
+      "name": "War",
+      "terms": [
+        "war documentary",
+        "ww2 documentary full"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "biographies",
+      "name": "Biographies",
+      "terms": [
+        "biography documentary",
+        "life story documentary"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "mysteries",
+      "name": "Mysteries",
+      "terms": [
+        "unsolved mysteries documentary",
+        "mystery documentary"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-documentaries",
+      "name": "Hindi Documentaries",
+      "terms": [
+        "documentary in hindi",
+        "hindi documentary full"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "itihaas",
+      "name": "Itihaas",
+      "terms": [
+        "itihas documentary hindi",
+        "indian history in hindi"
+      ],
+      "length": "long",
+      "genre": "Documentary",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "science",
+      "name": "Science",
+      "terms": [
+        "science explained documentary",
+        "physics explained",
+        "space documentary"
+      ],
+      "length": "long",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "space",
+      "name": "Space",
+      "terms": [
+        "space documentary",
+        "universe explained",
+        "nasa mission documentary"
+      ],
+      "length": "long",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "science-experiments",
+      "name": "Science Experiments",
+      "terms": [
+        "science experiments",
+        "physics experiment",
+        "chemistry demonstration"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "mathematics",
+      "name": "Mathematics",
+      "terms": [
+        "math explained",
+        "mathematics lecture",
+        "number theory visual"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "physics",
+      "name": "Physics",
+      "terms": [
+        "physics lecture",
+        "quantum mechanics explained",
+        "relativity explained"
+      ],
+      "length": "long",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "biology",
+      "name": "Biology",
+      "terms": [
+        "biology documentary",
+        "human body explained",
+        "evolution documentary"
+      ],
+      "length": "long",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "medicine",
+      "name": "Medicine",
+      "terms": [
+        "medical documentary",
+        "surgery explained",
+        "doctor explains"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "psychology",
+      "name": "Psychology",
+      "terms": [
+        "psychology explained",
+        "human behavior documentary",
+        "psychology lecture"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy",
+      "terms": [
+        "philosophy lecture",
+        "stoicism explained",
+        "philosophy documentary"
+      ],
+      "length": "long",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "lectures",
+      "name": "Lectures",
+      "terms": [
+        "university lecture",
+        "ted talk",
+        "public lecture"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "languages",
+      "name": "Languages",
+      "terms": [
+        "learn english conversation",
+        "language learning tips",
+        "learn spanish"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "book-reviews",
+      "name": "Book Reviews",
+      "terms": [
+        "book review",
+        "book summary",
+        "author interview"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "vigyan",
+      "name": "Vigyan",
+      "terms": [
+        "science in hindi",
+        "vigyan documentary hindi"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-gyan",
+      "name": "Hindi Gyan",
+      "terms": [
+        "facts in hindi",
+        "knowledge videos hindi"
+      ],
+      "length": "medium",
+      "genre": "Science",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "technology",
+      "name": "Technology",
+      "terms": [
+        "technology explained",
+        "how it works engineering",
+        "tech documentary"
+      ],
+      "length": "medium",
+      "genre": "Tech",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "engineering",
+      "name": "Engineering",
+      "terms": [
+        "megaprojects engineering",
+        "how it's made factory",
+        "engineering documentary"
+      ],
+      "length": "medium",
+      "genre": "Tech",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "electronics",
+      "name": "Electronics",
+      "terms": [
+        "electronics repair",
+        "electronics project",
+        "circuit explained"
+      ],
+      "length": "medium",
+      "genre": "Tech",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "programming",
+      "name": "Programming",
+      "terms": [
+        "programming tutorial",
+        "coding explained",
+        "software engineering talk"
+      ],
+      "length": "long",
+      "genre": "Tech",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "ai-and-robots",
+      "name": "AI and Robots",
+      "terms": [
+        "artificial intelligence explained",
+        "robotics documentary",
+        "machine learning lecture"
+      ],
+      "length": "medium",
+      "genre": "Tech",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "gadgets",
+      "name": "Gadgets",
+      "terms": [
+        "gadget review",
+        "smartphone review",
+        "tech unboxing"
+      ],
+      "length": "medium",
+      "genre": "Tech",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-tech",
+      "name": "Hindi Tech",
+      "terms": [
+        "tech review hindi",
+        "smartphone review hindi"
+      ],
+      "length": "medium",
+      "genre": "Tech",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-coding",
+      "name": "Hindi Coding",
+      "terms": [
+        "programming tutorial hindi",
+        "coding in hindi"
+      ],
+      "length": "long",
+      "genre": "Tech",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "news-analysis",
+      "name": "News Analysis",
+      "terms": [
+        "news explained",
+        "current affairs analysis",
+        "geopolitics explained"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "terms": [
+        "business documentary",
+        "company story",
+        "entrepreneur interview"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "economics",
+      "name": "Economics",
+      "terms": [
+        "economics explained",
+        "economy documentary",
+        "how money works"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "investing",
+      "name": "Investing",
+      "terms": [
+        "investing for beginners",
+        "stock market explained",
+        "personal finance"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "startups",
+      "name": "Startups",
+      "terms": [
+        "startup story",
+        "founder interview",
+        "how i built this"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-news-analysis",
+      "name": "Hindi News Analysis",
+      "terms": [
+        "news analysis hindi",
+        "current affairs hindi"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-finance",
+      "name": "Hindi Finance",
+      "terms": [
+        "share market hindi",
+        "personal finance hindi"
+      ],
+      "length": "medium",
+      "genre": "News and Business",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "podcasts",
+      "name": "Podcasts",
+      "terms": [
+        "podcast full episode",
+        "long form interview",
+        "conversation podcast"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "science-podcasts",
+      "name": "Science Podcasts",
+      "terms": [
+        "science podcast full episode"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "tech-podcasts",
+      "name": "Tech Podcasts",
+      "terms": [
+        "technology podcast full episode"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "business-podcasts",
+      "name": "Business Podcasts",
+      "terms": [
+        "business podcast full episode"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "history-podcasts",
+      "name": "History Podcasts",
+      "terms": [
+        "history podcast full episode"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "comedy-podcasts",
+      "name": "Comedy Podcasts",
+      "terms": [
+        "comedy podcast full episode"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-podcasts",
+      "name": "Hindi Podcasts",
+      "terms": [
+        "hindi podcast full episode",
+        "podcast in hindi interview"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-business-podcasts",
+      "name": "Hindi Business Podcasts",
+      "terms": [
+        "business podcast hindi",
+        "startup podcast hindi"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "spirituality",
+      "name": "Spirituality",
+      "terms": [
+        "spiritual podcast hindi",
+        "adhyatmik pravachan"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-comedy-podcasts",
+      "name": "Hindi Comedy Podcasts",
+      "terms": [
+        "comedy podcast hindi"
+      ],
+      "length": "long",
+      "playlists": true,
+      "genre": "Podcasts",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "cricket",
+      "name": "Cricket",
+      "terms": [
+        "cricket highlights",
+        "cricket classic match",
+        "cricket documentary"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "football",
+      "name": "Football",
+      "terms": [
+        "football highlights",
+        "football documentary",
+        "best goals"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "tennis",
+      "name": "Tennis",
+      "terms": [
+        "tennis highlights",
+        "tennis classic match"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "basketball",
+      "name": "Basketball",
+      "terms": [
+        "nba highlights",
+        "basketball documentary"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "combat-sports",
+      "name": "Combat Sports",
+      "terms": [
+        "ufc full fight",
+        "boxing full fight",
+        "martial arts documentary"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "extreme-sports",
+      "name": "Extreme Sports",
+      "terms": [
+        "extreme sports 4k",
+        "red bull documentary",
+        "mountain bike downhill"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "fitness",
+      "name": "Fitness",
+      "terms": [
+        "full body workout",
+        "home workout no equipment",
+        "yoga for beginners"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "yoga-and-meditation",
+      "name": "Yoga and Meditation",
+      "terms": [
+        "yoga flow",
+        "guided meditation",
+        "breathing exercise"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "running-and-cycling",
+      "name": "Running and Cycling",
+      "terms": [
+        "marathon documentary",
+        "cycling race highlights",
+        "trail running film"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "cricket-hindi",
+      "name": "Cricket Hindi",
+      "terms": [
+        "cricket highlights hindi commentary",
+        "cricket analysis hindi"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "hindi-fitness",
+      "name": "Hindi Fitness",
+      "terms": [
+        "workout hindi",
+        "yoga in hindi"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "kabaddi-and-kushti",
+      "name": "Kabaddi and Kushti",
+      "terms": [
+        "kabaddi highlights",
+        "kushti dangal"
+      ],
+      "length": "medium",
+      "genre": "Sports",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "cooking",
+      "name": "Cooking",
+      "terms": [
+        "street food cooking",
+        "chef cooking recipe",
+        "food documentary"
+      ],
+      "genre": "Food",
+      "languages": [
+        "en"
+      ]
     },
     {
       "id": "baking",
@@ -1021,7 +1857,11 @@
         "bread baking",
         "cake decorating"
       ],
-      "length": "medium"
+      "length": "medium",
+      "genre": "Food",
+      "languages": [
+        "en"
+      ]
     },
     {
       "id": "world-cuisine",
@@ -1031,7 +1871,11 @@
         "restaurant kitchen",
         "chef cooking at home"
       ],
-      "length": "medium"
+      "length": "medium",
+      "genre": "Food",
+      "languages": [
+        "en"
+      ]
     },
     {
       "id": "indian-cooking",
@@ -1041,7 +1885,11 @@
         "indian street food",
         "home style curry"
       ],
-      "length": "medium"
+      "length": "medium",
+      "genre": "Food",
+      "languages": [
+        "en"
+      ]
     },
     {
       "id": "barbecue",
@@ -1051,7 +1899,889 @@
         "grilling recipe",
         "smoked meat"
       ],
-      "length": "medium"
+      "length": "medium",
+      "genre": "Food",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-recipes",
+      "name": "Hindi Recipes",
+      "terms": [
+        "recipe in hindi",
+        "ghar ka khana recipe"
+      ],
+      "length": "medium",
+      "genre": "Food",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "indian-street-food",
+      "name": "Indian Street Food",
+      "terms": [
+        "indian street food hindi",
+        "street food india"
+      ],
+      "length": "medium",
+      "genre": "Food",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "travel",
+      "name": "Travel",
+      "terms": [
+        "travel vlog walking tour",
+        "city walking tour 4k",
+        "travel documentary"
+      ],
+      "length": "long",
+      "genre": "Travel",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "road-trips",
+      "name": "Road Trips",
+      "terms": [
+        "road trip vlog",
+        "van life travel"
+      ],
+      "length": "medium",
+      "genre": "Travel",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hiking-and-camping",
+      "name": "Hiking and Camping",
+      "terms": [
+        "solo camping",
+        "hiking documentary",
+        "bushcraft overnight"
+      ],
+      "length": "long",
+      "genre": "Travel",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "fishing",
+      "name": "Fishing",
+      "terms": [
+        "fishing trip",
+        "deep sea fishing",
+        "fly fishing film"
+      ],
+      "length": "medium",
+      "genre": "Travel",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "terms": [
+        "survival challenge",
+        "wilderness survival",
+        "primitive technology"
+      ],
+      "length": "long",
+      "genre": "Travel",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "india-travel",
+      "name": "India Travel",
+      "terms": [
+        "india travel vlog hindi",
+        "travel vlog hindi"
+      ],
+      "length": "medium",
+      "genre": "Travel",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "nature",
+      "name": "Nature",
+      "terms": [
+        "wildlife nature documentary 4k",
+        "bbc earth animals",
+        "ocean documentary"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "mountains",
+      "name": "Mountains",
+      "terms": [
+        "mountaineering documentary",
+        "everest documentary",
+        "alpine climb film"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "oceans",
+      "name": "Oceans",
+      "terms": [
+        "ocean documentary 4k",
+        "deep sea creatures",
+        "coral reef 4k"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "animals",
+      "name": "Animals",
+      "terms": [
+        "animal documentary",
+        "funny animals compilation",
+        "zoo keeper"
+      ],
+      "length": "medium",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "dogs-and-cats",
+      "name": "Dogs and Cats",
+      "terms": [
+        "dog training",
+        "cat videos compilation",
+        "puppy rescue"
+      ],
+      "length": "medium",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "birds",
+      "name": "Birds",
+      "terms": [
+        "bird documentary",
+        "birdwatching 4k",
+        "bird song nature"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "aviation",
+      "name": "Aviation",
+      "terms": [
+        "aviation documentary",
+        "air crash investigation",
+        "cockpit landing 4k"
+      ],
+      "length": "long",
+      "genre": "Vehicles",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "trains",
+      "name": "Trains",
+      "terms": [
+        "train cab ride 4k",
+        "railway documentary",
+        "train journey scenic"
+      ],
+      "length": "long",
+      "genre": "Vehicles",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "ships-and-sea",
+      "name": "Ships and Sea",
+      "terms": [
+        "ship documentary",
+        "ocean voyage",
+        "life at sea documentary"
+      ],
+      "length": "long",
+      "genre": "Vehicles",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "cars",
+      "name": "Cars",
+      "terms": [
+        "car review",
+        "car restoration",
+        "supercar documentary"
+      ],
+      "length": "medium",
+      "genre": "Vehicles",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "motorcycles",
+      "name": "Motorcycles",
+      "terms": [
+        "motorcycle touring",
+        "motorcycle review",
+        "motorcycle restoration"
+      ],
+      "length": "medium",
+      "genre": "Vehicles",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "formula-1",
+      "name": "Formula 1",
+      "terms": [
+        "formula 1 race highlights",
+        "f1 documentary",
+        "f1 onboard"
+      ],
+      "length": "medium",
+      "genre": "Vehicles",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-auto",
+      "name": "Hindi Auto",
+      "terms": [
+        "car review hindi",
+        "bike review hindi"
+      ],
+      "length": "medium",
+      "genre": "Vehicles",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "woodworking",
+      "name": "Woodworking",
+      "terms": [
+        "japanese joinery",
+        "hand tool woodworking",
+        "woodworking project build"
+      ],
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "farming",
+      "name": "Farming",
+      "terms": [
+        "farm life vlog",
+        "modern farming machines",
+        "harvest documentary"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "gardening",
+      "name": "Gardening",
+      "terms": [
+        "gardening for beginners",
+        "vegetable garden tour",
+        "garden makeover"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "home-renovation",
+      "name": "Home Renovation",
+      "terms": [
+        "home renovation",
+        "house flip before after",
+        "diy home improvement"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "interior-design",
+      "name": "Interior Design",
+      "terms": [
+        "interior design ideas",
+        "home tour",
+        "apartment makeover"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "architecture",
+      "name": "Architecture",
+      "terms": [
+        "architecture documentary",
+        "modern house tour",
+        "famous buildings explained"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "tiny-homes",
+      "name": "Tiny Homes",
+      "terms": [
+        "tiny house tour",
+        "van life tour",
+        "cabin build"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "diy-and-crafts",
+      "name": "DIY and Crafts",
+      "terms": [
+        "diy projects",
+        "craft ideas",
+        "handmade restoration"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "restoration",
+      "name": "Restoration",
+      "terms": [
+        "restoration video",
+        "antique restoration",
+        "tool restoration"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "metalwork",
+      "name": "Metalwork",
+      "terms": [
+        "blacksmith forging",
+        "knife making",
+        "welding project"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "kheti",
+      "name": "Kheti",
+      "terms": [
+        "kheti kisani",
+        "farming in hindi"
+      ],
+      "length": "medium",
+      "genre": "Home and DIY",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "gaming",
+      "name": "Gaming",
+      "terms": [
+        "gameplay walkthrough",
+        "game review",
+        "gaming documentary"
+      ],
+      "length": "medium",
+      "genre": "Gaming",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "retro-gaming",
+      "name": "Retro Gaming",
+      "terms": [
+        "retro games",
+        "classic console review",
+        "arcade history"
+      ],
+      "length": "medium",
+      "genre": "Gaming",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "esports",
+      "name": "Esports",
+      "terms": [
+        "esports tournament highlights",
+        "esports documentary"
+      ],
+      "length": "medium",
+      "genre": "Gaming",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "chess",
+      "name": "Chess",
+      "terms": [
+        "chess game analysis",
+        "chess grandmaster",
+        "chess tournament"
+      ],
+      "length": "medium",
+      "genre": "Gaming",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "board-games",
+      "name": "Board Games",
+      "terms": [
+        "board game review",
+        "how to play board game"
+      ],
+      "length": "medium",
+      "genre": "Gaming",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "hindi-gaming",
+      "name": "Hindi Gaming",
+      "terms": [
+        "gaming hindi",
+        "gameplay hindi commentary"
+      ],
+      "length": "medium",
+      "genre": "Gaming",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "art",
+      "name": "Art",
+      "terms": [
+        "art documentary",
+        "painting tutorial",
+        "art history explained"
+      ],
+      "length": "medium",
+      "genre": "Art",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "painting-and-drawing",
+      "name": "Painting and Drawing",
+      "terms": [
+        "oil painting demo",
+        "drawing tutorial",
+        "watercolor landscape"
+      ],
+      "length": "medium",
+      "genre": "Art",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "photography",
+      "name": "Photography",
+      "terms": [
+        "photography tutorial",
+        "street photography",
+        "photo editing"
+      ],
+      "length": "medium",
+      "genre": "Art",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "filmmaking",
+      "name": "Filmmaking",
+      "terms": [
+        "filmmaking tutorial",
+        "cinematography breakdown",
+        "video editing"
+      ],
+      "length": "medium",
+      "genre": "Art",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "fashion",
+      "name": "Fashion",
+      "terms": [
+        "fashion show",
+        "fashion documentary",
+        "style guide"
+      ],
+      "length": "medium",
+      "genre": "Art",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "fireplace",
+      "name": "Fireplace",
+      "terms": [
+        "fireplace 4k crackling",
+        "fireplace burning relaxing"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "rain",
+      "name": "Rain",
+      "terms": [
+        "rain sounds",
+        "rain on window 4k"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "ocean-waves",
+      "name": "Ocean Waves",
+      "terms": [
+        "ocean waves 4k",
+        "beach waves relaxing"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "terms": [
+        "forest sounds 4k",
+        "birdsong forest ambience"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "city-walks",
+      "name": "City Walks",
+      "terms": [
+        "city walk 4k",
+        "walking tour 4k no talking"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "scenic-rides",
+      "name": "Scenic Rides",
+      "terms": [
+        "scenic train ride 4k",
+        "driving 4k scenic"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "aquarium",
+      "name": "Aquarium",
+      "terms": [
+        "aquarium 4k",
+        "coral reef aquarium relaxing"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "cafe",
+      "name": "Cafe",
+      "terms": [
+        "coffee shop ambience",
+        "cafe jazz ambience"
+      ],
+      "length": "long",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "asmr",
+      "name": "ASMR",
+      "terms": [
+        "asmr no talking",
+        "asmr relaxing sounds"
+      ],
+      "length": "medium",
+      "genre": "Ambience",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "live-news-english",
+      "name": "Live News English",
+      "terms": [
+        "live news english",
+        "world news live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "live-news-hindi",
+      "name": "Live News Hindi",
+      "terms": [
+        "hindi news live",
+        "aaj tak live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "live-business-news",
+      "name": "Live Business News",
+      "terms": [
+        "business news live",
+        "stock market live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "space-live",
+      "name": "Space Live",
+      "terms": [
+        "nasa live",
+        "iss live stream",
+        "space live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "music-radio",
+      "name": "Music Radio",
+      "terms": [
+        "24/7 music live radio",
+        "live music stream"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "lo-fi-radio",
+      "name": "Lo-fi Radio",
+      "terms": [
+        "lofi hip hop radio live",
+        "chill music live stream"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "nature-cams",
+      "name": "Nature Cams",
+      "terms": [
+        "wildlife live cam",
+        "nature live camera",
+        "bird feeder live cam"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "city-cams",
+      "name": "City Cams",
+      "terms": [
+        "city live cam",
+        "times square live cam",
+        "tokyo live camera"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "beach-cams",
+      "name": "Beach Cams",
+      "terms": [
+        "beach live cam",
+        "surf cam live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "airport-cams",
+      "name": "Airport Cams",
+      "terms": [
+        "airport live stream",
+        "plane spotting live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "*"
+      ]
+    },
+    {
+      "id": "aarti-and-darshan",
+      "name": "Aarti and Darshan",
+      "terms": [
+        "live darshan",
+        "aarti live",
+        "mandir live"
+      ],
+      "features": [
+        "live"
+      ],
+      "genre": "Live streams",
+      "languages": [
+        "hi"
+      ]
     }
   ],
   "ideas": [
@@ -1106,5 +2836,27 @@
         "gadget review"
       ]
     }
+  ],
+  "genres": [
+    "Trending",
+    "Movies",
+    "Songs",
+    "Entertainment",
+    "Kids",
+    "Documentary",
+    "Science",
+    "Tech",
+    "News and Business",
+    "Podcasts",
+    "Sports",
+    "Food",
+    "Travel",
+    "Nature",
+    "Vehicles",
+    "Home and DIY",
+    "Gaming",
+    "Art",
+    "Ambience",
+    "Live streams"
   ]
 }

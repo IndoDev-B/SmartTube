@@ -127,11 +127,30 @@ public class TvModeController extends BasePlayerController {
             return false;
         }
 
-        int index = channel.indexOf(item.videoId);
-        MessageHelpers.showMessage(context, index > channel.pos
-                ? "Starts at " + DateFormat.getTimeFormat(context).format(new Date(service.liveStartOf(channel, index)))
-                : "Already played");
+        // Asks first: playing it moves the channel's schedule.
+        TvModeMenu.confirmJump(context, channel, item, picked -> {
+            TvModeController controller = sInstance.get();
+            if (controller != null && controller.getPlayer() != null) {
+                controller.getMainController().onNewVideo(picked);
+            }
+        });
         return true;
+    }
+
+    /** A Live TV channel showing a stream moves on when the stream's slot is over: a stream never ends by itself. */
+    @Override
+    public void onTickle() {
+        Video current = getVideo();
+
+        if (!isTvVideo(current) || !current.isLive || getPlayer() == null) {
+            return;
+        }
+
+        Video next = getService().afterStream(current);
+
+        if (next != null) {
+            getMainController().onNewVideo(next);
+        }
     }
 
     private static boolean isRandom(Video video) {

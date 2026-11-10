@@ -38,6 +38,9 @@ public class TvGuideGridView extends View {
         void onClicked(Video video);
 
         void onLongClicked(Video video);
+
+        /** The grid took the remote (true) or gave it to the side menu (false). */
+        void onGridFocus(boolean focused);
     }
 
     private static final int RED = 0xFFE62117;
@@ -54,7 +57,11 @@ public class TvGuideGridView extends View {
     private final java.util.Map<String, android.graphics.Bitmap> mThumbs = new java.util.HashMap<>();
     private final java.util.Set<String> mThumbsAsked = new java.util.HashSet<>();
     private final TvModeService mService;
+    /** How many of the top line's buttons sit on the left. The rest are right-aligned. */
+    private static final int LEFT_BUTTONS = 3;
     private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final android.graphics.Path mPath = new android.graphics.Path();
     private final TextPaint mTitle = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint mMeta = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint mNumber = new TextPaint(Paint.ANTI_ALIAS_FLAG);
@@ -77,6 +84,8 @@ public class TvGuideGridView extends View {
     private boolean mLongPressed;
     /** The focus is on what a channel has on now. When the channel moves to its next video, the focus goes with it. */
     private boolean mOnNowFocused = true;
+    /** The channel the focus is on, by id: the list can change under it when a filter is picked. */
+    private String mFocusedId;
     private final Runnable mTick = new Runnable() {
         @Override
         public void run() {
@@ -103,17 +112,58 @@ public class TvGuideGridView extends View {
         mRuler.setColor(0xFFCFCFCF);
         mPillText.setTextSize(dp(13.5f));
 
-        mButtons.add(button(TvModeService.ACTION_SETTINGS, R.string.tv_mode_settings, R.drawable.icon_settings));
-        mButtons.add(button(TvModeService.ACTION_SHUFFLE_ALL, R.string.tv_mode_shuffle_all, R.drawable.action_mode_shuffle));
-        mButtons.add(button(TvModeService.ACTION_NEW_CHANNEL, R.string.tv_mode_new_channel, R.drawable.icon_playlist));
+        mStroke.setStyle(Paint.Style.STROKE);
+        mStroke.setStrokeWidth(dp(1.5f));
+
+        // Filters on the left, actions on the right. LEFT_BUTTONS says where the first group ends.
+        mButtons.add(button(TvModeService.ACTION_GENRE, R.drawable.icon_tv_mode));
+        mButtons.add(button(TvModeService.ACTION_LANGUAGE, R.drawable.settings_language));
+        mButtons.add(button(TvModeService.ACTION_FAVOURITES, R.drawable.icon_subscriptions));
+        mButtons.add(button(TvModeService.ACTION_NEW_CHANNEL, R.drawable.icon_playlist));
+        mButtons.add(button(TvModeService.ACTION_SETTINGS, R.drawable.icon_settings));
+        labelButtons();
+        focusChannel(mService.getGuideChannelId());
     }
 
-    private Video button(String action, int titleResId, int iconResId) {
+    private Video button(String action, int iconResId) {
         Video button = new Video();
         button.tvChannelId = action;
-        button.title = getContext().getString(titleResId);
         button.cardImageUrl = "android.resource://" + getContext().getPackageName() + "/" + iconResId;
         return button;
+    }
+
+    /** The filter buttons say what they are set to, so a filter that is on shows without opening it. */
+    private void labelButtons() {
+        String genre = mService.getFilterGenre();
+        String language = mService.getFilterLanguage();
+        mButtons.get(0).title = "Genre: " + (genre.isEmpty() ? "Any" : genre);
+        mButtons.get(1).title = "Language: " + (language.isEmpty() ? "Any" : com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(language));
+        mButtons.get(2).title = "Favourites";
+        mButtons.get(3).title = getContext().getString(R.string.tv_mode_new_channel);
+        mButtons.get(4).title = getContext().getString(R.string.tv_mode_settings);
+    }
+
+    /** The focus is on a channel, not on the buttons in the top line. */
+    public boolean isChannelFocused() {
+        return mRow >= 0;
+    }
+
+    /** Puts the focus on a channel, when the filters show it. Used to come back to where the viewer was. */
+    public void focusChannel(String channelId) {
+        List<TvChannel> channels = mService.getShownChannels();
+
+        for (int i = 0; channelId != null && i < channels.size(); i++) {
+            if (channelId.equals(channels.get(i).id)) {
+                if (mRow != i) {
+                    mRow = i;
+                    mProgram = -1;
+                    mFocusTimeMs = 0;
+                    mOnNowFocused = true;
+                }
+                mFocusedId = channelId;
+                return;
+            }
+        }
     }
 
     public void setListener(Listener listener) {
@@ -122,7 +172,32 @@ public class TvGuideGridView extends View {
 
     /** Channels or lineups changed. Keeps the focus on the same channel and program where it can. */
     public void reload() {
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
+        labelButtons();
+
+        // The list under the focus changed (a filter, a move, a delete): stay on the same channel
+        // when it is still shown, on the one that took its place otherwise.
+        if (mRow >= 0 && mFocusedId != null) {
+            int at = -1;
+
+            for (int i = 0; i < channels.size(); i++) {
+                if (mFocusedId.equals(channels.get(i).id)) {
+                    at = i;
+                    break;
+                }
+            }
+
+            if (at == -1) {
+                mRow = Math.min(mRow, channels.size() - 1);
+                mProgram = -1;
+            } else {
+                mRow = at;
+            }
+        }
+
+        if (mRow < 0) {
+            mTopRow = 0;
+        }
 
         if (mRow >= channels.size()) {
             mRow = channels.size() - 1;
@@ -143,7 +218,7 @@ public class TvGuideGridView extends View {
 
     /** A channel moved on to its next video while the focus was on what it had on: stay on what is on. */
     private void followNow() {
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
 
         if (mRow >= 0 && mRow < channels.size() && mOnNowFocused) {
             TvChannel channel = channels.get(mRow);
@@ -162,7 +237,7 @@ public class TvGuideGridView extends View {
             return mButtons.get(mButton);
         }
 
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
 
         if (mRow >= channels.size()) {
             return null;
@@ -189,6 +264,10 @@ public class TvGuideGridView extends View {
     protected void onFocusChanged(boolean gainFocus, int direction, android.graphics.Rect previouslyFocusedRect) {
         super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
         invalidate();
+
+        if (mListener != null) {
+            mListener.onGridFocus(gainFocus); // losing it means the side menu opened
+        }
     }
 
     // ---------------- time line ----------------
@@ -247,7 +326,7 @@ public class TvGuideGridView extends View {
     // ---------------- focus ----------------
 
     private void fixFocus() {
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
         long now = System.currentTimeMillis();
 
         if (channels.isEmpty()) {
@@ -299,6 +378,13 @@ public class TvGuideGridView extends View {
     }
 
     private void notifyFocus() {
+        List<TvChannel> channels = mService.getShownChannels();
+
+        if (mRow >= 0 && mRow < channels.size()) {
+            mFocusedId = channels.get(mRow).id;
+            mService.setGuideChannel(channels.get(mRow)); // the guide comes back to this channel
+        }
+
         if (mListener != null) {
             mListener.onFocused(getFocused());
         }
@@ -306,7 +392,7 @@ public class TvGuideGridView extends View {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
         long now = System.currentTimeMillis();
 
         switch (keyCode) {
@@ -401,7 +487,7 @@ public class TvGuideGridView extends View {
 
     private void moved() {
         fixFocus();
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
         mOnNowFocused = mRow < 0 || (mRow < channels.size() && mProgram == channels.get(mRow).pos);
         invalidate();
         notifyFocus();
@@ -422,7 +508,7 @@ public class TvGuideGridView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        List<TvChannel> channels = mService.getChannels();
+        List<TvChannel> channels = mService.getShownChannels();
         long now = System.currentTimeMillis();
         boolean focused = isFocused();
         int width = getWidth();
@@ -431,18 +517,42 @@ public class TvGuideGridView extends View {
         float pxPerMs = pxPerMs();
         long viewStart = viewStart(now);
 
-        // Top line: the buttons
+        // Top line: the filters from the left, the actions from the right. Each is an icon and a label.
+        float iconSize = dp(14);
+        float[] pillWidths = new float[mButtons.size()];
+        float rightWidth = 0;
+        for (int i = 0; i < mButtons.size(); i++) {
+            pillWidths[i] = dp(12) + iconSize + dp(7) + mPillText.measureText(mButtons.get(i).title) + dp(14);
+            if (i >= LEFT_BUTTONS) {
+                rightWidth += pillWidths[i] + (i > LEFT_BUTTONS ? dp(9) : 0);
+            }
+        }
         float x = left;
         for (int i = 0; i < mButtons.size(); i++) {
-            String label = mButtons.get(i).title;
-            float pillWidth = mPillText.measureText(label) + dp(28);
+            if (i == LEFT_BUTTONS) {
+                x = Math.max(x, width - dp(45) - rightWidth);
+            }
+            String action = mButtons.get(i).tvChannelId;
             boolean on = focused && mRow < 0 && mButton == i;
-            mRect.set(x, dp(2), x + pillWidth, dp(30));
-            mFill.setColor(on ? FOCUSED : 0x1FFFFFFF);
+            // A filter that is on keeps a red tint, so it shows from anywhere in the guide.
+            boolean active = (TvModeService.ACTION_FAVOURITES.equals(action) && mService.isFavOnly())
+                    || (TvModeService.ACTION_GENRE.equals(action) && !mService.getFilterGenre().isEmpty())
+                    || (TvModeService.ACTION_LANGUAGE.equals(action) && !mService.getFilterLanguage().isEmpty());
+            mRect.set(x, dp(2), x + pillWidths[i], dp(30));
+            mFill.setColor(on ? FOCUSED : active ? 0x99E62117 : 0x1FFFFFFF);
             canvas.drawRoundRect(mRect, dp(14), dp(14), mFill);
-            mPillText.setColor(on ? 0xFF111111 : 0xFFFFFFFF);
-            canvas.drawText(label, x + dp(14), dp(21), mPillText);
-            x += pillWidth + dp(9);
+            int ink = on ? 0xFF111111 : 0xFFFFFFFF;
+            drawIcon(canvas, action, x + dp(12) + iconSize / 2, dp(16), iconSize, ink, active);
+            mPillText.setColor(ink);
+            canvas.drawText(mButtons.get(i).title, x + dp(12) + iconSize + dp(7), dp(21), mPillText);
+            x += pillWidths[i] + dp(9);
+        }
+
+        if (channels.isEmpty()) {
+            mRuler.setTypeface(Typeface.DEFAULT);
+            canvas.drawText(mService.getChannels().isEmpty() ? "Channels are loading" : "No channel matches the filters above. Set them to Any to see every channel.",
+                    left, dp(36 + 60), mRuler);
+            return;
         }
 
         // Ruler: the time now on the left, then a mark every half hour
@@ -483,15 +593,17 @@ public class TvGuideGridView extends View {
             mFill.setColor(rowFocused ? RED : LINE);
             canvas.drawRoundRect(mRect, dp(7), dp(7), mFill);
             mNumber.setColor(0xFFFFFFFF);
-            canvas.drawText(String.valueOf(row + 1), left + dp(10), top + dp(26), mNumber);
+            // The channel's own number, which a filter doesn't change: it is what the number keys tune to.
+            canvas.drawText(String.valueOf(mService.indexOf(channel) + 1), left + dp(10), top + dp(26), mNumber);
             mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFFD6D6D6);
             String name = channel.name.toUpperCase() + (channel.fav ? "  ★" : "");
-            float nameLeft = left + dp(42);
-            canvas.drawText(fit(name, mName, dp(150) - dp(48)),
-                    nameLeft, top + (live ? dp(18) : dp(24)), mName);
-            if (live) {
-                mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFFFF8A80);
-                canvas.drawText("LIVE", nameLeft, top + dp(32), mName);
+            float nameLeft = left + dp(48);
+            float nameRoom = dp(150) - dp(54);
+            String about = about(channel, nameRoom);
+            canvas.drawText(fit(name, mName, nameRoom), nameLeft, top + (about.isEmpty() ? dp(24) : dp(18)), mName);
+            if (!about.isEmpty()) {
+                mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFF9E9E9E);
+                canvas.drawText(about, nameLeft, top + dp(32), mName);
             }
 
             // Its programs, each as wide as it is long
@@ -567,6 +679,68 @@ public class TvGuideGridView extends View {
         if (nowX >= timelineLeft && nowX <= width) {
             mFill.setColor(RED);
             canvas.drawRect(nowX - dp(1), dp(36), nowX + dp(1), getHeight(), mFill);
+        }
+    }
+
+    /**
+     * The small line under a channel's name: its language and genre. A part that a filter already
+     * fixes for every channel on screen is left out, and the genre goes first when both don't fit.
+     */
+    private String about(TvChannel channel, float room) {
+        String language = mService.getFilterLanguage().isEmpty() && !channel.language().isEmpty()
+                ? com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(channel.language()) : "";
+        String genre = mService.getFilterGenre().isEmpty() ? channel.genre : "";
+
+        if (language.isEmpty() || genre.isEmpty()) {
+            return fit(language + genre, mName, room);
+        }
+
+        String both = language + " · " + genre;
+        return mName.measureText(both) <= room ? both : language;
+    }
+
+    /** The top line's icons, drawn here so they are sharp at any size and take the button's colour. */
+    private void drawIcon(Canvas canvas, String action, float cx, float cy, float size, int color, boolean active) {
+        float r = size / 2;
+        mFill.setColor(color);
+        mStroke.setColor(color);
+
+        if (TvModeService.ACTION_GENRE.equals(action)) { // four tiles
+            float gap = dp(1.5f);
+            canvas.drawRect(cx - r, cy - r, cx - gap, cy - gap, mFill);
+            canvas.drawRect(cx + gap, cy - r, cx + r, cy - gap, mFill);
+            canvas.drawRect(cx - r, cy + gap, cx - gap, cy + r, mFill);
+            canvas.drawRect(cx + gap, cy + gap, cx + r, cy + r, mFill);
+        } else if (TvModeService.ACTION_LANGUAGE.equals(action)) { // a globe
+            canvas.drawCircle(cx, cy, r - dp(0.75f), mStroke);
+            mRect.set(cx - r * 0.45f, cy - r + dp(0.75f), cx + r * 0.45f, cy + r - dp(0.75f));
+            canvas.drawOval(mRect, mStroke);
+            canvas.drawLine(cx - r + dp(0.75f), cy, cx + r - dp(0.75f), cy, mStroke);
+        } else if (TvModeService.ACTION_FAVOURITES.equals(action)) { // a star: filled when the filter is on
+            mPath.reset();
+            for (int i = 0; i < 10; i++) {
+                double angle = -Math.PI / 2 + i * Math.PI / 5;
+                float radius = i % 2 == 0 ? r : r * 0.42f;
+                float px = cx + (float) Math.cos(angle) * radius;
+                float py = cy + (float) Math.sin(angle) * radius;
+                if (i == 0) {
+                    mPath.moveTo(px, py);
+                } else {
+                    mPath.lineTo(px, py);
+                }
+            }
+            mPath.close();
+            canvas.drawPath(mPath, active ? mFill : mStroke);
+        } else if (TvModeService.ACTION_NEW_CHANNEL.equals(action)) { // a plus
+            float t = dp(1.25f);
+            canvas.drawRect(cx - r, cy - t, cx + r, cy + t, mFill);
+            canvas.drawRect(cx - t, cy - r, cx + t, cy + r, mFill);
+        } else { // settings: three sliders
+            for (int i = -1; i <= 1; i++) {
+                float y = cy + i * r * 0.72f;
+                canvas.drawLine(cx - r, y, cx + r, y, mStroke);
+                canvas.drawCircle(cx + (i == 0 ? r * 0.4f : -r * 0.35f), y, dp(2), mFill);
+            }
         }
     }
 

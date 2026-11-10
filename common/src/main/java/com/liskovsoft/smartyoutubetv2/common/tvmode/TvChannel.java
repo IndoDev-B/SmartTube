@@ -23,10 +23,29 @@ public class TvChannel {
     public static final String LENGTH_LONG = "long";     // over 20 min
     public static final String UPLOADED_YEAR = "year";
     public static final String UPLOADED_MONTH = "month";
+    public static final String UPLOADED_WEEK = "week";
+    public static final String UPLOADED_TODAY = "today";
     public static final String ORDER_MIXED = "mixed";
     public static final String ORDER_NEW = "new";
     public static final String ORDER_VIEWS = "views";
-    public static final String QUALITY_4K = "4k";
+    /** Most viewed among this week's uploads. */
+    public static final String ORDER_TRENDING = "trending";
+    public static final String TYPE_VIDEO = "video";
+    /** YouTube's "Movies" search filter. Paid titles come without a video id and are left out. */
+    public static final String TYPE_MOVIE = "movie";
+    public static final String FEATURE_HD = "hd";
+    public static final String FEATURE_4K = "4k";
+    public static final String FEATURE_HDR = "hdr";
+    public static final String FEATURE_SUBTITLES = "subtitles";
+    public static final String FEATURE_CC = "cc";
+    public static final String FEATURE_360 = "360";
+    public static final String FEATURE_VR180 = "vr180";
+    public static final String FEATURE_3D = "3d";
+    /** Streams that are live now. They have no length, so each gets a slot of {@link #STREAM_SLOT_MS}. */
+    public static final String FEATURE_LIVE = "live";
+    public static final String FEATURE_LOCATION = "location";
+    public static final String FEATURE_PURCHASED = "purchased";
+    public static final long STREAM_SLOT_MS = 30 * 60_000;
     public static final String MODE_DEFAULT = "default";
     public static final String MODE_LIVE = "live";
     public static final String MODE_FREE = "pace";
@@ -38,7 +57,15 @@ public class TvChannel {
     public String length = ANY;
     public String uploaded = ANY;
     public String order = ORDER_MIXED;
-    public String quality = ANY;
+    public String type = TYPE_VIDEO;
+    /** YouTube's "Features" search filters, as FEATURE_* values. All of them go to YouTube together. */
+    public final List<String> features = new ArrayList<>();
+    /** Leave out videos shorter than this many minutes. 0 = any. For movie channels, where a search also returns clips. */
+    public int minMinutes;
+    /** Also search for playlists and take videos out of them. Nothing remembers the playlist afterwards. */
+    public boolean playlists;
+    /** The group this channel is filed under in the guide's Genre filter. Empty = none. */
+    public String genre = "";
     public boolean noShorts = true;
     /** Leave out videos with fewer views than this. 0 = any. */
     public long minViews;
@@ -49,8 +76,8 @@ public class TvChannel {
     public final List<String> skipWords = new ArrayList<>();
     public final List<String> blocked = new ArrayList<>();
     /**
-     * Languages this channel plays, as codes from TvLanguage. Empty = whatever TV settings say.
-     * TvLanguage.ANY = any language: music and ambience channels have no language to filter by.
+     * The channel's language, as one code from TvLanguage. Empty or TvLanguage.ANY = any language:
+     * music and ambience channels have no language to go by. A list because the saved file had one.
      */
     public final List<String> languages = new ArrayList<>();
     public String mode = MODE_DEFAULT;
@@ -94,9 +121,18 @@ public class TvChannel {
         return duration != null && duration > 0 ? duration : 10 * 60_000;
     }
 
-    /** Search terms and YouTube channels both feed the lineup. */
+    /** Search terms and YouTube channels both feed the lineup. With playlists on, each term is also searched for playlists. */
     public int sources() {
-        return Math.max(1, terms.size() + creators.size());
+        return Math.max(1, terms.size() + creators.size() + (playlists ? terms.size() : 0));
+    }
+
+    /** The channel's language code, or "" when it plays any language. */
+    public String language() {
+        return languages.isEmpty() || languages.contains(TvLanguage.ANY) ? "" : languages.get(0);
+    }
+
+    public boolean hasFeature(String feature) {
+        return features.contains(feature);
     }
 
     public Video onNow() {
@@ -123,7 +159,8 @@ public class TvChannel {
 
     /** The part of a channel that decides what it plays. A change here means the coming-up lineup is stale. */
     public String searchKey() {
-        return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + quality + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages;
+        return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + features + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages
+                + "|" + type + "|" + minMinutes + "|" + playlists;
     }
 
     public JSONObject toJson() throws JSONException {
@@ -135,7 +172,11 @@ public class TvChannel {
         o.put("length", length);
         o.put("uploaded", uploaded);
         o.put("order", order);
-        o.put("quality", quality);
+        o.put("type", type);
+        o.put("features", new JSONArray(features));
+        o.put("minMinutes", minMinutes);
+        o.put("playlists", playlists);
+        o.put("genre", genre);
         o.put("noShorts", noShorts);
         o.put("minViews", minViews);
         o.put("creatorIds", new JSONObject(creatorIds));
@@ -202,7 +243,11 @@ public class TvChannel {
         c.length = length;
         c.uploaded = uploaded;
         c.order = order;
-        c.quality = quality;
+        c.type = type;
+        c.features.addAll(features);
+        c.minMinutes = minMinutes;
+        c.playlists = playlists;
+        c.genre = genre;
         c.noShorts = noShorts;
         c.minViews = minViews;
         c.creatorIds.putAll(creatorIds);
@@ -265,7 +310,14 @@ public class TvChannel {
         length = o.optString("length", ANY);
         uploaded = o.optString("uploaded", ANY);
         order = o.optString("order", ORDER_MIXED);
-        quality = o.optString("quality", ANY);
+        type = o.optString("type", TYPE_VIDEO);
+        readList(o.optJSONArray("features"), features);
+        if (FEATURE_4K.equals(o.optString("quality", ANY)) && !features.contains(FEATURE_4K)) {
+            features.add(FEATURE_4K); // the setting this list replaced
+        }
+        minMinutes = o.optInt("minMinutes", 0);
+        playlists = o.optBoolean("playlists", false);
+        genre = o.optString("genre", "");
         noShorts = o.optBoolean("noShorts", true);
         minViews = o.optLong("minViews", 0);
         readList(o.optJSONArray("skipWords"), skipWords);

@@ -85,6 +85,10 @@ public class TvGuideFragment extends VideoRowsFragment {
         mGrid.setListener(new TvGuideGridView.Listener() {
             @Override
             public void onFocused(Video video) {
+                // Also arrives every few seconds, which puts the preview right if a focus change was missed.
+                if (mHero != null && mGrid != null) {
+                    mHero.setPreviewPaused(!mGrid.isFocused());
+                }
                 onVideoItemSelected(video);
             }
 
@@ -97,8 +101,25 @@ public class TvGuideFragment extends VideoRowsFragment {
             public void onLongClicked(Video video) {
                 BrowsePresenter.instance(getContext()).onVideoItemLongClicked(video);
             }
+
+            @Override
+            public void onGridFocus(boolean focused) {
+                if (mHero != null) {
+                    mHero.setPreviewPaused(!focused); // the side menu is open: no sound from the guide behind it
+                }
+            }
         });
 
+        // The preview played a program to its end and the channel moved on: the grid follows.
+        mHero.setOnChannelMoved(() -> {
+            if (mGrid != null) {
+                mGrid.reload();
+                onVideoItemSelected(mGrid.getFocused());
+            }
+        });
+
+        // TV is shown as soon as the side menu passes over it. The preview waits until the remote is in the guide.
+        mHero.setPreviewPaused(true);
         mSelected = mGrid.getFocused();
         mHero.show(mSelected);
 
@@ -146,8 +167,16 @@ public class TvGuideFragment extends VideoRowsFragment {
         hideAppTitle();
 
         if (mWasPaused) {
-            // Back from the player: channels moved on, so rebuild the lines and return to the same one.
+            // Back from the player: channels moved on, so rebuild the lines and go to the channel
+            // that was playing, which is another one after CH+ / CH- in the player.
             mWasPaused = false;
+            if (mGrid != null) {
+                if (mGrid.isChannelFocused()) { // not when a menu was opened from the buttons at the top
+                    mGrid.focusChannel(TvModeService.instance(getContext()).getGuideChannelId());
+                }
+                mGrid.reload();
+                mSelected = mGrid.getFocused();
+            }
             BrowsePresenter presenter = BrowsePresenter.instance(getContext());
             if (presenter.getCurrentSection() != null && presenter.getCurrentSection().getId() == TvModeService.SECTION_ID) {
                 presenter.refresh(false);

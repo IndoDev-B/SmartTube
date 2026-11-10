@@ -1,0 +1,119 @@
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/search/SearchFilterHelper.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/search/SearchFilterHelper.java
+index c7b67ef1..64d35ea7 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/search/SearchFilterHelper.java
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/search/SearchFilterHelper.java
+@@ -102,11 +102,114 @@ final class SearchFilterHelper {
+             return null;
+         }
+ 
++        if ((options & EXT_MASK) != 0) {
++            return buildParams(options);
++        }
++
+         init();
+ 
+         return sParams[getUploadDateIndex(options)][getDurationIndex(options)][getTypeIndex(options)][getFeaturesIndex(options)][getSortByIndex(options)];
+     }
+ 
++    // SmartTube Plus: any combination of filters, built instead of looked up.
++    // The table above knows about 30 fixed combinations. The "params" value is a small protobuf
++    // message: field 1 = sort order, field 2 = the filters. A caller asks for a built value by
++    // setting EXT_BUILD, or one of the features the table has no entry for.
++    private static final int EXT_HD = 1 << 19;
++    private static final int EXT_SUBTITLES = 1 << 20;
++    private static final int EXT_CREATIVE_COMMONS = 1 << 21;
++    private static final int EXT_3D = 1 << 22;
++    private static final int EXT_360 = 1 << 23;
++    private static final int EXT_VR180 = 1 << 24;
++    private static final int EXT_LOCATION = 1 << 25;
++    private static final int EXT_PURCHASED = 1 << 26;
++    private static final int EXT_BUILD = 1 << 27;
++    private static final int EXT_MASK = EXT_HD | EXT_SUBTITLES | EXT_CREATIVE_COMMONS | EXT_3D | EXT_360 | EXT_VR180
++            | EXT_LOCATION | EXT_PURCHASED | EXT_BUILD;
++    private static final String BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++
++    private static String buildParams(int options) {
++        java.io.ByteArrayOutputStream filters = new java.io.ByteArrayOutputStream();
++
++        int uploadDate = getUploadDateIndex(options); // the table's index is YouTube's value
++        if (uploadDate != UPLOAD_DATE_ALL) {
++            putField(filters, 1, uploadDate);
++        }
++
++        int type = getTypeIndex(options); // the same here
++        if (type != TYPE_ANY) {
++            putField(filters, 2, type);
++        }
++
++        int duration = getDurationIndex(options);
++        if (duration != DURATION_ANY) {
++            putField(filters, 3, duration == DURATION_UNDER_4 ? 1 : duration == DURATION_OVER_20 ? 2 : 3);
++        }
++
++        putFlag(filters, 4, options, EXT_HD);
++        putFlag(filters, 5, options, EXT_SUBTITLES);
++        putFlag(filters, 6, options, EXT_CREATIVE_COMMONS);
++        putFlag(filters, 7, options, EXT_3D);
++        putFlag(filters, 8, options, SearchOptions.FEATURE_LIVE);
++        putFlag(filters, 9, options, EXT_PURCHASED);
++        putFlag(filters, 14, options, SearchOptions.FEATURE_4K);
++        putFlag(filters, 15, options, EXT_360);
++        putFlag(filters, 23, options, EXT_LOCATION);
++        putFlag(filters, 25, options, SearchOptions.FEATURE_HDR);
++        putFlag(filters, 26, options, EXT_VR180);
++
++        java.io.ByteArrayOutputStream message = new java.io.ByteArrayOutputStream();
++
++        int sortBy = getSortByIndex(options);
++        if (sortBy != SORT_BY_RELEVANCE) {
++            putField(message, 1, sortBy == SORT_BY_UPLOAD_DATE ? 2 : sortBy == SORT_BY_VIEW_COUNT ? 3 : 1);
++        }
++
++        if (filters.size() > 0) {
++            putVarint(message, (2 << 3) | 2); // field 2, a nested message
++            putVarint(message, filters.size());
++            message.write(filters.toByteArray(), 0, filters.size());
++        }
++
++        return message.size() > 0 ? base64(message.toByteArray()) : null;
++    }
++
++    private static void putFlag(java.io.ByteArrayOutputStream out, int field, int options, int option) {
++        if ((options & option) == option) {
++            putField(out, field, 1);
++        }
++    }
++
++    private static void putField(java.io.ByteArrayOutputStream out, int field, int value) {
++        putVarint(out, field << 3); // wire type 0: a number
++        putVarint(out, value);
++    }
++
++    private static void putVarint(java.io.ByteArrayOutputStream out, int value) {
++        while (value > 0x7F) {
++            out.write((value & 0x7F) | 0x80);
++            value >>>= 7;
++        }
++        out.write(value);
++    }
++
++    /** Base64 with the three characters a URL can't carry written the way the table writes them. */
++    private static String base64(byte[] data) {
++        StringBuilder result = new StringBuilder();
++
++        for (int i = 0; i < data.length; i += 3) {
++            int b0 = data[i] & 0xFF;
++            int b1 = i + 1 < data.length ? data[i + 1] & 0xFF : 0;
++            int b2 = i + 2 < data.length ? data[i + 2] & 0xFF : 0;
++            result.append(BASE64.charAt(b0 >> 2));
++            result.append(BASE64.charAt(((b0 & 0x03) << 4) | (b1 >> 4)));
++            result.append(i + 1 < data.length ? String.valueOf(BASE64.charAt(((b1 & 0x0F) << 2) | (b2 >> 6))) : "=");
++            result.append(i + 2 < data.length ? String.valueOf(BASE64.charAt(b2 & 0x3F)) : "=");
++        }
++
++        return result.toString().replace("+", "%2B").replace("/", "%2F").replace("=", "%3D");
++    }
++
+     private static int getUploadDateIndex(int options) {
+         int index = UPLOAD_DATE_ALL;
+ 

@@ -54,6 +54,17 @@ public class TvGuideHeroView extends FrameLayout {
     private String mPreviewChannelId;
     private TvChannel mPreviewChannel;
     private boolean mPreviewAllowed = true;
+    /** The side menu is open: no preview until it closes. */
+    private boolean mPreviewPaused;
+    /** The video the preview was started with, to notice when the channel has moved on to another. */
+    private String mPreviewVideoId;
+    private long mPreviewStartedMs;
+    /** Starts in a row of the same video that didn't end up playing. */
+    private int mPreviewTries;
+    private Runnable mOnChannelMoved;
+    /** How long a start gets before the check looks at whether it is playing. */
+    private static final long PREVIEW_CHECK_MS = 6_000;
+    private static final int PREVIEW_MAX_TRIES = 4;
     private final Runnable mStartPreview = this::startPreview;
 
     public TvGuideHeroView(Context context) {
@@ -182,7 +193,7 @@ public class TvGuideHeroView extends FrameLayout {
             mProgressTrack.setVisibility(INVISIBLE);
             mOkKey.setVisibility(VISIBLE);
             mOkLabel.setVisibility(VISIBLE);
-            mOkLabel.setText("Open");
+            mOkLabel.setText(!TvModeService.ACTION_FAVOURITES.equals(video.tvChannelId) ? "Open" : service.isFavOnly() ? "Show all channels" : "Show favourites only");
             mHoldKey.setVisibility(GONE);
             mHoldLabel.setVisibility(GONE);
             mPreviewBug.setVisibility(GONE);
@@ -281,30 +292,91 @@ public class TvGuideHeroView extends FrameLayout {
         String id = channel != null ? channel.id : null;
 
         if (id != null && id.equals(mPreviewChannelId)) {
-            return; // another program of the same channel: the preview keeps playing
+            checkPreview(); // the same channel: make sure it is still playing what the channel has on
+            return;
         }
 
         stopPreview();
         mPreviewChannelId = id;
         mPreviewChannel = channel;
+        mPreviewTries = 0;
+        mPreviewStartedMs = System.currentTimeMillis(); // the check waits for the start that is on its way
 
-        if (channel != null && mPreviewAllowed) {
+        if (channel != null && mPreviewAllowed && !mPreviewPaused) {
             postDelayed(mStartPreview, PREVIEW_DELAY_MS);
         }
     }
 
-    private void startPreview() {
-        if (mPreviewChannel == null || !mPreviewAllowed || !isAttachedToWindow()) {
+    /**
+     * Called every few seconds while a channel stays focused. Starts the preview again when it
+     * isn't running, and moves it on when the channel has moved to its next program.<br/>
+     * Without this a preview that failed to start once stayed dark: nothing asked again. That
+     * was the still picture after coming back from a menu or from the full screen player, where
+     * the small player is refused while the big one is still closing.
+     */
+    private void checkPreview() {
+        if (mPreviewChannel == null || !mPreviewAllowed || mPreviewPaused || !isAttachedToWindow()
+                || System.currentTimeMillis() - mPreviewStartedMs < PREVIEW_CHECK_MS) {
             return;
         }
 
-        Video copy = TvModeService.instance(getContext()).previewCopy(mPreviewChannel);
+        boolean running = mPreviewPlayer != null && mPreviewPlayer.isEngineInitialized();
+        TvModeService service = TvModeService.instance(getContext());
+        Video onNow = service.isLive(mPreviewChannel) ? service.previewCopy(mPreviewChannel) : mPreviewChannel.onNow();
+        boolean movedOn = onNow != null && onNow.videoId != null && !onNow.videoId.equals(mPreviewVideoId);
+
+        if (running && !movedOn) {
+            mPreviewTries = 0;
+            return;
+        }
+
+        // A video that can't be played must not be asked for again and again.
+        if (!movedOn && mPreviewTries >= PREVIEW_MAX_TRIES) {
+            return;
+        }
+
+        stopPreview();
+        startPreview();
+    }
+
+    private void startPreview() {
+        if (mPreviewChannel == null || !mPreviewAllowed || mPreviewPaused || !isAttachedToWindow()) {
+            return;
+        }
+
+        final TvChannel channel = mPreviewChannel;
+        Video copy = TvModeService.instance(getContext()).previewCopy(channel);
 
         if (copy == null) {
             return;
         }
 
-        mPreviewPlayer = new EmbedPlayerView(getContext());
+        mPreviewTries = copy.videoId != null && copy.videoId.equals(mPreviewVideoId) ? mPreviewTries + 1 : 1;
+        mPreviewVideoId = copy.videoId;
+        mPreviewStartedMs = System.currentTimeMillis();
+
+        mPreviewPlayer = new EmbedPlayerView(getContext()) {
+            /** The player closes the small player itself when a video ends. That is the cue for the channel's next program. */
+            @Override
+            public void finishReally() {
+                boolean ended = false;
+
+                try {
+                    if (isEngineInitialized()) {
+                        long duration = getDurationMs();
+                        ended = duration > 0 && duration - getPositionMs() < 3_000;
+                    }
+                } catch (Throwable e) {
+                    // the player was already taken apart: not an end
+                }
+
+                super.finishReally();
+
+                if (ended) {
+                    TvGuideHeroView.this.post(() -> onPreviewEnded(channel, this));
+                }
+            }
+        };
         mPreviewPlayer.setQuality(EmbedPlayerView.QUALITY_NORMAL);
         mPreviewPlayer.setUseController(false);
         mPreviewPlayer.setMute(false); // sound says a channel is playing, so it has no time limit either
@@ -312,6 +384,26 @@ public class TvGuideHeroView extends FrameLayout {
         // Over the still picture, under the channel name and the clock.
         mPreviewBox.addView(mPreviewPlayer, 1, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         mPreviewPlayer.openVideo(copy);
+    }
+
+    /** The preview played a program to its end: a Free mode channel moves to its next one, and the preview follows. */
+    private void onPreviewEnded(TvChannel channel, EmbedPlayerView player) {
+        if (player != mPreviewPlayer || channel != mPreviewChannel) {
+            return; // the focus has moved on since
+        }
+
+        TvModeService.instance(getContext()).previewEnded(channel, mPreviewVideoId);
+        stopPreview();
+        startPreview();
+
+        if (mOnChannelMoved != null) {
+            mOnChannelMoved.run();
+        }
+    }
+
+    /** Told when the preview moved a channel to its next program, so the grid below can follow. */
+    public void setOnChannelMoved(Runnable onChannelMoved) {
+        mOnChannelMoved = onChannelMoved;
     }
 
     private void stopPreview() {
@@ -334,6 +426,23 @@ public class TvGuideHeroView extends FrameLayout {
         }
     }
 
+    /** The side menu opened (true) or closed (false). The preview is silent while the menu is open. */
+    public void setPreviewPaused(boolean paused) {
+        if (mPreviewPaused == paused) {
+            return;
+        }
+
+        mPreviewPaused = paused;
+
+        if (paused) {
+            stopPreview();
+        } else if (mPreviewChannel != null && mPreviewAllowed) {
+            mPreviewTries = 0;
+            removeCallbacks(mStartPreview);
+            postDelayed(mStartPreview, PREVIEW_DELAY_MS);
+        }
+    }
+
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
@@ -342,9 +451,13 @@ public class TvGuideHeroView extends FrameLayout {
 
     private static String describe(String action) {
         if (TvModeService.ACTION_SETTINGS.equals(action)) {
-            return "Channel mode, remote, sleep timer, history.";
-        } else if (TvModeService.ACTION_SHUFFLE_ALL.equals(action)) {
-            return "New lineups for every channel.\nYour channels and settings stay.";
+            return "Channel mode, remote, sleep timer, history, shuffle all.";
+        } else if (TvModeService.ACTION_GENRE.equals(action)) {
+            return "Show only the channels of one genre.\nCH+ and CH- stay within them.";
+        } else if (TvModeService.ACTION_LANGUAGE.equals(action)) {
+            return "Show only the channels in one language.\nCH+ and CH- stay within them.";
+        } else if (TvModeService.ACTION_FAVOURITES.equals(action)) {
+            return "Show only your favourite channels.\nHold OK on a channel to make it one.";
         }
 
         return "Pick a ready-made topic, or type your own.";

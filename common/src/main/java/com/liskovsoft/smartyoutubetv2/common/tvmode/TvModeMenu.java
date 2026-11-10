@@ -27,6 +27,20 @@ import java.util.Locale;
 public class TvModeMenu {
     private static final String[] COMMON_SKIP_WORDS = {"reaction", "trailer", "compilation", "sleep", "live", "podcast"};
     private static final int[] SLEEP_MINUTES = {0, 15, 30, 45, 60, 90};
+    /** YouTube's "Features" search filters: the value kept in the channel, and its name on screen. */
+    private static final String[][] FEATURES = {
+            {TvChannel.FEATURE_HD, "HD"},
+            {TvChannel.FEATURE_4K, "4K"},
+            {TvChannel.FEATURE_HDR, "HDR"},
+            {TvChannel.FEATURE_SUBTITLES, "Subtitles"},
+            {TvChannel.FEATURE_LIVE, "Live streams"},
+            {TvChannel.FEATURE_360, "360°"},
+            {TvChannel.FEATURE_VR180, "VR180"},
+            {TvChannel.FEATURE_3D, "3D"},
+            {TvChannel.FEATURE_CC, "Creative Commons"},
+            {TvChannel.FEATURE_LOCATION, "Has a location"},
+            {TvChannel.FEATURE_PURCHASED, "Bought on my account"},
+    };
     private final Context mContext;
     private final TvModeService mService;
     private final AppDialogPresenter mDialog;
@@ -53,6 +67,13 @@ public class TvModeMenu {
                 menu.toast("New lineups on every channel");
             } else if (TvModeService.ACTION_NEW_CHANNEL.equals(item.tvChannelId)) {
                 menu.showNewChannel();
+            } else if (TvModeService.ACTION_GENRE.equals(item.tvChannelId)) {
+                menu.showGenreFilter();
+            } else if (TvModeService.ACTION_LANGUAGE.equals(item.tvChannelId)) {
+                menu.showLanguageFilter();
+            } else if (TvModeService.ACTION_FAVOURITES.equals(item.tvChannelId)) {
+                menu.mService.setFavOnly(!menu.mService.isFavOnly());
+                menu.refreshGuide();
             }
             return true;
         }
@@ -63,22 +84,85 @@ public class TvModeMenu {
             return false;
         }
 
-        // Live TV: only what's on now can be watched, and it starts where the clock is.
+        // Live TV: what's on now starts where the clock is. Anything else asks first.
         Video onNow = menu.mService.tune(channel);
 
         if (onNow == null || onNow.videoId == null || onNow.videoId.equals(item.videoId)) {
             return false;
         }
 
-        int index = channel.indexOf(item.videoId);
-
-        if (index > channel.pos) {
-            menu.toast("Starts at " + DateFormat.getTimeFormat(context).format(new Date(menu.mService.liveStartOf(channel, index))));
-        } else {
-            menu.toast("Already played");
-        }
+        menu.confirmJump(channel, item, picked -> PlaybackPresenter.instance(context).openVideo(picked));
 
         return true;
+    }
+
+    /** Called with the program to play once the viewer has said yes. */
+    public interface OnJump {
+        void onJump(Video video);
+    }
+
+    /**
+     * A program of a Live TV channel that isn't on now was picked, in the guide or under the
+     * player. Asks first, because playing it moves the channel's whole schedule.
+     */
+    public static void confirmJump(Context context, TvChannel channel, Video item, OnJump onJump) {
+        new TvModeMenu(context).confirmJump(channel, item, onJump);
+    }
+
+    private void confirmJump(TvChannel channel, Video item, OnJump onJump) {
+        int index = channel.indexOf(item.videoId);
+
+        if (index == -1) {
+            return;
+        }
+
+        String when = index > channel.pos
+                ? "Starts at " + DateFormat.getTimeFormat(mContext).format(new Date(mService.liveStartOf(channel, index)))
+                : "Already played";
+
+        // Cancel comes first, so a stray OK changes nothing.
+        mDialog.appendSingleButton(UiOptionItem.from("Cancel", option -> mDialog.closeDialog()));
+        mDialog.appendSingleButton(UiOptionItem.from("Play now. " + channel.name + "'s schedule moves to start here", option -> {
+            mDialog.closeDialog();
+            Video picked = mService.jumpLive(channel, item);
+            if (picked != null) {
+                onJump.onJump(picked);
+            }
+        }));
+        mDialog.showDialog(when + ": " + (item.getTitle() != null ? item.getTitle() : ""));
+    }
+
+    // ---------------- the guide's filters ----------------
+
+    private void showGenreFilter() {
+        String current = mService.getFilterGenre();
+        appendChoice("Any", current.isEmpty(), () -> mService.setFilterGenre(""));
+
+        for (String genre : mService.getGenres()) {
+            appendChoice(genre, genre.equalsIgnoreCase(current), () -> mService.setFilterGenre(genre));
+        }
+
+        mDialog.showDialog("Genre");
+    }
+
+    private void showLanguageFilter() {
+        String current = mService.getFilterLanguage();
+        appendChoice("Any", current.isEmpty(), () -> mService.setFilterLanguage(""));
+
+        for (String code : mService.getChannelLanguages()) {
+            appendChoice(TvLanguage.nameOf(code), code.equals(current), () -> mService.setFilterLanguage(code));
+        }
+
+        mDialog.showDialog("Language");
+    }
+
+    /** One line of a pick-one list: OK picks it and closes the list. */
+    private void appendChoice(String label, boolean current, Runnable pick) {
+        mDialog.appendSingleButton(UiOptionItem.from((current ? "●  " : "○  ") + label, option -> {
+            mDialog.closeDialog();
+            pick.run();
+            refreshGuide();
+        }));
     }
 
     /** TV settings, opened from the player. */
@@ -114,9 +198,6 @@ public class TvModeMenu {
         mDialog.appendSingleSwitch(UiOptionItem.from("Up/Down changes channel",
                 option -> mService.setDpadSurfEnabled(option.isSelected()), mService.isDpadSurfEnabled()));
 
-        mDialog.appendSingleSwitch(UiOptionItem.from("Favourites only",
-                option -> mService.setFavOnly(option.isSelected()), mService.isFavOnly()));
-
         mDialog.appendRadioCategory("When I open TV", options(mService.getOpenMode(), mService::setOpenMode,
                 TvModeService.OPEN_GUIDE, "Show the guide", TvModeService.OPEN_LAST, "Play the last channel"));
 
@@ -134,15 +215,13 @@ public class TvModeMenu {
         int left = mService.getSleepMinutesLeft();
         mDialog.appendRadioCategory(left > 0 ? "Sleep timer: stops in " + left + " min" : "Sleep timer: off", sleep);
 
-        List<OptionItem> languages = new ArrayList<>();
-        for (String[] language : TvLanguage.LANGUAGES) {
-            final String code = language[0];
-            languages.add(UiOptionItem.from(language[1], option -> mService.setLanguage(code, option.isSelected()), mService.getLanguages().contains(code)));
-        }
-        mDialog.appendCheckedCategory("Languages: " + languageNames(mService.getLanguages()), languages);
-
         mDialog.appendSingleSwitch(UiOptionItem.from("Save to YouTube history",
                 option -> mService.setYtHistoryEnabled(option.isSelected()), mService.isYtHistoryEnabled()));
+
+        appendConfirm("Shuffle all channels", "Yes, new lineups on every channel", () -> {
+            mService.shuffleAll(this::refreshGuide);
+            toast("New lineups on every channel");
+        });
 
         appendConfirm("Clear TV history (" + mService.getWatchedCount() + " videos)", "Yes, watched videos may come back", () -> {
             mService.clearHistory(null);
@@ -301,17 +380,43 @@ public class TvModeMenu {
         mDialog.appendRadioCategory("Uploaded", options(channel.uploaded, value -> {
             channel.uploaded = value;
             searchChanged(channel, null);
-        }, TvChannel.ANY, "Any time", TvChannel.UPLOADED_YEAR, "This year", TvChannel.UPLOADED_MONTH, "This month"));
+        }, TvChannel.ANY, "Any time", TvChannel.UPLOADED_YEAR, "This year", TvChannel.UPLOADED_MONTH, "This month",
+                TvChannel.UPLOADED_WEEK, "This week", TvChannel.UPLOADED_TODAY, "Today"));
 
         mDialog.appendRadioCategory("Order", options(channel.order, value -> {
             channel.order = value;
             searchChanged(channel, null);
-        }, TvChannel.ORDER_MIXED, "Mixed", TvChannel.ORDER_NEW, "Newest first", TvChannel.ORDER_VIEWS, "Most viewed"));
+        }, TvChannel.ORDER_MIXED, "Mixed", TvChannel.ORDER_TRENDING, "Trending this week", TvChannel.ORDER_VIEWS, "Most viewed",
+                TvChannel.ORDER_NEW, "Newest first"));
 
-        mDialog.appendRadioCategory("Quality", options(channel.quality, value -> {
-            channel.quality = value;
+        mDialog.appendRadioCategory("Type", options(channel.type, value -> {
+            channel.type = value;
             searchChanged(channel, null);
-        }, TvChannel.ANY, "Any", TvChannel.QUALITY_4K, "4K only"));
+        }, TvChannel.TYPE_VIDEO, "Videos", TvChannel.TYPE_MOVIE, "Movies"));
+
+        mDialog.appendRadioCategory("Shortest video", options(String.valueOf(channel.minMinutes), value -> {
+            channel.minMinutes = Integer.parseInt(value);
+            searchChanged(channel, null);
+        }, "0", "Any", "10", "10 min", "30", "30 min", "60", "1 hour", "90", "1 hour 30 min"));
+
+        // YouTube's own "Features" filters. Every ticked one must be true of a video.
+        List<OptionItem> features = new ArrayList<>();
+        for (String[] feature : FEATURES) {
+            final String code = feature[0];
+            features.add(UiOptionItem.from(feature[1], option -> {
+                channel.features.remove(code);
+                if (option.isSelected()) {
+                    channel.features.add(code);
+                }
+                searchChanged(channel, null);
+            }, channel.features.contains(code)));
+        }
+        mDialog.appendCheckedCategory("Features (" + channel.features.size() + ")", features);
+
+        mDialog.appendSingleSwitch(UiOptionItem.from("Also look in playlists", option -> {
+            channel.playlists = option.isSelected();
+            searchChanged(channel, null);
+        }, channel.playlists));
 
         mDialog.appendSingleSwitch(UiOptionItem.from("Skip Shorts", option -> {
             channel.noShorts = option.isSelected();
@@ -362,18 +467,28 @@ public class TvModeMenu {
             });
         }));
 
-        List<String> languageChoices = new ArrayList<>(Arrays.asList("", "Same as TV settings", TvLanguage.ANY, "Any language"));
+        // One language, or any. It decides which Language filter in the guide shows the channel.
+        List<String> languageChoices = new ArrayList<>(Arrays.asList("", "Any"));
         for (String[] language : TvLanguage.LANGUAGES) {
             languageChoices.add(language[0]);
             languageChoices.add(language[1]);
         }
-        mDialog.appendRadioCategory("Language", options(channel.languages.isEmpty() ? "" : channel.languages.get(0), value -> {
+        mDialog.appendRadioCategory("Language", options(channel.language(), value -> {
             channel.languages.clear();
-            if (!value.isEmpty()) {
-                channel.languages.add(value);
-            }
+            channel.languages.add(value.isEmpty() ? TvLanguage.ANY : value);
             searchChanged(channel, null);
         }, languageChoices.toArray(new String[0])));
+
+        // The genre only files the channel under the guide's Genre filter. It doesn't change what plays.
+        List<String> genreChoices = new ArrayList<>(Arrays.asList("", "None"));
+        for (String genre : mService.getGenres()) {
+            genreChoices.add(genre);
+            genreChoices.add(genre);
+        }
+        mDialog.appendRadioCategory("Genre", options(channel.genre, value -> {
+            mService.setGenre(channel, value);
+            refreshGuide();
+        }, genreChoices.toArray(new String[0])));
 
         mDialog.appendRadioCategory("Mode", modeOptions(channel.mode, true, mode -> {
             mService.setMode(channel, mode);
@@ -455,19 +570,6 @@ public class TvModeMenu {
     }
 
     // ---------------- helpers ----------------
-
-    private static String languageNames(List<String> codes) {
-        if (codes.isEmpty()) {
-            return "any";
-        }
-
-        StringBuilder names = new StringBuilder();
-        for (String code : codes) {
-            names.append(names.length() > 0 ? ", " : "").append(TvLanguage.nameOf(code));
-        }
-
-        return names.toString();
-    }
 
     /** values: pairs of value, label. */
     private static List<OptionItem> options(String current, Setter setter, String... values) {
