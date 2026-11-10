@@ -665,6 +665,41 @@ public class TvModeService {
         return position > 0 ? position : Math.min(channel.durationOf(video) / 10, 60_000);
     }
 
+    /**
+     * What a channel has on, as a copy for the small preview player in the guide. The copy belongs
+     * to no channel, so watching the preview doesn't count as watching the channel.
+     */
+    public Video previewCopy(TvChannel channel) {
+        syncLive(channel);
+        Video onNow = channel.onNow();
+
+        if (onNow == null || onNow.videoId == null) {
+            return null;
+        }
+
+        long position = 0;
+
+        if (isLive(channel)) {
+            position = liveOffsetMs(channel);
+        } else {
+            com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.State state =
+                    com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.instance(mContext).getByVideoId(onNow.videoId);
+            if (state != null) {
+                position = state.positionMs;
+            }
+        }
+
+        Video copy = Video.from(onNow);
+        copy.author = onNow.author;
+        copy.setGroup(null);
+        copy.playlistId = null;
+        copy.playlistParams = null;
+        copy.playlistIndex = -1;
+        copy.pendingPosMs = Math.max(1, position);
+        copy.incognito = true;
+        return copy;
+    }
+
     /** The first video of the fresh lineup after a shuffle, ready to play. */
     public Video firstAfterShuffle(TvChannel channel) {
         if (channel.ahead() < 1) {

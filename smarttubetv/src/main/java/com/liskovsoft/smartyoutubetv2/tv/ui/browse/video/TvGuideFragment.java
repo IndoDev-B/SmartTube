@@ -127,6 +127,7 @@ public class TvGuideFragment extends VideoRowsFragment {
         }
 
         if (mHero != null) {
+            mHero.setPreviewAllowed(true);
             mHero.show(mSelected); // times and progress moved on while away
         }
     }
@@ -135,6 +136,10 @@ public class TvGuideFragment extends VideoRowsFragment {
     public void onPause() {
         super.onPause();
         mWasPaused = true;
+
+        if (mHero != null) {
+            mHero.setPreviewAllowed(false); // the player, or a menu, is taking over
+        }
     }
 
     @Override

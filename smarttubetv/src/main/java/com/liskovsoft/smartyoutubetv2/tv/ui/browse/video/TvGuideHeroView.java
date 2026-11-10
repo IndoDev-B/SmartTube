@@ -20,6 +20,7 @@ import com.liskovsoft.smartyoutubetv2.common.app.models.data.Video;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvChannel;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 import com.liskovsoft.smartyoutubetv2.tv.presenter.TvActionCardPresenter;
+import com.liskovsoft.smartyoutubetv2.tv.ui.widgets.embedplayer.EmbedPlayerView;
 
 import java.util.Date;
 
@@ -46,6 +47,14 @@ public class TvGuideHeroView extends FrameLayout {
     private final TextView mPreviewBug;
     private final TextView mClock;
     private String mShownId;
+    private final FrameLayout mPreviewBox;
+    // Live preview: the focused channel plays in the picture box, without sound.
+    private static final long PREVIEW_DELAY_MS = 1_200;
+    private EmbedPlayerView mPreviewPlayer;
+    private String mPreviewChannelId;
+    private TvChannel mPreviewChannel;
+    private boolean mPreviewAllowed = true;
+    private final Runnable mStartPreview = this::startPreview;
 
     public TvGuideHeroView(Context context) {
         super(context);
@@ -119,6 +128,7 @@ public class TvGuideHeroView extends FrameLayout {
 
         // Right: preview picture
         FrameLayout preview = new FrameLayout(context);
+        mPreviewBox = preview;
         preview.setBackground(rounded(0xFF000000, 0, dp(8)));
         if (VERSION.SDK_INT >= 21) {
             preview.setClipToOutline(true);
@@ -180,6 +190,7 @@ public class TvGuideHeroView extends FrameLayout {
             mPreview.setImageDrawable(null);
             mPreviewIcon.setImageResource(TvActionCardPresenter.iconOf(video));
             mPreviewIcon.setVisibility(VISIBLE);
+            previewChannel(null);
             return;
         }
 
@@ -188,6 +199,8 @@ public class TvGuideHeroView extends FrameLayout {
         if (channel == null) {
             return;
         }
+
+        previewChannel(channel);
 
         boolean live = service.isLive(channel);
         int index = channel.indexOf(video.videoId);
@@ -258,6 +271,73 @@ public class TvGuideHeroView extends FrameLayout {
                     .error(Glide.with(context).load(video.cardImageUrl))
                     .into(mPreview);
         }
+    }
+
+    /**
+     * Plays the focused channel in the picture box. It starts after the focus has rested on a
+     * channel for a moment, so moving down the list doesn't start a player on every line.
+     */
+    private void previewChannel(TvChannel channel) {
+        String id = channel != null ? channel.id : null;
+
+        if (id != null && id.equals(mPreviewChannelId)) {
+            return; // another program of the same channel: the preview keeps playing
+        }
+
+        stopPreview();
+        mPreviewChannelId = id;
+        mPreviewChannel = channel;
+
+        if (channel != null && mPreviewAllowed) {
+            postDelayed(mStartPreview, PREVIEW_DELAY_MS);
+        }
+    }
+
+    private void startPreview() {
+        if (mPreviewChannel == null || !mPreviewAllowed || !isAttachedToWindow()) {
+            return;
+        }
+
+        Video copy = TvModeService.instance(getContext()).previewCopy(mPreviewChannel);
+
+        if (copy == null) {
+            return;
+        }
+
+        mPreviewPlayer = new EmbedPlayerView(getContext());
+        mPreviewPlayer.setQuality(EmbedPlayerView.QUALITY_NORMAL);
+        mPreviewPlayer.setUseController(false);
+        mPreviewPlayer.setMute(true);
+        mPreviewPlayer.setFocusable(false);
+        // Over the still picture, under the channel name and the clock.
+        mPreviewBox.addView(mPreviewPlayer, 1, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        mPreviewPlayer.openVideo(copy);
+    }
+
+    private void stopPreview() {
+        removeCallbacks(mStartPreview);
+
+        if (mPreviewPlayer != null) {
+            mPreviewPlayer.finish();
+            mPreviewBox.removeView(mPreviewPlayer);
+            mPreviewPlayer = null;
+        }
+    }
+
+    /** The guide left the screen (false) or is back (true). The preview must not play behind the real player. */
+    public void setPreviewAllowed(boolean allowed) {
+        mPreviewAllowed = allowed;
+
+        if (!allowed) {
+            stopPreview();
+            mPreviewChannelId = null;
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        stopPreview();
     }
 
     private static String describe(String action) {
