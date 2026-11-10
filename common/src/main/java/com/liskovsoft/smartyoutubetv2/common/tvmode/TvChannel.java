@@ -28,6 +28,8 @@ public class TvChannel {
     public static final String ORDER_VIEWS = "views";
     public static final String QUALITY_4K = "4k";
     public static final String MODE_DEFAULT = "default";
+    public static final String MODE_LIVE = "live";
+    public static final String MODE_FREE = "pace";
 
     public String id;
     public String name;
@@ -49,6 +51,8 @@ public class TvChannel {
     public final List<Video> lineup = new ArrayList<>();
     public int pos;
     public int termCursor;
+    /** Live TV: clock time when the video on now started. 0 = not running yet. */
+    public long liveStartMs;
     /** Video.toString() doesn't keep the length, so it's kept here by video id. */
     public final Map<String, Long> durations = new HashMap<>();
 
@@ -108,6 +112,7 @@ public class TvChannel {
         o.put("edited", edited);
         o.put("pos", pos);
         o.put("termCursor", termCursor);
+        o.put("liveStartMs", liveStartMs);
 
         JSONArray items = new JSONArray();
         for (Video video : lineup) {
@@ -132,6 +137,7 @@ public class TvChannel {
         c.preset = o.optBoolean("preset", false);
         c.edited = o.optBoolean("edited", false);
         c.termCursor = o.optInt("termCursor", 0);
+        c.liveStartMs = o.optLong("liveStartMs", 0);
 
         JSONArray items = o.optJSONArray("lineup");
         if (items != null) {

@@ -97,5 +97,71 @@
         "woodworking project build"
       ]
     }
+  ],
+  "ideas": [
+    {
+      "name": "Space",
+      "terms": [
+        "space documentary",
+        "universe explained"
+      ]
+    },
+    {
+      "name": "True crime",
+      "terms": [
+        "true crime documentary"
+      ]
+    },
+    {
+      "name": "Wildlife",
+      "terms": [
+        "wildlife documentary 4k"
+      ]
+    },
+    {
+      "name": "Walking tours",
+      "terms": [
+        "4k walking tour"
+      ]
+    },
+    {
+      "name": "Street food",
+      "terms": [
+        "street food tour"
+      ]
+    },
+    {
+      "name": "Tiny Desk concerts",
+      "terms": [
+        "tiny desk concert"
+      ]
+    },
+    {
+      "name": "Stand-up specials",
+      "terms": [
+        "stand up comedy special"
+      ]
+    },
+    {
+      "name": "Old TV ads",
+      "terms": [
+        "80s commercials",
+        "90s commercials"
+      ]
+    },
+    {
+      "name": "Lo-fi music",
+      "terms": [
+        "lofi hip hop mix",
+        "chill beats mix"
+      ]
+    },
+    {
+      "name": "Tech reviews",
+      "terms": [
+        "tech review",
+        "gadget review"
+      ]
+    }
   ]
 }

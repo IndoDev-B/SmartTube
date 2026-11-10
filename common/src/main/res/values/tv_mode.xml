@@ -4,6 +4,9 @@
 <resources>
     <bool name="tv_mode_enabled">false</bool>
     <string translatable="false" name="header_tv_mode">TV</string>
+    <string translatable="false" name="tv_mode_settings">TV settings</string>
+    <string translatable="false" name="tv_mode_shuffle_all">Shuffle all</string>
+    <string translatable="false" name="tv_mode_new_channel">New channel</string>
     <!-- Preset channels and tuning: the copy inside the app, and where a newer one is downloaded from. -->
     <string translatable="false" name="tv_mode_config_asset">tv_mode_stable.json</string>
     <string translatable="false" name="tv_mode_config_url">https://raw.githubusercontent.com/IndoDev-B/SmartTube/my-features/common/src/main/assets/tv_mode_stable.json</string>

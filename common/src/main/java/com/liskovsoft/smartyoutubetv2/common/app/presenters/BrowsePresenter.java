@@ -43,6 +43,7 @@ import com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.AccountCha
 import com.liskovsoft.smartyoutubetv2.common.prefs.AccountsData;
 import com.liskovsoft.smartyoutubetv2.common.prefs.BlockedChannelData;
 import com.liskovsoft.smartyoutubetv2.common.prefs.MainUIData;
+import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeMenu;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 import com.liskovsoft.smartyoutubetv2.common.utils.Utils;
 
@@ -440,6 +441,10 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
             return;
         }
 
+        if (item != null && item.tvChannelId != null && TvModeMenu.onClicked(getContext(), item)) {
+            return; // TV mode: an action card, or a live channel's video that isn't on now
+        }
+
         // Check that channels new look enabled and we're on the first columnAdd commentMore actions
         if (belongsToChannelUploadsMultiGrid(item)) {
             if (getMainUIData().isUploadsAutoLoadEnabled()) {
@@ -456,6 +461,10 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
     public void onVideoItemLongClicked(Video item) {
         if (getContext() == null) {
             return;
+        }
+
+        if (item != null && item.tvChannelId != null && TvModeMenu.onLongClicked(getContext(), item)) {
+            return; // TV mode: channel options
         }
 
         if (belongsToChannelUploads(item)) { // We need to be sure we exactly on Channels section
