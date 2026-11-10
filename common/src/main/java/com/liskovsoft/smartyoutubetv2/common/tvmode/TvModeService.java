@@ -57,6 +57,9 @@ public class TvModeService {
     public static final String ACTION_FAVOURITES = "@favourites";
     /** Marks a video played by the Random button. It belongs to no channel. */
     public static final String RANDOM = "@random";
+    /** Marks a Live TV program played once, outside its channel's schedule. */
+    public static final String ONCE = "@once";
+    private String mOnceChannelId;
     public static final String FX_STATIC = "static";
     public static final String FX_BLACK = "black";
     public static final String FX_NONE = "none";
@@ -1057,6 +1060,38 @@ public class TvModeService {
         copy.incognito = !mYtHistory;
         copy.tvChannelId = RANDOM;
         return copy;
+    }
+
+    /**
+     * A program of a Live TV channel, to play once from the start without touching the channel:
+     * its schedule runs on as if nothing happened. It is a copy that belongs to no channel.
+     * When it ends, {@link #afterOnce} gives what the channel has on by then.
+     */
+    public Video playOnce(TvChannel channel, Video video) {
+        Video copy = Video.from(video);
+        copy.author = video.author;
+        copy.badge = video.badge;
+        copy.setGroup(null);
+        copy.playlistId = null;
+        copy.playlistParams = null;
+        copy.playlistIndex = -1;
+        copy.pendingPosMs = 1;
+        copy.incognito = !mYtHistory;
+        copy.tvChannelId = ONCE;
+        mOnceChannelId = channel.id;
+        remember(video.videoId);
+        return copy;
+    }
+
+    /** The channel a play-once video was picked from, tuned to what it has on now. */
+    public Video afterOnce() {
+        for (TvChannel channel : mChannels) {
+            if (channel.id.equals(mOnceChannelId)) {
+                return tune(channel);
+            }
+        }
+
+        return null;
     }
 
     public int getWatchedCount() {

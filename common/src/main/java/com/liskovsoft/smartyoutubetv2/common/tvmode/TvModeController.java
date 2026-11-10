@@ -179,6 +179,15 @@ public class TvModeController extends BasePlayerController {
                 getMainController().onNewVideo(random);
             }
         }
+
+        // A program played once, outside the schedule, ended: back to its channel, where the clock is now.
+        Video current = getVideo();
+        if (current != null && TvModeService.ONCE.equals(current.tvChannelId) && getPlayer() != null) {
+            Video back = getService().afterOnce();
+            if (back != null) {
+                getMainController().onNewVideo(back);
+            }
+        }
     }
 
     private boolean isTvVideo(Video video) {

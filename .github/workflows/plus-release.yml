@@ -72,7 +72,9 @@ jobs:
               | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' || true
             echo "EOF"
           } >> "$GITHUB_ENV"
-          git diff --binary "$old" HEAD > "$RUNNER_TEMP/plus.patch"
+          # README.md is ours on this branch and SmartTube's on the release: left out, so a change
+          # to SmartTube's README can never stop a release.
+          git diff --binary "$old" HEAD -- . ':(exclude)README.md' > "$RUNNER_TEMP/plus.patch"
           git checkout -q --detach "$TAG"
           if ! git apply --3way "$RUNNER_TEMP/plus.patch"; then
             echo "::error::Your features conflict with SmartTube $TAG in:"

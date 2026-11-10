@@ -86,6 +86,10 @@ public class TvGuideGridView extends View {
     private boolean mOnNowFocused = true;
     /** The channel the focus is on, by id: the list can change under it when a filter is picked. */
     private String mFocusedId;
+    /** Back was pressed on this channel line. -1 = none. */
+    private int mReturnRow = -1;
+    private boolean mBackTaken;
+    private int mShownCount = -1;
     private final Runnable mTick = new Runnable() {
         @Override
         public void run() {
@@ -195,9 +199,12 @@ public class TvGuideGridView extends View {
             }
         }
 
-        if (mRow < 0) {
+        // A filter changed what is listed: start from the top of the new list.
+        if (mRow < 0 && mShownCount != channels.size()) {
             mTopRow = 0;
+            mReturnRow = -1;
         }
+        mShownCount = channels.size();
 
         if (mRow >= channels.size()) {
             mRow = channels.size() - 1;
@@ -407,12 +414,26 @@ public class TvGuideGridView extends View {
                 if (mRow < channels.size() - 1) {
                     if (mRow < 0) {
                         mFocusTimeMs = now;
+                        // After Back, Down goes back to the channel Back was pressed on.
+                        mRow = mReturnRow > 0 && mReturnRow < channels.size() ? mReturnRow - 1 : -1;
+                        mReturnRow = -1;
                     }
                     mRow++;
                     mProgram = -1;
                     moved();
                 }
                 return true;
+            case KeyEvent.KEYCODE_BACK:
+                // From a channel, Back goes up to the filters. From there it opens the side menu as before.
+                if (mRow >= 0) {
+                    mBackTaken = true;
+                    mReturnRow = mRow;
+                    mRow = -1;
+                    mProgram = -1;
+                    moved();
+                    return true;
+                }
+                break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 if (mRow < 0) {
                     if (mButton == 0) {
@@ -474,6 +495,11 @@ public class TvGuideGridView extends View {
             }
             mLongPressed = false;
             return true;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_BACK && mBackTaken) {
+            mBackTaken = false;
+            return true; // the press that moved the focus up must not also open the side menu
         }
 
         return super.onKeyUp(keyCode, event);

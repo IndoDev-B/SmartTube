@@ -16,11 +16,27 @@
       "id": "trending-english",
       "name": "Trending English",
       "terms": [
-        "trending this week",
-        "official video",
-        "highlights this week"
+        "highlights",
+        "interview",
+        "explained",
+        "vlog",
+        "challenge",
+        "news"
       ],
       "order": "trending",
+      "length": "medium",
+      "skipWords": [
+        "song",
+        "music video",
+        "lyric",
+        "lyrics",
+        "full movie",
+        "movie",
+        "audio",
+        "trailer",
+        "teaser",
+        "hindi"
+      ],
       "genre": "Trending",
       "languages": [
         "en"
@@ -30,11 +46,27 @@
       "id": "trending-hindi",
       "name": "Trending Hindi",
       "terms": [
-        "trending hindi",
-        "new hindi video",
-        "hindi highlights"
+        "hindi vlog",
+        "hindi comedy video",
+        "hindi news",
+        "hindi explained",
+        "hindi interview",
+        "hindi roast"
       ],
       "order": "trending",
+      "length": "medium",
+      "skipWords": [
+        "movie",
+        "full movie",
+        "film",
+        "song",
+        "lyrical",
+        "jukebox",
+        "audio",
+        "trailer",
+        "teaser",
+        "dubbed"
+      ],
       "genre": "Trending",
       "languages": [
         "hi"
@@ -50,6 +82,13 @@
       ],
       "order": "trending",
       "length": "medium",
+      "skipWords": [
+        "song",
+        "music video",
+        "lyric",
+        "movie",
+        "hindi"
+      ],
       "genre": "Trending",
       "languages": [
         "en"
@@ -65,6 +104,14 @@
       ],
       "order": "trending",
       "length": "medium",
+      "skipWords": [
+        "movie",
+        "film",
+        "song",
+        "lyrical",
+        "jukebox",
+        "dubbed"
+      ],
       "genre": "Trending",
       "languages": [
         "hi"
@@ -300,15 +347,22 @@
       "id": "bollywood-classics",
       "name": "Bollywood Classics",
       "terms": [
-        "old hindi full movie",
-        "classic bollywood movie",
-        "purani hindi film"
+        "1950s hindi full movie",
+        "1960s hindi full movie",
+        "black and white hindi full movie",
+        "1970s hindi full movie"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "creators": [
-        "Shemaroo Movies"
+      "skipWords": [
+        "198",
+        "199",
+        "200",
+        "201",
+        "202",
+        "new",
+        "latest"
       ],
       "genre": "Movies",
       "languages": [
