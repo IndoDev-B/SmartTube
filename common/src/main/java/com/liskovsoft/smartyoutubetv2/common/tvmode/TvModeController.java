@@ -454,6 +454,11 @@ public class TvModeController extends BasePlayerController {
     public boolean onKeyDown(int keyCode) {
         Video current = getVideo();
 
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            com.liskovsoft.sharedutils.mylogger.Log.d("TvModeController", "Up: topButtons=%s player=%s controls=%s overlay=%s", hasTopButtons(current), getPlayer() != null,
+                    getPlayer() != null && getPlayer().isControlsShown(), getPlayer() != null && getPlayer().isOverlayShown());
+        }
+
         // isControlsShown: the buttons and seek bar are focused, not the rows of videos under them.
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP && hasTopButtons(current) && getPlayer() != null && getPlayer().isControlsShown()) {
             TvModeOverlay overlay = sOverlay.get();

@@ -289,6 +289,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         }
 
         View focused = getRootView().findFocus();
+        Log.d(TAG, "Up to top buttons: focused=%s", focused);
 
         if (focused == null || focused == mRandomButton || focused == mSettingsButton) {
             return false;
@@ -304,7 +305,9 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         }
 
         mReturnFocus = new java.lang.ref.WeakReference<>(focused);
-        return mRandomButton.requestFocus();
+        boolean moved = mRandomButton.requestFocus();
+        Log.d(TAG, "Up to top buttons: y=%s of %s, moved=%s, now=%s", place[1], getHeight(), moved, getRootView().findFocus());
+        return moved;
     }
 
     @Override
