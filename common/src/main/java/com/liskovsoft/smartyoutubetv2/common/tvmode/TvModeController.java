@@ -242,13 +242,15 @@ public class TvModeController extends BasePlayerController {
         // Nearest first, both directions in turn: CH+ pressed a few times quickly lands 2 or 3 channels away.
         List<Video> down = getService().peek(current, 1, PRELOAD_DEPTH);
         List<Video> up = getService().peek(current, -1, PRELOAD_DEPTH);
+        final List<Video> videos = new ArrayList<>();
         final List<String> ids = new ArrayList<>();
 
         for (int i = 0; i < PRELOAD_DEPTH; i++) {
             for (List<Video> side : Arrays.asList(down, up)) {
-                String videoId = i < side.size() ? side.get(i).videoId : null;
-                if (videoId != null && !videoId.equals(current.videoId) && !ids.contains(videoId)) {
-                    ids.add(videoId);
+                Video video = i < side.size() ? side.get(i) : null;
+                if (video != null && video.videoId != null && !video.videoId.equals(current.videoId) && !ids.contains(video.videoId)) {
+                    ids.add(video.videoId);
+                    videos.add(video);
                 }
             }
         }
@@ -256,16 +258,30 @@ public class TvModeController extends BasePlayerController {
         // A new channel replaces the previous channel's list: what's loaded so far stays in the cache.
         RxHelper.disposeActions(mPreloadAction);
         final int generation = ++mPreloadGeneration;
+        final boolean warmPreview = TvModeService.FX_VHS.equals(getService().getSwitchEffect());
 
         mPreloadAction = RxHelper.execute(RxHelper.fromRunnable(() -> {
             MediaItemService service = YouTubeServiceManager.instance().getMediaItemService();
-            for (String videoId : ids) {
+            for (Video video : videos) {
                 if (generation != mPreloadGeneration) {
                     return;
                 }
-                service.getFormatInfo(videoId);
+                service.getFormatInfo(video.videoId);
+                if (warmPreview) {
+                    // Right after its video info: the storyboard comes from that info, now cached.
+                    Utils.post(() -> warmPreview(video));
+                }
             }
         }));
+    }
+
+    /** VHS preview: the storyboard sheet at the channel's "on now" spot lands in the image cache, so the frame shows at once */
+    private void warmPreview(Video video) {
+        TvModeOverlay overlay = sOverlay.get();
+
+        if (overlay != null) {
+            overlay.preloadPreview(video.videoId, getService().previewPositionMs(video));
+        }
     }
 
     @Override
