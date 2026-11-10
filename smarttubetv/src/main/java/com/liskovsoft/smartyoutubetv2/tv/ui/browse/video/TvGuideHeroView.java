@@ -72,7 +72,7 @@ public class TvGuideHeroView extends FrameLayout {
     private Video mAboutVideo;
     /** The focus must rest this long before a description is fetched, so scrolling fetches nothing. */
     private static final long ABOUT_DELAY_MS = 1_200;
-    private static final int ABOUT_CHARS = 320;
+    private static final int ABOUT_CHARS = 700;
     private final Runnable mLoadAbout = () -> {
         final Video video = mAboutVideo;
 
@@ -158,7 +158,7 @@ public class TvGuideHeroView extends FrameLayout {
         modeParams.leftMargin = dp(6);
         chips.addView(mModeChip, modeParams);
 
-        mTitle = text(25f, 0xFFFFFFFF, 3);
+        mTitle = text(20f, 0xFFFFFFFF, 2); // two lines at most: the room goes to the description
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         titleParams.topMargin = dp(9);
         info.addView(mTitle, titleParams);
@@ -180,7 +180,7 @@ public class TvGuideHeroView extends FrameLayout {
         bar.addView(mProgress, new LayoutParams(0, LayoutParams.MATCH_PARENT));
 
         // What the program is about: the start of its description, once the focus has rested on it.
-        mAbout = text(12.5f, 0xFFB0B0B0, 3);
+        mAbout = text(13f, 0xFFB8B8B8, 6);
         mAbout.setLineSpacing(dp(2), 1f);
         LinearLayout.LayoutParams aboutParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         aboutParams.topMargin = dp(9);
@@ -256,6 +256,7 @@ public class TvGuideHeroView extends FrameLayout {
             mChannelChip.setText("TV");
             mModeChip.setVisibility(GONE);
             mTitle.setText(video.title);
+            mBy.setMaxLines(2);
             mBy.setText(describe(video.tvChannelId));
             mProgressTrack.setVisibility(INVISIBLE);
             mOkKey.setVisibility(VISIBLE);
@@ -310,7 +311,7 @@ public class TvGuideHeroView extends FrameLayout {
         if (onNow && live) {
             long duration = channel.durationOf(video);
             long offset = service.liveOffsetMs(channel);
-            when = "On now  •  until " + time(System.currentTimeMillis() + Math.max(0, duration - offset));
+            when = "On now until " + time(System.currentTimeMillis() + Math.max(0, duration - offset));
             ok = "Watch";
             percent = 100f * offset / duration;
         } else if (onNow) {
@@ -326,7 +327,9 @@ public class TvGuideHeroView extends FrameLayout {
             ok = "Play this now";
         }
 
-        mBy.setText(by + "\n" + when);
+        // One line: the creator, the length, and when. The lines saved go to the description.
+        mBy.setMaxLines(1);
+        mBy.setText(by.isEmpty() ? when : by + "  •  " + when);
         mOkKey.setVisibility(ok != null ? VISIBLE : GONE);
         mOkLabel.setVisibility(ok != null ? VISIBLE : GONE);
         mOkLabel.setText(ok);
