@@ -52,6 +52,8 @@ public class TvModeService {
     public static final String ACTION_SETTINGS = "@settings";
     public static final String ACTION_SHUFFLE_ALL = "@shuffle_all";
     public static final String ACTION_NEW_CHANNEL = "@new_channel";
+    /** Marks a video played by the Random button. It belongs to no channel. */
+    public static final String RANDOM = "@random";
     public static final String FX_STATIC = "static";
     public static final String FX_BLACK = "black";
     public static final String FX_NONE = "none";
@@ -806,6 +808,7 @@ public class TvModeService {
         copy.playlistIndex = -1;
         copy.pendingPosMs = 1; // from the start, even when it was partly watched before
         copy.incognito = !mYtHistory;
+        copy.tvChannelId = RANDOM;
         return copy;
     }
 

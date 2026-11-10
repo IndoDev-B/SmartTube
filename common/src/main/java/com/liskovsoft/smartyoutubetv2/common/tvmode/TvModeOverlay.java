@@ -26,6 +26,18 @@ public interface TvModeOverlay {
 
     void setScanlines(boolean enabled);
 
+    /** Random (top left) and TV settings (top right). Shown together with the player's controls. */
+    void showTopButtons(boolean show);
+
+    /**
+     * Up was pressed in the player's controls. Moves the focus to the Random button when nothing
+     * of the player is above the focused control. True = the focus moved.
+     */
+    boolean focusTopButtons();
+
+    /** Puts the focus on the Random button, so OK again plays another one. */
+    void focusRandomButton();
+
     /** Dims the screen after the sleep timer, with a line of text. */
     void showSleep(String message);
 

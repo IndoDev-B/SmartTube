@@ -67,6 +67,18 @@ public class TvModeController extends BasePlayerController {
         }
     }
 
+    public static final int TOP_BUTTON_RANDOM = 0;
+    public static final int TOP_BUTTON_SETTINGS = 1;
+
+    /** One of the buttons at the top of the player was pressed. */
+    public static void onTopButton(int button) {
+        TvModeController controller = sInstance.get();
+
+        if (controller != null && controller.getPlayer() != null) {
+            controller.onButtonClicked(button == TOP_BUTTON_RANDOM ? R.id.action_tv_random : R.id.action_tv_settings, 0);
+        }
+    }
+
     /** The sleep timer ran out: stop playing, then turn the TV off or dim the screen. */
     public static void onSleepTimer() {
         TvModeController controller = sInstance.get();
@@ -116,6 +128,36 @@ public class TvModeController extends BasePlayerController {
         return true;
     }
 
+    private static boolean isRandom(Video video) {
+        return video != null && TvModeService.RANDOM.equals(video.tvChannelId);
+    }
+
+    /** The top buttons belong to TV mode: a channel's video, or one the Random button picked. */
+    private boolean hasTopButtons(Video video) {
+        return isTvVideo(video) || isRandom(video);
+    }
+
+    private final Runnable mKeepRandom = () -> {
+        TvModeOverlay overlay = sOverlay.get();
+
+        if (getPlayer() != null && overlay != null && isRandom(getVideo())) {
+            getPlayer().showOverlay(true);
+            overlay.showTopButtons(true);
+            overlay.focusRandomButton();
+        }
+    };
+
+    @Override
+    public void onPlayEnd() {
+        // A random video ended: play another, the way the button would.
+        if (isRandom(getVideo()) && getPlayer() != null) {
+            Video random = getService().randomVideo();
+            if (random != null) {
+                getMainController().onNewVideo(random);
+            }
+        }
+    }
+
     private boolean isTvVideo(Video video) {
         return video != null && video.tvChannelId != null && !TvModeService.isAction(video);
     }
@@ -135,6 +177,14 @@ public class TvModeController extends BasePlayerController {
                 overlay.hideBanner();
                 overlay.hideSwitching();
                 overlay.setScanlines(false);
+            }
+
+            if (isRandom(item)) {
+                // Keep the controls up with the cursor on Random, so OK again plays another one.
+                Utils.removeCallbacks(mKeepRandom);
+                Utils.postDelayed(mKeepRandom, 400);
+            } else if (overlay != null) {
+                overlay.showTopButtons(false);
             }
             return;
         }
@@ -315,6 +365,8 @@ public class TvModeController extends BasePlayerController {
             return;
         }
 
+        overlay.showTopButtons(shown && hasTopButtons(getVideo()));
+
         if (shown) {
             overlay.hideBanner(); // the controls show the same things
             return;
@@ -401,6 +453,13 @@ public class TvModeController extends BasePlayerController {
     @Override
     public boolean onKeyDown(int keyCode) {
         Video current = getVideo();
+
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP && hasTopButtons(current) && getPlayer() != null && getPlayer().isOverlayShown()) {
+            TvModeOverlay overlay = sOverlay.get();
+            if (overlay != null && overlay.focusTopButtons()) {
+                return true;
+            }
+        }
 
         if (!isTvVideo(current) || getPlayer() == null) {
             return false;

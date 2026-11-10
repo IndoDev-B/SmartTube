@@ -76,6 +76,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     private final TextView mNextTitle;
     private final TextView mSleep;
     private final Runnable mHideBanner = this::hideBanner;
+    private final TextView mRandomButton;
+    private final TextView mSettingsButton;
+    /** The control the focus came from, to hand it back on Down. */
+    private java.lang.ref.WeakReference<View> mReturnFocus = new java.lang.ref.WeakReference<>(null);
 
     /** Adds the overlay on top of the player screen and hands it to TV mode. */
     public static void attach(ViewGroup playerRoot) {
@@ -176,6 +180,17 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         nextParams.topMargin = dp(3);
         right.addView(mNextTitle, nextParams);
 
+        // Top corners: Random on the left, TV settings on the right. Up from the controls reaches them.
+        mRandomButton = topButton("Random", TvModeController.TOP_BUTTON_RANDOM);
+        LayoutParams randomParams = new LayoutParams(LayoutParams.WRAP_CONTENT, dp(34), Gravity.TOP | Gravity.START);
+        randomParams.setMargins(dp(55), dp(30), 0, 0);
+        addView(mRandomButton, randomParams);
+
+        mSettingsButton = topButton("TV settings", TvModeController.TOP_BUTTON_SETTINGS);
+        LayoutParams settingsParams = new LayoutParams(LayoutParams.WRAP_CONTENT, dp(34), Gravity.TOP | Gravity.END);
+        settingsParams.setMargins(0, dp(30), dp(55), 0);
+        addView(mSettingsButton, settingsParams);
+
         mSleep = text(26f, 0xFFBBBBBB, 2);
         mSleep.setGravity(Gravity.CENTER);
         mSleep.setBackgroundColor(0xE0000000);
@@ -201,6 +216,104 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mBanner.setVisibility(VISIBLE);
         removeCallbacks(mHideBanner);
         postDelayed(mHideBanner, BANNER_MS);
+    }
+
+    private TextView topButton(String label, final int which) {
+        final TextView button = text(14.5f, 0xFFFFFFFF, 1);
+        button.setText(label);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(18), 0, dp(18), 0);
+        button.setFocusable(true);
+        button.setFocusableInTouchMode(true);
+        button.setVisibility(GONE);
+        final GradientDrawable pill = rounded(0x99000000, dp(17));
+        button.setBackground(pill);
+        button.setOnFocusChangeListener((view, focused) -> {
+            pill.setColor(focused ? 0xFFF1F1F1 : 0x99000000);
+            button.setTextColor(focused ? 0xFF111111 : 0xFFFFFFFF);
+        });
+        button.setOnKeyListener((view, keyCode, event) -> {
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+                // The matching key-up of OK must not reach anything else either.
+                return keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER;
+            }
+
+            switch (keyCode) {
+                case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
+                case android.view.KeyEvent.KEYCODE_ENTER:
+                    if (event.getRepeatCount() == 0) {
+                        TvModeController.onTopButton(which);
+                    }
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
+                    mRandomButton.requestFocus();
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_RIGHT:
+                    mSettingsButton.requestFocus();
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                    return true; // nothing above
+                case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                    View back = mReturnFocus.get();
+                    if (back == null || !back.isShown() || !back.requestFocus()) {
+                        View below = view.focusSearch(View.FOCUS_DOWN);
+                        if (below != null) {
+                            below.requestFocus();
+                        }
+                    }
+                    return true;
+            }
+
+            return false;
+        });
+        return button;
+    }
+
+    @Override
+    public void showTopButtons(boolean show) {
+        if (!show && (mRandomButton.isFocused() || mSettingsButton.isFocused())) {
+            View back = mReturnFocus.get();
+            if (back != null && back.isShown()) {
+                back.requestFocus(); // the controls are going: don't leave the focus on a hidden button
+            }
+        }
+
+        mRandomButton.setVisibility(show ? VISIBLE : GONE);
+        mSettingsButton.setVisibility(show ? VISIBLE : GONE);
+    }
+
+    @Override
+    public boolean focusTopButtons() {
+        if (mRandomButton.getVisibility() != VISIBLE) {
+            return false;
+        }
+
+        View focused = getRootView().findFocus();
+
+        if (focused == null || focused == mRandomButton || focused == mSettingsButton) {
+            return false;
+        }
+
+        // Only from the top of the controls: when a control or a row is above, Up belongs to the player.
+        View above = focused.focusSearch(View.FOCUS_UP);
+
+        if (above != null && above != focused && above != mRandomButton && above != mSettingsButton) {
+            return false;
+        }
+
+        mReturnFocus = new java.lang.ref.WeakReference<>(focused);
+        return mRandomButton.requestFocus();
+    }
+
+    @Override
+    public void focusRandomButton() {
+        if (mRandomButton.getVisibility() == VISIBLE && !mRandomButton.isFocused()) {
+            View focused = getRootView().findFocus();
+            if (focused != null && focused != mSettingsButton) {
+                mReturnFocus = new java.lang.ref.WeakReference<>(focused);
+            }
+            mRandomButton.requestFocus();
+        }
     }
 
     @Override

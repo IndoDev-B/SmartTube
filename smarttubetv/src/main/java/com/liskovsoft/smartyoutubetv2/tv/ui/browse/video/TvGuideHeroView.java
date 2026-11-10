@@ -48,7 +48,7 @@ public class TvGuideHeroView extends FrameLayout {
     private final TextView mClock;
     private String mShownId;
     private final FrameLayout mPreviewBox;
-    // Live preview: the focused channel plays in the picture box, without sound.
+    // Live preview: the focused channel plays in the picture box, with sound, for as long as it's focused.
     private static final long PREVIEW_DELAY_MS = 1_200;
     private EmbedPlayerView mPreviewPlayer;
     private String mPreviewChannelId;
@@ -307,7 +307,7 @@ public class TvGuideHeroView extends FrameLayout {
         mPreviewPlayer = new EmbedPlayerView(getContext());
         mPreviewPlayer.setQuality(EmbedPlayerView.QUALITY_NORMAL);
         mPreviewPlayer.setUseController(false);
-        mPreviewPlayer.setMute(true);
+        mPreviewPlayer.setMute(false); // sound says a channel is playing, so it has no time limit either
         mPreviewPlayer.setFocusable(false);
         // Over the still picture, under the channel name and the clock.
         mPreviewBox.addView(mPreviewPlayer, 1, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));

@@ -48,6 +48,11 @@ public class TvGuideGridView extends View {
     /** How much of the past stays visible left of the now line. */
     private static final long PAST_SHOWN_MS = 12 * MINUTE;
     private static final int PAST_PROGRAMS = 8;
+    private static final long TICK_MS = 5_000;
+    private static final int MAX_THUMBS = 160;
+    /** Small pictures for the programs, by video id. Loaded when a program is first drawn. */
+    private final java.util.Map<String, android.graphics.Bitmap> mThumbs = new java.util.HashMap<>();
+    private final java.util.Set<String> mThumbsAsked = new java.util.HashSet<>();
     private final TvModeService mService;
     private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint mTitle = new TextPaint(Paint.ANTI_ALIAS_FLAG);
@@ -75,13 +80,10 @@ public class TvGuideGridView extends View {
     private final Runnable mTick = new Runnable() {
         @Override
         public void run() {
-            Video before = getFocused();
             followNow();
-            if (getFocused() != before) {
-                notifyFocus();
-            }
-            invalidate(); // the now line and the live channels move on
-            postDelayed(this, 20_000);
+            notifyFocus(); // the part above the grid shows progress too
+            invalidate(); // the programs slide under the now line
+            postDelayed(this, TICK_MS);
         }
     };
 
@@ -174,7 +176,7 @@ public class TvGuideGridView extends View {
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         removeCallbacks(mTick);
-        postDelayed(mTick, 20_000);
+        postDelayed(mTick, TICK_MS);
     }
 
     @Override
@@ -525,6 +527,20 @@ public class TvGuideGridView extends View {
                 }
 
                 float textLeft = Math.max(cellLeft, timelineLeft) + dp(9);
+
+                // A small picture at the start of the program, when the program is wide enough to keep its title.
+                float thumbWidth = dp(64);
+                float thumbLeft = Math.max(cellLeft, timelineLeft);
+                if (cellRight - thumbLeft > thumbWidth + dp(70)) {
+                    android.graphics.Bitmap thumb = thumb(video);
+                    if (thumb != null && !thumb.isRecycled()) {
+                        mRect.set(thumbLeft + dp(2), top + dp(2), thumbLeft + dp(2) + thumbWidth, top + cellHeight - dp(2));
+                        mThumbPaint.setAlpha(dimmed && !on ? 120 : 255);
+                        canvas.drawBitmap(thumb, null, mRect, mThumbPaint);
+                        textLeft = thumbLeft + thumbWidth + dp(10);
+                    }
+                }
+
                 float room = cellRight - textLeft - dp(8);
 
                 if (room > dp(24)) {
@@ -552,6 +568,48 @@ public class TvGuideGridView extends View {
             mFill.setColor(RED);
             canvas.drawRect(nowX - dp(1), dp(36), nowX + dp(1), getHeight(), mFill);
         }
+    }
+
+    private final Paint mThumbPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+
+    /** The program's picture if it has arrived. Asks for it once otherwise, and the grid redraws when it comes. */
+    private android.graphics.Bitmap thumb(final Video video) {
+        final String id = video.videoId;
+
+        if (id == null || video.cardImageUrl == null) {
+            return null;
+        }
+
+        android.graphics.Bitmap thumb = mThumbs.get(id);
+
+        if (thumb == null && mThumbsAsked.add(id)) {
+            if (mThumbs.size() > MAX_THUMBS) { // a long session: start over with what is on screen
+                mThumbs.clear();
+                mThumbsAsked.clear();
+                mThumbsAsked.add(id);
+            }
+
+            com.bumptech.glide.Glide.with(getContext().getApplicationContext())
+                    .asBitmap()
+                    .load(video.cardImageUrl)
+                    .override(dp(64), dp(36))
+                    .centerCrop()
+                    .into(new com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
+                        @Override
+                        public void onResourceReady(android.graphics.Bitmap picture,
+                                                    com.bumptech.glide.request.transition.Transition<? super android.graphics.Bitmap> transition) {
+                            mThumbs.put(id, picture);
+                            invalidate();
+                        }
+
+                        @Override
+                        public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {
+                            mThumbs.remove(id);
+                        }
+                    });
+        }
+
+        return thumb;
     }
 
     private String time(long timeMs) {

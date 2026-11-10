@@ -170,10 +170,9 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
             adapter.add(mActions.get(R.id.action_repeat));
         }
         if (mActions.containsKey(R.id.action_tv_shuffle)) { // TV mode
-            adapter.add(mActions.get(R.id.action_tv_random));
+            // Random and TV settings sit at the top corners of the player instead (TvModeOverlayView).
             adapter.add(mActions.get(R.id.action_tv_shuffle));
             adapter.add(mActions.get(R.id.action_tv_guide));
-            adapter.add(mActions.get(R.id.action_tv_settings));
         }
         if (mPlayerTweaksData.isPlayerButtonEnabled(PlayerTweaksData.PLAYER_BUTTON_VIDEO_SPEED)) {
             adapter.add(mActions.get(R.id.action_video_speed));
