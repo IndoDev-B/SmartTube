@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shows how long each video took to start, on screen. The dev app turns it on. -->
+    <bool name="start_timing_shown">false</bool>
+</resources>

@@ -60,6 +60,15 @@ public class VideoLoaderController extends BasePlayerController {
             getPlayer().showProgressBar(true);
         }
     };
+    // Start timing (dev app only): where the time goes between opening a video and its first frame.
+    // A reload of the same video (error retry) keeps counting from the first open.
+    private String mTimedVideoId;
+    private long mTimeOpenMs;
+    private long mTimeEngineMs;
+    private long mTimeInfoMs;
+    private int mTimeLoads;
+    private String mTimeFormat;
+    private String mTimeClient;
 
     public VideoLoaderController() {
         mPlaylist = Playlist.instance();
@@ -78,6 +87,8 @@ public class VideoLoaderController extends BasePlayerController {
         }
 
         item.isShuffled = false;
+
+        startTiming(item);
 
         if (!item.fromQueue && !item.belongsToPlaybackQueue()) {
             mPlaylist.add(item);
@@ -118,6 +129,52 @@ public class VideoLoaderController extends BasePlayerController {
         getPlayer().setButtonState(R.id.action_repeat, video.finishOnEnded ? PlayerConstants.PLAYBACK_MODE_CLOSE : getPlayerData().getPlaybackMode());
         // Can't set title at this point
         //checkSleepTimer();
+    }
+
+    @Override
+    public void onPlay() {
+        reportTiming();
+    }
+
+    private boolean isTimingShown() {
+        return getContext() != null && getContext().getResources().getBoolean(R.bool.start_timing_shown);
+    }
+
+    private boolean isTimed(Video video) {
+        return mTimedVideoId != null && video != null && mTimedVideoId.equals(video.videoId);
+    }
+
+    private void startTiming(Video item) {
+        if (!isTimingShown() || isTimed(item)) {
+            return;
+        }
+
+        mTimedVideoId = item.videoId;
+        mTimeOpenMs = System.currentTimeMillis();
+        mTimeEngineMs = 0;
+        mTimeInfoMs = 0;
+        mTimeLoads = 0;
+        mTimeFormat = null;
+        mTimeClient = null;
+    }
+
+    private void reportTiming() {
+        if (!isTimed(getVideo()) || mTimeInfoMs == 0) {
+            return;
+        }
+
+        mTimedVideoId = null;
+
+        long nowMs = System.currentTimeMillis();
+        long engineMs = mTimeEngineMs != 0 ? mTimeEngineMs : mTimeOpenMs;
+        String msg = String.format(java.util.Locale.US,
+                "Start %.1f s = screen %.1f + video info %.1f + player %.1f | %s, %s%s",
+                (nowMs - mTimeOpenMs) / 1000f, (engineMs - mTimeOpenMs) / 1000f,
+                (mTimeInfoMs - engineMs) / 1000f, (nowMs - mTimeInfoMs) / 1000f,
+                mTimeFormat, mTimeClient, mTimeLoads > 1 ? ", " + mTimeLoads + " tries" : "");
+
+        Log.d(TAG, msg);
+        MessageHelpers.showLongMessage(getContext(), msg);
     }
 
     @Override
@@ -259,6 +316,13 @@ public class VideoLoaderController extends BasePlayerController {
         Utils.post(mShowProgressBar);
         disposeActions();
 
+        if (isTimed(video)) {
+            if (mTimeEngineMs == 0) {
+                mTimeEngineMs = System.currentTimeMillis();
+            }
+            mTimeLoads++;
+        }
+
         ServiceManager service = YouTubeServiceManager.instance();
         MediaItemService mediaItemManager = service.getMediaItemService();
         mFormatInfoAction = mediaItemManager.getFormatInfoObserve(video.videoId)
@@ -279,6 +343,12 @@ public class VideoLoaderController extends BasePlayerController {
         String bgImageUrl = null;
 
         getVideo().sync(formatInfo);
+
+        if (isTimed(getVideo())) {
+            mTimeInfoMs = System.currentTimeMillis();
+            mTimeFormat = "no formats";
+            mTimeClient = formatInfo.getClientInfo() != null ? formatInfo.getClientInfo().getClientName() : "?";
+        }
 
         // Fix stretched video for a couple milliseconds (before the onVideoSizeChanged gets called)
         applyAspectRatio(formatInfo);
@@ -305,21 +375,27 @@ public class VideoLoaderController extends BasePlayerController {
             Log.d(TAG, "Loading regular video in dash format...");
 
             if (getPlayerTweaksData().isHighBitrateFormatsEnabled() && formatInfo.hasExtendedHlsFormats()) {
+                mTimeFormat = "dash+hls";
                 player.openMerged(formatInfo, formatInfo.getHlsManifestUrl());
             } else {
+                mTimeFormat = "dash";
                 player.openDash(formatInfo);
             }
         } else if (acceptAdaptiveFormats(formatInfo) && formatInfo.containsSabrFormats()) {
             Log.d(TAG, "Loading video in sabr format...");
+            mTimeFormat = "sabr";
             player.openSabr(formatInfo);
         } else if (acceptDashLive(formatInfo)) {
             Log.d(TAG, "Loading live video (current or past live stream) in dash format...");
+            mTimeFormat = "dash live";
             player.openDashUrl(formatInfo.getDashManifestUrl());
         } else if (formatInfo.isLive() && formatInfo.containsHlsUrl()) {
             Log.d(TAG, "Loading live video (current or past live stream) in hls format...");
+            mTimeFormat = "hls live";
             player.openHlsUrl(formatInfo.getHlsManifestUrl());
         } else if (formatInfo.containsUrlFormats()) {
             Log.d(TAG, "Loading url list video. This is always LQ...");
+            mTimeFormat = "url list";
             player.openUrlList(formatInfo.createUrlList());
         } else {
             Log.d(TAG, "Empty format info received. Seems future live translation. No video data to pass to the player.");

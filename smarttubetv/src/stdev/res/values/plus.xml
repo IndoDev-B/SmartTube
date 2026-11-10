@@ -11,6 +11,8 @@
     <bool name="tv_mode_enabled">true</bool>
     <string translatable="false" name="tv_mode_config_asset">tv_mode_dev.json</string>
     <string translatable="false" name="tv_mode_config_url">https://raw.githubusercontent.com/IndoDev-B/SmartTube/my-features/common/src/main/assets/tv_mode_dev.json</string>
+    <!-- Slow video start investigation: shows where the time went once each video plays. -->
+    <bool name="start_timing_shown">true</bool>
     <string-array name="update_urls">
         <item>https://github.com/IndoDev-B/SmartTube/releases/download/dev/smarttubeplus_dev.json</item>
     </string-array>
