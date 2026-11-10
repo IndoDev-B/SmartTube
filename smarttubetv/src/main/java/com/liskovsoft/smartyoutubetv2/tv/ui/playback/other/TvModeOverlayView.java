@@ -337,6 +337,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         int[] place = new int[2];
         focused.getLocationOnScreen(place);
 
+        Log.d(TAG, "Up to top buttons: from %s at y=%s", focused.getClass().getSimpleName(), place[1]);
+
         if (place[1] + focused.getHeight() / 2 > getHeight() * 0.8f) {
             return false;
         }
