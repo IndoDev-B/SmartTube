@@ -115,7 +115,7 @@ public class TvModeService {
     /** The channels the filters leave. Built when asked for, thrown away when anything changes. */
     private List<TvChannel> mShown;
     /** Playlists a search found, by channel and search term. Worker threads only. */
-    private final Map<String, List<MediaItem>> mPlaylists = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> mPlaylists = new ConcurrentHashMap<>();
     // Search filters the MediaServiceCore table has no entry for. Our patch (patches/MediaServiceCore/
     // search-filters.patch) builds YouTube's filter value for these, and for any combination when
     // OPT_BUILD is set. Without the patch the bits are ignored and the checks in accept() still apply.
@@ -1150,39 +1150,10 @@ public class TvModeService {
             final List<TvChannel.Series> found = new ArrayList<>();
 
             try {
-                ContentService service = YouTubeServiceManager.instance().getContentService();
-                List<MediaGroup> groups = service.getSearch(query, SearchOptions.TYPE_PLAYLIST | OPT_BUILD);
-
-                for (int g = 0; groups != null && g < groups.size(); g++) {
-                    MediaGroup group = groups.get(g);
-
-                    for (int i = 0; group != null && group.getMediaItems() != null && i < group.getMediaItems().size(); i++) {
-                        MediaItem item = group.getMediaItems().get(i);
-
-                        if (item == null || item.getVideoId() != null || found.size() >= SERIES_FOUND) {
-                            continue;
-                        }
-
-                        // A search result names its playlist by id, or only by the key of its page,
-                        // which for a playlist is "VL" and the id.
-                        String key = item.getReloadPageKey();
-                        String playlistId = item.getPlaylistId() != null ? item.getPlaylistId()
-                                : key != null && key.startsWith("VL") ? key.substring(2) : key;
-
-                        if (playlistId == null) {
-                            continue;
-                        }
-
-                        TvChannel.Series one = new TvChannel.Series();
-                        one.playlistId = playlistId;
-                        one.pageKey = key;
-                        one.title = item.getTitle() != null ? item.getTitle() : "";
-                        one.author = creatorOf(item.getAuthor()) != null ? creatorOf(item.getAuthor()) : "";
-                        one.count = countIn(item.getBadgeText());
-                        if (one.count == 0) {
-                            one.count = countIn(item.getSecondTitle());
-                        }
-                        Log.d(TAG, "Series search \"%s\": %s | %s | %s | badge %s | %s", query, one.playlistId, one.title, one.author, item.getBadgeText(), item.getSecondTitle());
+                // The app's own search returns videos only, so the playlists are asked for directly.
+                for (TvChannel.Series one : TvPlaylistSearch.find(query)) {
+                    if (found.size() < SERIES_FOUND) {
+                        Log.d(TAG, "Series search \"%s\": %s | %s | %s | %s", query, one.playlistId, one.title, one.author, one.count);
                         found.add(one);
                     }
                 }
@@ -2229,24 +2200,20 @@ public class TvModeService {
      * its videos join the lineup as plain videos.
      */
     private List<MediaGroup> playlistVideos(ContentService service, String key, String query, int options, int index) {
-        List<MediaItem> playlists = mPlaylists.get(key);
+        List<String> playlists = mPlaylists.get(key);
 
         if (playlists == null) {
             playlists = new ArrayList<>();
-            List<MediaGroup> groups = service.getSearch(query, options);
 
-            if (groups != null) {
-                for (MediaGroup group : groups) {
-                    if (group == null || group.getMediaItems() == null) {
-                        continue;
-                    }
-                    for (MediaItem item : group.getMediaItems()) {
-                        if (item != null && item.getVideoId() == null && (item.getReloadPageKey() != null || item.getPlaylistId() != null)
-                                && playlists.size() < PLAYLISTS_USED) {
-                            playlists.add(item);
-                        }
+            // The app's own search returns no playlists, so this one is asked directly.
+            try {
+                for (TvChannel.Series found : TvPlaylistSearch.find(query)) {
+                    if (playlists.size() < PLAYLISTS_USED) {
+                        playlists.add(found.playlistId);
                     }
                 }
+            } catch (Throwable e) {
+                Log.e(TAG, "Playlist search failed for %s: %s", query, e.getMessage());
             }
 
             mPlaylists.put(key, playlists);
@@ -2255,16 +2222,10 @@ public class TvModeService {
         List<MediaGroup> result = new ArrayList<>();
 
         if (!playlists.isEmpty()) {
-            MediaItem playlist = playlists.get(Math.abs(index) % playlists.size());
-            MediaGroup videos = playlist.getReloadPageKey() != null ? service.getGroup(playlist) : null;
-            if (videos != null) {
-                result.add(videos);
-            } else if (playlist.getPlaylistId() != null) {
-                // No page key, or it led nowhere: a playlist also opens as the channel "VL" + its id.
-                List<MediaGroup> groups = service.getChannelObserve("VL" + playlist.getPlaylistId()).blockingFirst();
-                if (groups != null) {
-                    result.addAll(groups);
-                }
+            // A playlist opens as the channel "VL" + its id.
+            List<MediaGroup> groups = service.getChannelObserve("VL" + playlists.get(Math.abs(index) % playlists.size())).blockingFirst();
+            if (groups != null) {
+                result.addAll(groups);
             }
         }
 
