@@ -107,6 +107,12 @@ public class TvChannel {
     public String region = "";
     /** With a YouTube Data API key: also take from this country's most popular chart ("IN"). Empty = don't. */
     public String chart = "";
+    /**
+     * The channel's era, as two years. A title that names a year and none inside the era is
+     * left out. 0 = no era.
+     */
+    public int yearFrom;
+    public int yearTo;
     /** YouTube channel ids of the creators, by name. Looked up once, then kept. */
     public final Map<String, String> creatorIds = new HashMap<>();
     /** How many times in a row each creator was skipped within the first seconds. */
@@ -236,7 +242,8 @@ public class TvChannel {
     /** The part of a channel that decides what it plays. A change here means the coming-up lineup is stale. */
     public String searchKey() {
         return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + features + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages
-                + "|" + type + "|" + minMinutes + "|" + playlists + (isSeries() ? "|series" + seriesIds() + seriesRun : "");
+                + "|" + type + "|" + minMinutes + "|" + playlists + (isSeries() ? "|series" + seriesIds() + seriesRun : "")
+                + (yearTo > 0 ? "|years" + yearFrom + "-" + yearTo : "");
     }
 
     private String seriesIds() {
@@ -281,6 +288,7 @@ public class TvChannel {
         o.put("minViews", minViews);
         o.put("region", region);
         o.put("chart", chart);
+        o.put("years", new JSONArray().put(yearFrom).put(yearTo));
         o.put("creatorIds", new JSONObject(creatorIds));
         o.put("skips", new JSONObject(skips));
         o.put("skipWords", new JSONArray(skipWords));
@@ -431,6 +439,8 @@ public class TvChannel {
         c.minViews = minViews;
         c.region = region;
         c.chart = chart;
+        c.yearFrom = yearFrom;
+        c.yearTo = yearTo;
         c.creatorIds.putAll(creatorIds);
         c.skips.putAll(skips);
         c.skipWords.addAll(skipWords);
@@ -510,6 +520,9 @@ public class TvChannel {
         minViews = o.optLong("minViews", 0);
         region = o.optString("region", "");
         chart = o.optString("chart", "");
+        JSONArray years = o.optJSONArray("years");
+        yearFrom = years != null ? years.optInt(0, 0) : 0;
+        yearTo = years != null ? years.optInt(1, 0) : 0;
         readList(o.optJSONArray("skipWords"), skipWords);
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);

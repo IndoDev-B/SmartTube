@@ -202,7 +202,7 @@ public class TvModeMenu {
     private void appendSeriesEditor(TvChannel channel) {
         for (TvChannel.Series one : channel.series) {
             List<OptionItem> actions = new ArrayList<>();
-            int at = Math.min(one.next + 1, Math.max(1, one.count));
+            int at = Math.min(mService.episodeOn(channel, one), Math.max(1, one.count));
 
             actions.add(UiOptionItem.from("Start again from episode 1", option -> {
                 mDialog.closeDialog();
@@ -228,7 +228,7 @@ public class TvModeMenu {
                 toast("Removed " + one.title);
             }));
 
-            mDialog.appendStringsCategory(one.title + (one.count > 0 ? "  ·  next: episode " + at + " of " + one.count : ""), actions);
+            mDialog.appendStringsCategory(one.title + (one.count > 0 ? "  ·  on episode " + at + " of " + one.count : ""), actions);
         }
 
         mDialog.appendSingleButton(UiOptionItem.from("+  Add a series", option -> {

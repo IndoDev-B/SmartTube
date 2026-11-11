@@ -1159,13 +1159,23 @@ public class TvModeService {
                     for (int i = 0; group != null && group.getMediaItems() != null && i < group.getMediaItems().size(); i++) {
                         MediaItem item = group.getMediaItems().get(i);
 
-                        if (item == null || item.getVideoId() != null || item.getPlaylistId() == null || found.size() >= SERIES_FOUND) {
+                        if (item == null || item.getVideoId() != null || found.size() >= SERIES_FOUND) {
+                            continue;
+                        }
+
+                        // A search result names its playlist by id, or only by the key of its page,
+                        // which for a playlist is "VL" and the id.
+                        String key = item.getReloadPageKey();
+                        String playlistId = item.getPlaylistId() != null ? item.getPlaylistId()
+                                : key != null && key.startsWith("VL") ? key.substring(2) : key;
+
+                        if (playlistId == null) {
                             continue;
                         }
 
                         TvChannel.Series one = new TvChannel.Series();
-                        one.playlistId = item.getPlaylistId();
-                        one.pageKey = item.getReloadPageKey();
+                        one.playlistId = playlistId;
+                        one.pageKey = key;
                         one.title = item.getTitle() != null ? item.getTitle() : "";
                         one.author = creatorOf(item.getAuthor()) != null ? creatorOf(item.getAuthor()) : "";
                         one.count = countIn(item.getBadgeText());
@@ -1180,6 +1190,7 @@ public class TvModeService {
                 Log.e(TAG, "Series search failed for %s: %s", query, e.getMessage());
             }
 
+            Log.d(TAG, "Series search \"%s\": %s found", query, found.size());
             mMain.post(() -> onFound.onFound(found));
         });
     }
@@ -1517,6 +1528,21 @@ public class TvModeService {
 
         channel.seriesTurn = turn;
         return added;
+    }
+
+    /** The episode of a series that is on or comes next on the channel, counted from 1. */
+    public int episodeOn(TvChannel channel, TvChannel.Series one) {
+        int lowest = -1;
+
+        for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+            String id = channel.lineup.get(i).videoId;
+            if (channel.seriesOf(id) == one) {
+                int number = channel.episodeOf(id);
+                lowest = lowest < 0 ? number : Math.min(lowest, number);
+            }
+        }
+
+        return (lowest >= 0 ? lowest : one.next) + 1;
     }
 
     /** "Mahabharat · Ep 41" for an episode in a lineup, or null for a video that isn't one. */
@@ -2280,13 +2306,17 @@ public class TvModeService {
         try {
             double number = Double.parseDouble(matcher.group(1).replace(",", ""));
             String unit = matcher.group(2) != null ? matcher.group(2).toUpperCase(Locale.ROOT) : "";
-            return (long) (number * ("K".equals(unit) ? 1_000 : "M".equals(unit) ? 1_000_000 : "B".equals(unit) ? 1_000_000_000L : 1));
+            return (long) (number * ("K".equals(unit) ? 1_000 : "M".equals(unit) ? 1_000_000 : "B".equals(unit) ? 1_000_000_000L
+                    : "LAKH".equals(unit) ? 100_000 : "CRORE".equals(unit) ? 10_000_000 : 1));
         } catch (NumberFormatException e) {
             return -1;
         }
     }
 
-    private static final java.util.regex.Pattern VIEWS = java.util.regex.Pattern.compile("([\\d.,]+)\\s*([KMBkmb])?\\s+views");
+    // India's YouTube counts in lakh (100 thousand) and crore (10 million).
+    private static final java.util.regex.Pattern VIEWS = java.util.regex.Pattern.compile("([\\d.,]+)\\s*([KMBkmb]|lakh|crore)?\\s+views", java.util.regex.Pattern.CASE_INSENSITIVE);
+    /** A year in a title. Not part of a longer number, so "1080p" and "2160p" aren't years. */
+    private static final java.util.regex.Pattern YEAR = java.util.regex.Pattern.compile("(?<![\\d])(19[2-9]\\d|20[0-3]\\d)(?![\\dpP])");
 
     /** creator: set when the videos came from a creator's own page, where YouTube leaves the name off. */
     private int append(TvChannel channel, List<MediaItem> found, String creator) {
@@ -2407,7 +2437,7 @@ public class TvModeService {
         int added = 0;
 
         for (Video video : fresh) {
-            if (creatorRunsTooLong(channel, video)) {
+            if (creatorRunsTooLong(channel, video) || sameAsQueued(channel, video)) {
                 continue;
             }
 
@@ -2488,6 +2518,13 @@ public class TvModeService {
         String title = itemTitle.toLowerCase(Locale.ROOT);
 
         if (containsAny(title, channel.skipWords) || containsAny(title, mGlobalSkipWords)) {
+            return false;
+        }
+
+        // A channel for an era: a title that names a year, and only years outside the era, is
+        // from another time. YouTube has no filter for when a film or a song was made, so the
+        // year uploaders put in the title is all there is. A title without a year passes.
+        if (outOfEra(channel, itemTitle)) {
             return false;
         }
 
@@ -2646,6 +2683,48 @@ public class TvModeService {
     private static boolean containsAny(String lowerCaseText, List<String> words) {
         for (String word : words) {
             if (lowerCaseText.contains(word.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean outOfEra(TvChannel channel, String title) {
+        if (channel.yearTo <= 0 || title == null) {
+            return false;
+        }
+
+        java.util.regex.Matcher years = YEAR.matcher(title);
+        boolean named = false;
+
+        while (years.find()) {
+            int year = Integer.parseInt(years.group(1));
+            if (year >= channel.yearFrom && year <= channel.yearTo) {
+                return false;
+            }
+            named = true;
+        }
+
+        return named;
+    }
+
+    /**
+     * The same film or concert uploaded by somebody else: a long video whose length matches one
+     * that is on or queued to within a second and a half. Two different films of over twenty
+     * minutes almost never run the same to the second.
+     */
+    private boolean sameAsQueued(TvChannel channel, Video video) {
+        TvDataApi.Facts facts = mFacts.get(video.videoId);
+        long durationMs = video.getDurationMs() > 0 ? video.getDurationMs() : facts != null ? facts.durationMs : 0;
+
+        if (durationMs < 20 * 60_000 || video.isLive) {
+            return false;
+        }
+
+        for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+            Long queued = channel.durations.get(channel.lineup.get(i).videoId);
+            if (queued != null && Math.abs(queued - durationMs) <= 1_500) {
                 return true;
             }
         }
@@ -3018,7 +3097,7 @@ public class TvModeService {
 
         TvDataApi.Facts facts = mFacts.get(video.videoId);
 
-        if (mGone.contains(video.videoId) || (facts != null && !factsFit(channel, facts, false))) {
+        if (mGone.contains(video.videoId) || (facts != null && !factsFit(channel, facts, false)) || outOfEra(channel, title)) {
             return true;
         }
 
@@ -3440,12 +3519,62 @@ public class TvModeService {
                     state.put("watched", new JSONArray(watched));
                     state.put("deletedPresets", new JSONArray(deletedPresets));
                     writeFile(new File(mContext.getFilesDir(), STATE_FILE), state.toString());
+                    writeLineups(channels);
                 } catch (Throwable e) {
                     Log.e(TAG, "Can't save the TV mode state: %s", e.getMessage());
                 }
             });
         } catch (Throwable e) {
             Log.e(TAG, "Can't save the TV mode state: %s", e.getMessage());
+        }
+    }
+
+    private long mLineupsWrittenMs;
+
+    /**
+     * What every channel has on and coming up, as plain text in the app's own folder on shared
+     * storage (Android/data/.../files/tv_lineups.txt). It is there to look at when a channel
+     * plays the wrong thing: the saved state itself can't be read from outside the app.
+     */
+    private void writeLineups(List<TvChannel> channels) {
+        long now = System.currentTimeMillis();
+
+        if (now - mLineupsWrittenMs < 20_000) {
+            return;
+        }
+
+        mLineupsWrittenMs = now;
+
+        try {
+            File folder = mContext.getExternalFilesDir(null);
+
+            if (folder == null) {
+                return;
+            }
+
+            StringBuilder text = new StringBuilder();
+
+            for (TvChannel channel : channels) {
+                text.append("# ").append(channel.name).append(" | ").append(channel.kind).append(" | ").append(channel.genre)
+                        .append(" | ").append(channel.language()).append('\n');
+
+                for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+                    Video video = channel.lineup.get(i);
+                    TvDataApi.Facts facts = mFacts.get(video.videoId);
+                    Long durationMs = channel.durations.get(video.videoId);
+                    String title = video.getTitle() != null ? video.getTitle().replace('\n', ' ').replace('|', '/') : "";
+                    text.append(title).append(" | ").append(video.author != null ? video.author : "")
+                            .append(" | ").append(durationMs != null ? durationMs / 60_000 : -1)
+                            .append(" | ").append(facts != null ? facts.language : "?")
+                            .append(" | ").append(facts != null ? facts.views : -1)
+                            .append(" | ").append(channel.episodes.containsKey(video.videoId) ? channel.episodes.get(video.videoId) : "")
+                            .append(" | ").append(video.videoId).append('\n');
+                }
+            }
+
+            writeFile(new File(folder, "tv_lineups.txt"), text.toString());
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't write the lineups: %s", e.getMessage());
         }
     }
 
