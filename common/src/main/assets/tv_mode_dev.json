@@ -1101,7 +1101,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Songs"
+      "kind": "Songs",
+      "region": "US"
     },
     {
       "id": "hip-hop",
@@ -1150,7 +1151,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Songs"
+      "kind": "Songs",
+      "region": "US"
     },
     {
       "id": "classical-music",
@@ -1450,7 +1452,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "stand-up-comedy",
@@ -1465,7 +1468,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "sketch-comedy",
@@ -1480,7 +1484,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "comedy-shows",
@@ -1495,7 +1500,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "reality-shows",
@@ -1509,7 +1515,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "talk-shows",
@@ -1524,7 +1531,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "retro-tv",
@@ -1538,7 +1546,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "magic",
@@ -1553,7 +1562,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "region": "US"
     },
     {
       "id": "hindi-stand-up",
@@ -1637,7 +1647,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Kids"
+      "kind": "Kids",
+      "region": "US"
     },
     {
       "id": "nursery-rhymes",
@@ -1651,7 +1662,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Kids"
+      "kind": "Kids",
+      "region": "US"
     },
     {
       "id": "kids-stories",
@@ -1665,7 +1677,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Kids"
+      "kind": "Kids",
+      "region": "US"
     },
     {
       "id": "kids-learning",
@@ -1679,7 +1692,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Kids"
+      "kind": "Kids",
+      "region": "US"
     },
     {
       "id": "animation",
@@ -1694,7 +1708,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Kids"
+      "kind": "Kids",
+      "region": "US"
     },
     {
       "id": "anime",
@@ -1709,7 +1724,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Kids"
+      "kind": "Kids",
+      "region": "US"
     },
     {
       "id": "hindi-cartoons",
@@ -1768,7 +1784,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "history",
@@ -1783,7 +1800,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "true-crime",
@@ -1797,7 +1815,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "war",
@@ -1811,7 +1830,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "biographies",
@@ -1825,7 +1845,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "mysteries",
@@ -1839,7 +1860,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "hindi-documentaries",
@@ -1882,7 +1904,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "mountains",
@@ -1897,7 +1920,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "oceans",
@@ -1912,7 +1936,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "animals",
@@ -1927,7 +1952,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "dogs-and-cats",
@@ -1942,7 +1968,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "birds",
@@ -1957,7 +1984,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "region": "US"
     },
     {
       "id": "music-lessons",
@@ -1972,7 +2000,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "science",
@@ -1987,7 +2016,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "space",
@@ -2002,7 +2032,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "science-experiments",
@@ -2017,7 +2048,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "mathematics",
@@ -2032,7 +2064,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "physics",
@@ -2047,7 +2080,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "biology",
@@ -2062,7 +2096,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "medicine",
@@ -2077,7 +2112,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "psychology",
@@ -2092,7 +2128,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "philosophy",
@@ -2107,7 +2144,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "lectures",
@@ -2123,7 +2161,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "languages",
@@ -2138,7 +2177,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "book-reviews",
@@ -2153,7 +2193,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "vigyan",
@@ -2196,7 +2237,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "engineering",
@@ -2211,7 +2253,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "electronics",
@@ -2226,7 +2269,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "programming",
@@ -2241,7 +2285,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "ai-and-robots",
@@ -2256,7 +2301,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "gadgets",
@@ -2271,7 +2317,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Learning"
+      "kind": "Learning",
+      "region": "US"
     },
     {
       "id": "hindi-tech",
@@ -2314,7 +2361,8 @@
       "languages": [
         "en"
       ],
-      "kind": "News"
+      "kind": "News",
+      "region": "US"
     },
     {
       "id": "business",
@@ -2329,7 +2377,8 @@
       "languages": [
         "en"
       ],
-      "kind": "News"
+      "kind": "News",
+      "region": "US"
     },
     {
       "id": "economics",
@@ -2344,7 +2393,8 @@
       "languages": [
         "en"
       ],
-      "kind": "News"
+      "kind": "News",
+      "region": "US"
     },
     {
       "id": "investing",
@@ -2359,7 +2409,8 @@
       "languages": [
         "en"
       ],
-      "kind": "News"
+      "kind": "News",
+      "region": "US"
     },
     {
       "id": "startups",
@@ -2374,7 +2425,8 @@
       "languages": [
         "en"
       ],
-      "kind": "News"
+      "kind": "News",
+      "region": "US"
     },
     {
       "id": "hindi-news-analysis",
@@ -2418,7 +2470,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Podcasts"
+      "kind": "Podcasts",
+      "region": "US"
     },
     {
       "id": "science-podcasts",
@@ -2432,7 +2485,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Podcasts"
+      "kind": "Podcasts",
+      "region": "US"
     },
     {
       "id": "tech-podcasts",
@@ -2446,7 +2500,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Podcasts"
+      "kind": "Podcasts",
+      "region": "US"
     },
     {
       "id": "business-podcasts",
@@ -2460,7 +2515,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Podcasts"
+      "kind": "Podcasts",
+      "region": "US"
     },
     {
       "id": "history-podcasts",
@@ -2474,7 +2530,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Podcasts"
+      "kind": "Podcasts",
+      "region": "US"
     },
     {
       "id": "comedy-podcasts",
@@ -2488,7 +2545,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Podcasts"
+      "kind": "Podcasts",
+      "region": "US"
     },
     {
       "id": "hindi-podcasts",
@@ -2693,7 +2751,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "yoga-and-meditation",
@@ -2708,7 +2767,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "hindi-fitness",
@@ -2736,7 +2796,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "baking",
@@ -2751,7 +2812,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "world-cuisine",
@@ -2766,7 +2828,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "indian-cooking",
@@ -2781,7 +2844,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "barbecue",
@@ -2796,7 +2860,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "hindi-recipes",
@@ -2839,7 +2904,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "road-trips",
@@ -2853,7 +2919,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "hiking-and-camping",
@@ -2868,7 +2935,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "fishing",
@@ -2883,7 +2951,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "survival",
@@ -2898,7 +2967,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "india-travel",
@@ -2927,7 +2997,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "trains",
@@ -2957,7 +3028,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "cars",
@@ -2972,7 +3044,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "motorcycles",
@@ -2987,7 +3060,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "formula-1",
@@ -3002,7 +3076,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "hindi-auto",
@@ -3030,7 +3105,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "farming",
@@ -3045,7 +3121,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "gardening",
@@ -3060,7 +3137,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "home-renovation",
@@ -3075,7 +3153,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "interior-design",
@@ -3090,7 +3169,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "architecture",
@@ -3105,7 +3185,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "tiny-homes",
@@ -3120,7 +3201,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "diy-and-crafts",
@@ -3135,7 +3217,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "restoration",
@@ -3165,7 +3248,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "kheti",
@@ -3194,7 +3278,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "painting-and-drawing",
@@ -3209,7 +3294,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "photography",
@@ -3224,7 +3310,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "filmmaking",
@@ -3239,7 +3326,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "fashion",
@@ -3254,7 +3342,8 @@
       "languages": [
         "en"
       ],
-      "kind": "Lifestyle"
+      "kind": "Lifestyle",
+      "region": "US"
     },
     {
       "id": "gaming",
