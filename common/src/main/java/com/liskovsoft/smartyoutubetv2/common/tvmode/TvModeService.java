@@ -1014,6 +1014,11 @@ public class TvModeService {
 
     /** "Save for later" in a program's menu. True = added, false = it was there already and is taken off. */
     public boolean toggleMyList(Video video) {
+        return toggleMyList(video, 0);
+    }
+
+    /** durationMs: the program's length when the caller knows it, as the player does. 0 = look it up. */
+    public boolean toggleMyList(Video video, long durationMs) {
         ensureLoaded();
 
         if (video == null || video.videoId == null) {
@@ -1033,14 +1038,16 @@ public class TvModeService {
 
         if (channel != null) {
             Long known = channel.durations.get(video.videoId);
-            putSaved(mMyList, video, channel, 0, known != null ? known : 0);
+            putSaved(mMyList, video, channel, 0, known != null && known > 0 ? known : Math.max(0, durationMs));
         } else if (left != null) { // from the "Continue watching" line: the card itself knows little
             TvSaved copy = TvSaved.fromJson(jsonOf(left));
             copy.positionMs = 0;
             copy.atMs = System.currentTimeMillis();
             mMyList.add(0, copy);
         } else {
-            return false;
+            // In the player, a program that belongs to no channel: a random one, or one played
+            // outside its channel's schedule. It is saved with what the player knows about it.
+            putSaved(mMyList, video, null, 0, Math.max(0, durationMs));
         }
 
         while (mMyList.size() > MAX_SAVED) {

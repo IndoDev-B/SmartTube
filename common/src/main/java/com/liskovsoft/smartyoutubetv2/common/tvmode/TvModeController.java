@@ -69,6 +69,7 @@ public class TvModeController extends BasePlayerController {
 
     public static final int TOP_BUTTON_RANDOM = 0;
     public static final int TOP_BUTTON_SETTINGS = 1;
+    public static final int TOP_BUTTON_MYLIST = 2;
 
     /** The player's own controls are on screen. */
     public static boolean isControlsUp() {
@@ -81,7 +82,33 @@ public class TvModeController extends BasePlayerController {
         TvModeController controller = sInstance.get();
 
         if (controller != null && controller.getPlayer() != null) {
+            if (button == TOP_BUTTON_MYLIST) {
+                controller.toggleMyList();
+                return;
+            }
             controller.onButtonClicked(button == TOP_BUTTON_RANDOM ? R.id.action_tv_random : R.id.action_tv_settings, 0);
+        }
+    }
+
+    /** The My list button at the top of the player: what is playing goes on the list, or comes off it. */
+    private void toggleMyList() {
+        Video current = getVideo();
+
+        if (current == null || current.videoId == null) {
+            return;
+        }
+
+        if (current.isLive) {
+            MessageHelpers.showMessage(getContext(), "A live stream can't be saved for later");
+            return;
+        }
+
+        boolean added = getService().toggleMyList(current, getPlayer().getDurationMs());
+        MessageHelpers.showMessage(getContext(), added ? "Saved to My list" : "Taken off My list");
+
+        TvModeOverlay overlay = sOverlay.get();
+        if (overlay != null) {
+            overlay.setMyListState(added);
         }
     }
 
@@ -160,7 +187,8 @@ public class TvModeController extends BasePlayerController {
 
     /** The top buttons belong to TV mode: a channel's video, or one the Random button picked. */
     private boolean hasTopButtons(Video video) {
-        return isTvVideo(video) || isRandom(video);
+        return isTvVideo(video) || isRandom(video) || TvModeService.isShelf(video)
+                || (video != null && TvModeService.ONCE.equals(video.tvChannelId));
     }
 
     private final Runnable mKeepRandom = () -> {
@@ -435,6 +463,8 @@ public class TvModeController extends BasePlayerController {
         overlay.showTopButtons(shown && hasTopButtons(getVideo()));
 
         if (shown) {
+            Video playing = getVideo();
+            overlay.setMyListState(playing != null && getService().isInMyList(playing.videoId));
             overlay.hideBanner(); // the controls show the same things
             return;
         }

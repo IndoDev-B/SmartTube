@@ -41,6 +41,9 @@ public interface TvModeOverlay {
      */
     void focusRandomButton();
 
+    /** The My list button: a tick when what is playing is on the list, a plus when it isn't. */
+    void setMyListState(boolean listed);
+
     /** Hides the top buttons even when the cursor is on them: a video that isn't TV mode's started. */
     void dropTopButtons();
 

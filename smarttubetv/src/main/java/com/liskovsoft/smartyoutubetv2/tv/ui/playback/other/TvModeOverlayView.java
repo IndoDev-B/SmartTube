@@ -76,8 +76,14 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     private final TextView mNextTitle;
     private final TextView mSleep;
     private final Runnable mHideBanner = this::hideBanner;
-    private final TextView mRandomButton;
-    private final TextView mSettingsButton;
+    private final IconButton mRandomButton;
+    private final IconButton mListButton;
+    private final IconButton mSettingsButton;
+    /** The three buttons from left to right, the way Left and Right move through them. */
+    private final IconButton[] mTopButtons;
+    /** Says what the focused button does: the buttons themselves are only icons. */
+    private final TextView mTip;
+    private static final int TOP_BUTTON_DP = 36;
     /** The control the focus came from, to hand it back on Down. */
     private java.lang.ref.WeakReference<View> mReturnFocus = new java.lang.ref.WeakReference<>(null);
     /**
@@ -194,15 +200,17 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         right.addView(mNextTitle, nextParams);
 
         // Top corners: Random on the left, TV settings on the right. Up from the controls reaches them.
-        mRandomButton = topButton("Random", TvModeController.TOP_BUTTON_RANDOM);
-        LayoutParams randomParams = new LayoutParams(LayoutParams.WRAP_CONTENT, dp(34), Gravity.TOP | Gravity.START);
-        randomParams.setMargins(dp(55), dp(30), 0, 0);
-        addView(mRandomButton, randomParams);
+        // Next to TV settings: put what is playing on My list, or take it off.
+        mRandomButton = topButton(TvModeController.TOP_BUTTON_RANDOM, "Play a random program", Gravity.START, 55);
+        mListButton = topButton(TvModeController.TOP_BUTTON_MYLIST, "Save for later", Gravity.END, 55 + TOP_BUTTON_DP + 10);
+        mSettingsButton = topButton(TvModeController.TOP_BUTTON_SETTINGS, "TV settings", Gravity.END, 55);
+        mTopButtons = new IconButton[] {mRandomButton, mListButton, mSettingsButton};
 
-        mSettingsButton = topButton("TV settings", TvModeController.TOP_BUTTON_SETTINGS);
-        LayoutParams settingsParams = new LayoutParams(LayoutParams.WRAP_CONTENT, dp(34), Gravity.TOP | Gravity.END);
-        settingsParams.setMargins(0, dp(30), dp(55), 0);
-        addView(mSettingsButton, settingsParams);
+        mTip = text(13f, 0xFFFFFFFF, 1);
+        mTip.setPadding(dp(8), dp(3), dp(8), dp(3));
+        mTip.setBackground(rounded(0xE6000000, dp(4)));
+        mTip.setVisibility(GONE);
+        addView(mTip, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
 
         mSleep = text(26f, 0xFFBBBBBB, 2);
         mSleep.setGravity(Gravity.CENTER);
@@ -231,19 +239,22 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         postDelayed(mHideBanner, BANNER_MS);
     }
 
-    private TextView topButton(String label, final int which) {
-        final TextView button = text(14.5f, 0xFFFFFFFF, 1);
-        button.setText(label);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(18), 0, dp(18), 0);
+    /** A round icon button in a top corner. marginDp = how far it sits from that side's edge. */
+    private IconButton topButton(final int which, String tip, int gravity, int marginDp) {
+        final IconButton button = new IconButton(getContext(), which, tip, gravity, marginDp);
         button.setFocusable(true);
         button.setFocusableInTouchMode(true);
         button.setVisibility(GONE);
-        final GradientDrawable pill = rounded(0x99000000, dp(17));
-        button.setBackground(pill);
+        LayoutParams params = new LayoutParams(dp(TOP_BUTTON_DP), dp(TOP_BUTTON_DP), Gravity.TOP | gravity);
+        params.setMargins(gravity == Gravity.START ? dp(marginDp) : 0, dp(30), gravity == Gravity.END ? dp(marginDp) : 0, 0);
+        addView(button, params);
         button.setOnFocusChangeListener((view, focused) -> {
-            pill.setColor(focused ? 0xFFF1F1F1 : 0x99000000);
-            button.setTextColor(focused ? 0xFF111111 : 0xFFFFFFFF);
+            button.invalidate();
+            if (focused) {
+                showTip(button);
+            } else if (mTipFor == button) {
+                hideTip();
+            }
         });
         button.setOnKeyListener((view, keyCode, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
@@ -262,10 +273,12 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
                     }
                     return true;
                 case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
-                    mRandomButton.requestFocus();
-                    return true;
                 case android.view.KeyEvent.KEYCODE_DPAD_RIGHT:
-                    mSettingsButton.requestFocus();
+                    int to = java.util.Arrays.asList(mTopButtons).indexOf(button)
+                            + (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                    if (to >= 0 && to < mTopButtons.length) {
+                        mTopButtons[to].requestFocus();
+                    }
                     return true;
                 case android.view.KeyEvent.KEYCODE_DPAD_UP:
                     return true; // nothing above
@@ -305,8 +318,117 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     }
 
     private void setTopButtonsVisible(boolean visible) {
-        mRandomButton.setVisibility(visible ? VISIBLE : GONE);
-        mSettingsButton.setVisibility(visible ? VISIBLE : GONE);
+        for (IconButton button : mTopButtons) {
+            button.setVisibility(visible ? VISIBLE : GONE);
+        }
+
+        if (!visible) {
+            hideTip();
+        }
+    }
+
+    private IconButton mTipFor;
+
+    /** The focused button's name, right under it. */
+    private void showTip(IconButton button) {
+        mTipFor = button;
+        mTip.setText(button.tip);
+        LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | button.gravity);
+        params.setMargins(button.gravity == Gravity.START ? dp(button.marginDp) : 0, dp(30 + TOP_BUTTON_DP + 6),
+                button.gravity == Gravity.END ? dp(button.marginDp) : 0, 0);
+        mTip.setLayoutParams(params);
+        mTip.setVisibility(VISIBLE);
+    }
+
+    private void hideTip() {
+        mTipFor = null;
+        mTip.setVisibility(GONE);
+    }
+
+    private boolean isTopButton(View view) {
+        return view == mRandomButton || view == mListButton || view == mSettingsButton;
+    }
+
+    @Override
+    public void setMyListState(boolean listed) {
+        mListButton.on = listed;
+        mListButton.tip = listed ? "Take off My list" : "Save for later";
+        mListButton.invalidate();
+
+        if (mTipFor == mListButton) {
+            mTip.setText(mListButton.tip);
+        }
+    }
+
+    /**
+     * One of the top buttons: a dark disc with a drawn icon, white with a dark icon when focused.
+     * Drawn here so the icons are sharp at any size and need no picture files.
+     */
+    private static class IconButton extends View {
+        final int which;
+        final int gravity;
+        final int marginDp;
+        String tip;
+        /** My list only: what is playing is on the list. */
+        boolean on;
+        private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint mStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path mPath = new Path();
+        private final RectF mBox = new RectF();
+
+        IconButton(Context context, int which, String tip, int gravity, int marginDp) {
+            super(context);
+            this.which = which;
+            this.tip = tip;
+            this.gravity = gravity;
+            this.marginDp = marginDp;
+            mStroke.setStyle(Paint.Style.STROKE);
+            mStroke.setStrokeCap(Paint.Cap.ROUND);
+            mStroke.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float cx = getWidth() / 2f;
+            float cy = getHeight() / 2f;
+            float r = getWidth() * 0.24f; // half the icon's size
+            boolean focused = isFocused();
+            int ink = focused ? 0xFF111111 : 0xFFFFFFFF;
+
+            mFill.setColor(focused ? 0xFFF1F1F1 : 0x99000000);
+            canvas.drawCircle(cx, cy, getWidth() / 2f, mFill);
+            mFill.setColor(ink);
+            mStroke.setColor(ink);
+            mStroke.setStrokeWidth(getWidth() * 0.06f);
+
+            if (which == TvModeController.TOP_BUTTON_RANDOM) { // a die showing three
+                mBox.set(cx - r, cy - r, cx + r, cy + r);
+                canvas.drawRoundRect(mBox, r * 0.35f, r * 0.35f, mStroke);
+                float dot = r * 0.2f;
+                canvas.drawCircle(cx - r * 0.48f, cy - r * 0.48f, dot, mFill);
+                canvas.drawCircle(cx, cy, dot, mFill);
+                canvas.drawCircle(cx + r * 0.48f, cy + r * 0.48f, dot, mFill);
+            } else if (which == TvModeController.TOP_BUTTON_MYLIST) {
+                mPath.rewind();
+                if (on) { // a tick: it is on the list
+                    mPath.moveTo(cx - r, cy);
+                    mPath.lineTo(cx - r * 0.3f, cy + r * 0.7f);
+                    mPath.lineTo(cx + r, cy - r * 0.7f);
+                } else { // a plus: add it
+                    mPath.moveTo(cx - r, cy);
+                    mPath.lineTo(cx + r, cy);
+                    mPath.moveTo(cx, cy - r);
+                    mPath.lineTo(cx, cy + r);
+                }
+                canvas.drawPath(mPath, mStroke);
+            } else { // settings: three sliders
+                for (int i = -1; i <= 1; i++) {
+                    float y = cy + i * r * 0.72f;
+                    canvas.drawLine(cx - r, y, cx + r, y, mStroke);
+                    canvas.drawCircle(cx + (i == 0 ? r * 0.4f : -r * 0.35f), y, r * 0.24f, mFill);
+                }
+            }
+        }
     }
 
     @Override
@@ -333,7 +455,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
         View focused = getRootView().findFocus();
 
-        if (focused == null || focused == mRandomButton || focused == mSettingsButton) {
+        if (focused == null || isTopButton(focused)) {
             return false;
         }
 
@@ -356,7 +478,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
     @Override
     public void focusRandomButton() {
-        if (mTopHeld && !mRandomButton.isFocused() && !mSettingsButton.isFocused()) {
+        if (mTopHeld && !mRandomButton.isFocused() && !mListButton.isFocused() && !mSettingsButton.isFocused()) {
             setTopButtonsVisible(true);
             mRandomButton.requestFocus();
         }
