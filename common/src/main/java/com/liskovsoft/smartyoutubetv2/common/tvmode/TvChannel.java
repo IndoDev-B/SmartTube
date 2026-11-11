@@ -64,6 +64,8 @@ public class TvChannel {
         public int count;
         /** The next episode to put in the lineup, counted from 0. */
         public int next;
+        /** Play the playlist from its other end: for one that lists its newest episode first. */
+        public boolean flip;
     }
 
     public String id;
@@ -299,6 +301,7 @@ public class TvChannel {
             item.put("author", one.author);
             item.put("count", one.count);
             item.put("next", one.next);
+            item.put("flip", one.flip);
             seriesArray.put(item);
         }
         o.put("series", seriesArray);
@@ -466,6 +469,7 @@ public class TvChannel {
             copy.author = one.author;
             copy.count = one.count;
             copy.next = one.next;
+            copy.flip = one.flip;
             c.series.add(copy);
         }
         c.episodes.putAll(episodes);
@@ -626,10 +630,12 @@ public class TvChannel {
             one.author = item.optString("author", "");
             one.count = item.optInt("count", 0);
             one.next = item.optInt("next", 0);
+            one.flip = item.optBoolean("flip", false);
 
             for (Series known : before) {
                 if (playlistId.equals(known.playlistId) && !item.has("next")) {
                     one.next = known.next;
+                    one.flip = known.flip;
                     one.count = Math.max(one.count, known.count);
                 }
             }

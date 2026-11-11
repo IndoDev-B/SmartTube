@@ -222,6 +222,11 @@ public class TvModeMenu {
                     return true;
                 });
             }));
+            actions.add(UiOptionItem.from("It plays backwards: turn it round", option -> {
+                mDialog.closeDialog();
+                mService.flipSeries(channel, one, this::refreshGuide);
+                toast(one.title + " now plays from its other end");
+            }));
             actions.add(UiOptionItem.from("Remove from this channel", option -> {
                 mDialog.closeDialog();
                 mService.removeSeries(channel, one, this::refreshGuide);

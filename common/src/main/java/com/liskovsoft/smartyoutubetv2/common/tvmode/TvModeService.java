@@ -1614,6 +1614,11 @@ public class TvModeService {
             Log.e(TAG, "Can't read playlist %s: %s", playlistId, e.getMessage());
         }
 
+        if (runsBackwards(episodes)) {
+            Collections.reverse(episodes);
+            Log.d(TAG, "Playlist %s lists its newest episode first: turned round", playlistId);
+        }
+
         // The app's own reader came back empty: with a Data API key the same list is one request per 50 videos.
         if (episodes.isEmpty() && mApi.ready()) {
             try {
@@ -1633,6 +1638,58 @@ public class TvModeService {
         }
 
         return episodes;
+    }
+
+    private static final java.util.regex.Pattern EPISODE = java.util.regex.Pattern.compile(
+            "(?:\\bep(?:isode)?s?\\b\\.?|\\bpart\\b|\\bchapter\\b|#|एपिसोड|भाग)\\s*[-:#]?\\s*(\\d{1,4})", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Many uploaders add each new episode at the top, so their playlist runs from the last
+     * episode to the first. The episode numbers in the titles give it away: when they mostly
+     * count down, the list is the wrong way round.
+     */
+    private static boolean runsBackwards(List<Video> episodes) {
+        int up = 0;
+        int down = 0;
+        int previous = -1;
+
+        for (Video episode : episodes) {
+            java.util.regex.Matcher matcher = EPISODE.matcher(episode.getTitle() != null ? episode.getTitle() : "");
+
+            if (!matcher.find()) {
+                continue;
+            }
+
+            int number = Integer.parseInt(matcher.group(1));
+
+            if (previous >= 0 && number != previous) {
+                if (number > previous) {
+                    up++;
+                } else {
+                    down++;
+                }
+            }
+
+            previous = number;
+        }
+
+        if (up + down >= 4) {
+            return down > up * 2;
+        }
+
+        // Too few numbers to go by. A list that opens with its finale is backwards all the same.
+        String first = !episodes.isEmpty() && episodes.get(0).getTitle() != null ? episodes.get(0).getTitle().toLowerCase(Locale.ROOT) : "";
+        return first.contains("last episode") || first.contains("final episode") || first.contains("finale");
+    }
+
+    /** Turns a series round, for a playlist whose order the titles don't give away. It starts again from its other end. */
+    public void flipSeries(TvChannel channel, TvChannel.Series one, Runnable onDone) {
+        requeue(channel);
+        one.flip = !one.flip;
+        one.next = 0;
+        channel.edited = true;
+        save();
+        fill(channel, onDone);
     }
 
     /** A video built from what the Data API said, for a source that has no search result to build it from. */
@@ -1695,7 +1752,7 @@ public class TvModeService {
             int dealt = 0;
 
             while (dealt < run && one.next < episodes.size() && channel.ahead() < minAhead(channel)) {
-                Video source = episodes.get(one.next);
+                Video source = episodes.get(one.flip ? episodes.size() - 1 - one.next : one.next);
 
                 if (!queued.add(source.videoId)) {
                     dealt = -1; // a short series came round to an episode that is still queued: enough for now
