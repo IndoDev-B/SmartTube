@@ -138,9 +138,9 @@ public class TvGuideGridView extends View {
 
     /** The filter buttons say what they are set to, so a filter that is on shows without opening it. */
     private void labelButtons() {
-        String genre = mService.getFilterGenre();
+        String kind = mService.getFilterKind();
         String language = mService.getFilterLanguage();
-        mButtons.get(0).title = "Genre: " + (genre.isEmpty() ? "Any" : genre);
+        mButtons.get(0).title = "Type: " + (kind.isEmpty() ? "Any" : kind);
         mButtons.get(1).title = "Language: " + (language.isEmpty() ? "Any" : com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(language));
         mButtons.get(2).title = "Favourites";
         mButtons.get(3).title = getContext().getString(R.string.tv_mode_new_channel);
@@ -562,7 +562,7 @@ public class TvGuideGridView extends View {
             boolean on = focused && mRow < 0 && mButton == i;
             // A filter that is on keeps a red tint, so it shows from anywhere in the guide.
             boolean active = (TvModeService.ACTION_FAVOURITES.equals(action) && mService.isFavOnly())
-                    || (TvModeService.ACTION_GENRE.equals(action) && !mService.getFilterGenre().isEmpty())
+                    || (TvModeService.ACTION_GENRE.equals(action) && !mService.getFilterKind().isEmpty())
                     || (TvModeService.ACTION_LANGUAGE.equals(action) && !mService.getFilterLanguage().isEmpty());
             mRect.set(x, dp(2), x + pillWidths[i], dp(30));
             mFill.setColor(on ? FOCUSED : active ? 0x99E62117 : 0x1FFFFFFF);
@@ -715,14 +715,23 @@ public class TvGuideGridView extends View {
     private String about(TvChannel channel, float room) {
         String language = mService.getFilterLanguage().isEmpty() && !channel.language().isEmpty()
                 ? com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(channel.language()) : "";
-        String genre = mService.getFilterGenre().isEmpty() ? channel.genre : "";
+        // The program type and the genre: "Movies · Action". The type is left out when the Type
+        // filter is on, and when the genre says the same ("Songs · Songs").
+        String kind = mService.getFilterKind().isEmpty() && !channel.kind.equalsIgnoreCase(channel.genre) ? channel.kind : "";
+        String genre = kind.isEmpty() || channel.genre.isEmpty() ? kind + channel.genre : kind + " · " + channel.genre;
 
         if (language.isEmpty() || genre.isEmpty()) {
             return fit(language + genre, mName, room);
         }
 
-        String both = language + " · " + genre;
-        return mName.measureText(both) <= room ? both : language;
+        String all = language + " · " + genre;
+        if (mName.measureText(all) <= room) {
+            return all;
+        }
+
+        // Too long: the genre is what tells two channels of a type apart, so it stays the longest.
+        String shorter = language + " · " + (channel.genre.isEmpty() ? kind : channel.genre);
+        return mName.measureText(shorter) <= room ? shorter : fit(channel.genre.isEmpty() ? kind : channel.genre, mName, room);
     }
 
     /** The top line's icons, drawn here so they are sharp at any size and take the button's colour. */

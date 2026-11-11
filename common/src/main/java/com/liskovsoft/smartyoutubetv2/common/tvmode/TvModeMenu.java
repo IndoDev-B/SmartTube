@@ -139,14 +139,110 @@ public class TvModeMenu {
     // ---------------- the guide's filters ----------------
 
     private void showGenreFilter() {
-        String current = mService.getFilterGenre();
-        appendChoice("Any", current.isEmpty(), () -> mService.setFilterGenre(""));
+        // The button filters by program type: Movies, Series, Songs... A channel's genre shows in its line.
+        String current = mService.getFilterKind();
+        appendChoice("Any", current.isEmpty(), () -> mService.setFilterKind(""));
 
-        for (String genre : mService.getGenres()) {
-            appendChoice(genre, genre.equalsIgnoreCase(current), () -> mService.setFilterGenre(genre));
+        for (String kind : mService.getKinds()) {
+            appendChoice(kind, kind.equalsIgnoreCase(current), () -> mService.setFilterKind(kind));
         }
 
-        mDialog.showDialog("Genre");
+        mDialog.showDialog("Type");
+    }
+
+    // ---------------- series ----------------
+
+    /** Asks what to look for, then lists the playlists found, to tick the ones the channel should play. */
+    private void askSeries(TvChannel channel, String suggestion) {
+        SimpleEditDialog.show(mContext, "Series to look for", suggestion, value -> {
+            String query = value != null ? value.trim() : "";
+
+            if (!query.isEmpty()) {
+                toast("Looking for series");
+                mService.findSeries(query, found -> showSeriesFound(channel, query, found));
+            }
+
+            return true;
+        });
+    }
+
+    private void showSeriesFound(TvChannel channel, String query, List<TvChannel.Series> found) {
+        if (found.isEmpty()) {
+            toast("No series found for \"" + query + "\"");
+            return;
+        }
+
+        for (TvChannel.Series one : found) {
+            String label = one.title + (one.author.isEmpty() ? "" : "  ·  " + one.author) + (one.count > 0 ? "  ·  " + one.count + " episodes" : "");
+            mDialog.appendSingleSwitch(UiOptionItem.from(label, option -> {
+                TvChannel.Series has = channel.findSeries(one.playlistId);
+
+                if (option.isSelected() && has == null) {
+                    mService.addSeries(channel, one, this::refreshGuide);
+                } else if (!option.isSelected() && has != null) {
+                    mService.removeSeries(channel, has, this::refreshGuide);
+                }
+            }, channel.findSeries(one.playlistId) != null));
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("Look for something else", option -> {
+            mDialog.closeDialog();
+            askSeries(channel, query);
+        }));
+
+        mDialog.showDialog("Tick the series for " + channel.name);
+    }
+
+    /** What to type into the series search when nothing was typed yet: the channel's own first search term. */
+    private static String seriesQuery(TvChannel channel) {
+        return !channel.terms.isEmpty() ? channel.terms.get(0) : channel.name.toLowerCase(Locale.ROOT) + " all episodes";
+    }
+
+    /** The editor's lines for a Series channel: its playlists and how they take turns. */
+    private void appendSeriesEditor(TvChannel channel) {
+        for (TvChannel.Series one : channel.series) {
+            List<OptionItem> actions = new ArrayList<>();
+            int at = Math.min(one.next + 1, Math.max(1, one.count));
+
+            actions.add(UiOptionItem.from("Start again from episode 1", option -> {
+                mDialog.closeDialog();
+                mService.setEpisode(channel, one, 1, this::refreshGuide);
+                toast(one.title + " starts again");
+            }));
+            actions.add(UiOptionItem.from("Go to an episode", option -> {
+                mDialog.closeDialog();
+                SimpleEditDialog.show(mContext, "Episode number" + (one.count > 0 ? " (1 to " + one.count + ")" : ""), String.valueOf(at), value -> {
+                    try {
+                        int episode = Integer.parseInt(value.trim());
+                        mService.setEpisode(channel, one, episode, this::refreshGuide);
+                        toast(one.title + " continues from episode " + episode);
+                    } catch (NumberFormatException e) {
+                        toast("That isn't a number");
+                    }
+                    return true;
+                });
+            }));
+            actions.add(UiOptionItem.from("Remove from this channel", option -> {
+                mDialog.closeDialog();
+                mService.removeSeries(channel, one, this::refreshGuide);
+                toast("Removed " + one.title);
+            }));
+
+            mDialog.appendStringsCategory(one.title + (one.count > 0 ? "  ·  next: episode " + at + " of " + one.count : ""), actions);
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("+  Add a series", option -> {
+            mDialog.closeDialog();
+            askSeries(channel, seriesQuery(channel));
+        }));
+
+        mDialog.appendRadioCategory("Episodes in a row", options(String.valueOf(channel.seriesRun), value -> {
+            mService.setSeriesRun(channel, Integer.parseInt(value), this::refreshGuide);
+        }, "1", "1, then the next series", "2", "2, then the next series", "3", "3, then the next series", "0", "The whole series"));
+
+        mDialog.appendRadioCategory("When a series ends", options(channel.seriesLoop ? "loop" : "stop",
+                value -> mService.setSeriesLoop(channel, "loop".equals(value)),
+                "loop", "Start it again", "stop", "Leave it out"));
     }
 
     private void showLanguageFilter() {
@@ -356,6 +452,14 @@ public class TvModeMenu {
     // ---------------- channel editor ----------------
 
     private void showEditor(TvChannel channel) {
+        appendKind(channel);
+
+        if (channel.isSeries()) { // playlists in order: no search terms or filters to set
+            appendSeriesEditor(channel);
+            appendEditorEnd(channel);
+            return;
+        }
+
         // Search terms: press one to remove it, or add one.
         List<OptionItem> terms = new ArrayList<>();
         for (String term : channel.terms) {
@@ -429,7 +533,7 @@ public class TvModeMenu {
         }, TvChannel.ORDER_MIXED, "Mixed", TvChannel.ORDER_TRENDING, "Trending this week", TvChannel.ORDER_VIEWS, "Most viewed",
                 TvChannel.ORDER_NEW, "Newest first"));
 
-        mDialog.appendRadioCategory("Type", options(channel.type, value -> {
+        mDialog.appendRadioCategory("Search YouTube for", options(channel.type, value -> {
             channel.type = value;
             searchChanged(channel, null);
         }, TvChannel.TYPE_VIDEO, "Videos", TvChannel.TYPE_MOVIE, "Movies"));
@@ -496,6 +600,29 @@ public class TvModeMenu {
             mDialog.appendStringsCategory("Blocked creators (" + channel.blocked.size() + ")", blocked);
         }
 
+        appendEditorEnd(channel);
+    }
+
+    /** The program type: picking one sets the filters that suit it. Series turns the channel into playlists in order. */
+    private void appendKind(TvChannel channel) {
+        List<String> choices = new ArrayList<>(Arrays.asList("", "None"));
+        for (String kind : mService.getAllKinds()) {
+            choices.add(kind);
+            choices.add(kind);
+        }
+        mDialog.appendRadioCategory("Program type" + (channel.kind.isEmpty() ? "" : ": " + channel.kind), options(channel.kind, value -> {
+            mDialog.closeDialog(); // the lines on screen belong to the old type
+            mService.setKind(channel, value, this::refreshGuide);
+            if (TvChannel.KIND_SERIES.equalsIgnoreCase(value) && channel.series.isEmpty()) {
+                askSeries(channel, seriesQuery(channel));
+            } else {
+                toast(value.isEmpty() ? "No program type" : channel.name + " is now " + value + ", with the filters for it");
+            }
+        }, choices.toArray(new String[0])));
+    }
+
+    /** The lines every channel's editor ends with. */
+    private void appendEditorEnd(TvChannel channel) {
         mDialog.appendSingleButton(UiOptionItem.from("Name: " + channel.name, option -> {
             mDialog.closeDialog();
             SimpleEditDialog.show(mContext, "Channel name", channel.name, value -> {
@@ -519,9 +646,9 @@ public class TvModeMenu {
             searchChanged(channel, null);
         }, languageChoices.toArray(new String[0])));
 
-        // The genre only files the channel under the guide's Genre filter. It doesn't change what plays.
+        // What the channel is about: Action, Mythology, Science... It shows in the channel's line in the guide.
         List<String> genreChoices = new ArrayList<>(Arrays.asList("", "None"));
-        for (String genre : mService.getGenres()) {
+        for (String genre : mService.getAllGenres()) {
             genreChoices.add(genre);
             genreChoices.add(genre);
         }
@@ -573,6 +700,12 @@ public class TvModeMenu {
     // ---------------- new channel ----------------
 
     private void showNewChannel() {
+        // Three picks make a channel: what kind of program, what it is about, and the language.
+        mDialog.appendSingleButton(UiOptionItem.from("+  Pick a type and a genre", option -> {
+            mDialog.closeDialog();
+            pickKind();
+        }));
+
         mDialog.appendSingleButton(UiOptionItem.from("+  Type a topic", option -> {
             mDialog.closeDialog();
             SimpleEditDialog.show(mContext, "What should the channel play?", "", value -> {
@@ -602,6 +735,64 @@ public class TvModeMenu {
         }
 
         mDialog.showDialog("New channel");
+    }
+
+    private void pickKind() {
+        for (String kind : mService.getAllKinds()) {
+            mDialog.appendSingleButton(UiOptionItem.from(kind, option -> {
+                mDialog.closeDialog();
+                pickGenre(kind);
+            }));
+        }
+
+        mDialog.showDialog("New channel: what kind of program?");
+    }
+
+    private void pickGenre(String kind) {
+        mDialog.appendSingleButton(UiOptionItem.from("+  Type a genre", option -> {
+            mDialog.closeDialog();
+            SimpleEditDialog.show(mContext, "Genre for the " + kind + " channel", "", value -> {
+                String genre = value != null ? value.trim() : "";
+                if (!genre.isEmpty()) {
+                    pickLanguage(kind, genre.substring(0, 1).toUpperCase(Locale.ROOT) + genre.substring(1));
+                }
+                return true;
+            });
+        }));
+
+        for (String genre : mService.getAllGenres()) {
+            mDialog.appendSingleButton(UiOptionItem.from(genre, option -> {
+                mDialog.closeDialog();
+                pickLanguage(kind, genre);
+            }));
+        }
+
+        mDialog.showDialog("New " + kind + " channel: what is it about?");
+    }
+
+    private void pickLanguage(String kind, String genre) {
+        mDialog.appendSingleButton(UiOptionItem.from("Any language", option -> {
+            mDialog.closeDialog();
+            build(kind, genre, "");
+        }));
+
+        for (String[] language : TvLanguage.LANGUAGES) {
+            mDialog.appendSingleButton(UiOptionItem.from(language[1], option -> {
+                mDialog.closeDialog();
+                build(kind, genre, language[0]);
+            }));
+        }
+
+        mDialog.showDialog("New " + genre + " " + kind + " channel: which language?");
+    }
+
+    private void build(String kind, String genre, String language) {
+        TvChannel channel = mService.build(kind, genre, language, this::refreshGuide);
+        toast("Channel " + mService.getChannels().size() + " added: " + channel.name);
+
+        if (channel.isSeries()) { // a series channel plays the playlists that get ticked next
+            askSeries(channel, seriesQuery(channel));
+        }
     }
 
     private void create(String name, List<String> terms) {

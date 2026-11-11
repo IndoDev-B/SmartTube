@@ -50,8 +50,39 @@ public class TvChannel {
     public static final String MODE_LIVE = "live";
     public static final String MODE_FREE = "pace";
 
+    /** Program type: playlists played whole, in episode order, like a rerun channel. */
+    public static final String KIND_SERIES = "Series";
+
+    /** One series of a rerun channel: a YouTube playlist and how far the channel is into it. */
+    public static final class Series {
+        public String playlistId;
+        /** What the app opens to read the playlist. Kept from the search result that found it. */
+        public String pageKey;
+        public String title = "";
+        public String author = "";
+        /** Episodes, as far as known. 0 before the playlist was read. */
+        public int count;
+        /** The next episode to put in the lineup, counted from 0. */
+        public int next;
+    }
+
     public String id;
     public String name;
+    /**
+     * The kind of program: Movies, Series, Songs... The guide's Type filter goes by it, and
+     * picking one in the editor sets the filters that suit it. Empty = not said.
+     */
+    public String kind = "";
+    /** A Series channel's playlists. They take turns, each in its own order. */
+    public final List<Series> series = new ArrayList<>();
+    /** How many episodes of one series play before the next series has its turn. 0 = the whole series. */
+    public int seriesRun = 1;
+    /** A series that ends starts again from its first episode. Otherwise it leaves the rotation. */
+    public boolean seriesLoop = true;
+    /** Whose turn it is in {@link #series}. */
+    public int seriesTurn;
+    /** For a video in the lineup that is an episode: its playlist id and number, as "id#number". */
+    public final Map<String, String> episodes = new HashMap<>();
     public final List<String> terms = new ArrayList<>();
     public final List<String> creators = new ArrayList<>();
     public String length = ANY;
@@ -133,6 +164,39 @@ public class TvChannel {
         return duration != null && duration > 0 ? duration : 10 * 60_000;
     }
 
+    public boolean isSeries() {
+        return KIND_SERIES.equalsIgnoreCase(kind);
+    }
+
+    public Series findSeries(String playlistId) {
+        for (Series one : series) {
+            if (one.playlistId != null && one.playlistId.equals(playlistId)) {
+                return one;
+            }
+        }
+
+        return null;
+    }
+
+    /** The series an episode in the lineup belongs to, or null for a video that isn't one. */
+    public Series seriesOf(String videoId) {
+        String mark = videoId != null ? episodes.get(videoId) : null;
+        int hash = mark != null ? mark.lastIndexOf('#') : -1;
+        return hash > 0 ? findSeries(mark.substring(0, hash)) : null;
+    }
+
+    /** An episode's number in its series, counted from 0, or -1 for a video that isn't one. */
+    public int episodeOf(String videoId) {
+        String mark = videoId != null ? episodes.get(videoId) : null;
+        int hash = mark != null ? mark.lastIndexOf('#') : -1;
+
+        try {
+            return hash > 0 ? Integer.parseInt(mark.substring(hash + 1)) : -1;
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
     /** Search terms and YouTube channels both feed the lineup. With playlists on, each term is also searched for playlists. */
     public int sources() {
         return Math.max(1, terms.size() + creators.size() + (playlists ? terms.size() : 0));
@@ -172,13 +236,37 @@ public class TvChannel {
     /** The part of a channel that decides what it plays. A change here means the coming-up lineup is stale. */
     public String searchKey() {
         return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + features + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages
-                + "|" + type + "|" + minMinutes + "|" + playlists;
+                + "|" + type + "|" + minMinutes + "|" + playlists + (isSeries() ? "|series" + seriesIds() + seriesRun : "");
+    }
+
+    private String seriesIds() {
+        StringBuilder ids = new StringBuilder();
+        for (Series one : series) {
+            ids.append(one.playlistId).append(',');
+        }
+        return ids.toString();
     }
 
     public JSONObject toJson() throws JSONException {
         JSONObject o = new JSONObject();
         o.put("id", id);
         o.put("name", name);
+        o.put("kind", kind);
+        o.put("seriesRun", seriesRun);
+        o.put("seriesLoop", seriesLoop);
+        o.put("seriesTurn", seriesTurn);
+        JSONArray seriesArray = new JSONArray();
+        for (Series one : series) {
+            JSONObject item = new JSONObject();
+            item.put("id", one.playlistId);
+            item.put("key", one.pageKey);
+            item.put("title", one.title);
+            item.put("author", one.author);
+            item.put("count", one.count);
+            item.put("next", one.next);
+            seriesArray.put(item);
+        }
+        o.put("series", seriesArray);
         o.put("terms", new JSONArray(terms));
         o.put("creators", new JSONArray(creators));
         o.put("length", length);
@@ -224,6 +312,9 @@ public class TvChannel {
             if (checked.contains(video.videoId)) {
                 item.put("k", 1);
             }
+            if (episodes.containsKey(video.videoId)) {
+                item.put("e", episodes.get(video.videoId));
+            }
             items.put(item);
         }
 
@@ -245,6 +336,9 @@ public class TvChannel {
             }
             if (item.optInt("k", 0) == 1) {
                 checked.add(video.videoId);
+            }
+            if (!item.isNull("e")) {
+                episodes.put(video.videoId, item.optString("e", ""));
             }
             out.add(video);
         }
@@ -308,6 +402,21 @@ public class TvChannel {
         TvChannel c = new TvChannel();
         c.id = id;
         c.name = name;
+        c.kind = kind;
+        c.seriesRun = seriesRun;
+        c.seriesLoop = seriesLoop;
+        c.seriesTurn = seriesTurn;
+        for (Series one : series) {
+            Series copy = new Series();
+            copy.playlistId = one.playlistId;
+            copy.pageKey = one.pageKey;
+            copy.title = one.title;
+            copy.author = one.author;
+            copy.count = one.count;
+            copy.next = one.next;
+            c.series.add(copy);
+        }
+        c.episodes.putAll(episodes);
         c.terms.addAll(terms);
         c.creators.addAll(creators);
         c.length = length;
@@ -379,6 +488,11 @@ public class TvChannel {
 
     /** Reads the search settings. Used for saved channels and for the preset list. */
     public void readSettings(JSONObject o) {
+        kind = o.optString("kind", "");
+        seriesRun = o.optInt("seriesRun", 1);
+        seriesLoop = o.optBoolean("seriesLoop", true);
+        seriesTurn = o.optInt("seriesTurn", seriesTurn);
+        readSeries(o.optJSONArray("series"));
         readList(o.optJSONArray("terms"), terms);
         readList(o.optJSONArray("creators"), creators);
         length = o.optString("length", ANY);
@@ -400,6 +514,41 @@ public class TvChannel {
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);
         readList(o.optJSONArray("languages"), languages);
+    }
+
+    /**
+     * The channel's playlists. A series that is already known keeps its place: the preset list
+     * names the playlists, and how far this TV is into each stays with the TV.
+     */
+    private void readSeries(JSONArray array) {
+        List<Series> before = new ArrayList<>(series);
+        series.clear();
+
+        for (int i = 0; array != null && i < array.length(); i++) {
+            JSONObject item = array.optJSONObject(i);
+            String playlistId = item != null ? item.optString("id", "") : "";
+
+            if (playlistId.isEmpty()) {
+                continue;
+            }
+
+            Series one = new Series();
+            one.playlistId = playlistId;
+            one.pageKey = item.isNull("key") ? null : item.optString("key", null);
+            one.title = item.optString("title", "");
+            one.author = item.optString("author", "");
+            one.count = item.optInt("count", 0);
+            one.next = item.optInt("next", 0);
+
+            for (Series known : before) {
+                if (playlistId.equals(known.playlistId) && !item.has("next")) {
+                    one.next = known.next;
+                    one.count = Math.max(one.count, known.count);
+                }
+            }
+
+            series.add(one);
+        }
     }
 
     private static void readList(JSONArray array, List<String> out) {

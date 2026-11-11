@@ -189,6 +189,34 @@ final class TvDataApi {
         return page;
     }
 
+    /** The video ids of a playlist, in its order. 1 unit for every 50. */
+    List<String> playlist(String playlistId) throws Exception {
+        List<String> ids = new ArrayList<>();
+        String pageToken = null;
+
+        for (int page = 0; page < 60; page++) {
+            StringBuilder path = new StringBuilder("playlistItems?part=contentDetails&maxResults=50&playlistId=").append(encode(playlistId));
+            append(path, "pageToken", pageToken);
+            JSONObject answer = get(path.toString(), 1, false);
+            JSONArray items = answer.optJSONArray("items");
+
+            for (int i = 0; items != null && i < items.length(); i++) {
+                JSONObject details = items.optJSONObject(i) != null ? items.optJSONObject(i).optJSONObject("contentDetails") : null;
+                String videoId = details != null ? details.optString("videoId", "") : "";
+                if (!videoId.isEmpty()) {
+                    ids.add(videoId);
+                }
+            }
+
+            pageToken = answer.isNull("nextPageToken") ? null : answer.optString("nextPageToken", null);
+            if (pageToken == null) {
+                break;
+            }
+        }
+
+        return ids;
+    }
+
     /** One page of a country's most popular videos right now: what YouTube's Trending page showed. */
     Page popular(String region, String pageToken) throws Exception {
         StringBuilder path = new StringBuilder("videos?part=snippet,contentDetails,statistics&chart=mostPopular&maxResults=50");

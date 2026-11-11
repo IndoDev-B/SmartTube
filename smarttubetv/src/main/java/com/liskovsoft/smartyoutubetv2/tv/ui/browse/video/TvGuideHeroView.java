@@ -306,7 +306,12 @@ public class TvGuideHeroView extends FrameLayout {
 
         String author = video.getAuthor();
         String by = author != null ? author : "";
-        if (video.badge != null && !video.badge.isEmpty()) {
+        // An episode of a series says which one it is, so the order shows.
+        String episode = service.episodeLabel(channel, video);
+        if (episode != null) {
+            com.liskovsoft.smartyoutubetv2.common.tvmode.TvChannel.Series series = channel.seriesOf(video.videoId);
+            by = (series != null && !series.title.isEmpty() ? shortTitle(series.title) + "  •  " : "") + episode;
+        } else if (video.badge != null && !video.badge.isEmpty()) {
             by += (by.isEmpty() ? "" : "  •  ") + video.badge;
         }
 
@@ -528,11 +533,24 @@ public class TvGuideHeroView extends FrameLayout {
         stopPreview();
     }
 
+    /** A playlist's name cut at its first separator: uploaders pile keywords on after it. */
+    private static String shortTitle(String title) {
+        int cut = title.length();
+        for (String separator : new String[] {" | ", " - ", " || ", " ("}) {
+            int at = title.indexOf(separator);
+            if (at > 3 && at < cut) {
+                cut = at;
+            }
+        }
+        String text = title.substring(0, cut).trim();
+        return text.length() > 32 ? text.substring(0, 32) : text;
+    }
+
     private static String describe(String action) {
         if (TvModeService.ACTION_SETTINGS.equals(action)) {
             return "Channel mode, remote, sleep timer, history, shuffle all.";
         } else if (TvModeService.ACTION_GENRE.equals(action)) {
-            return "Show only the channels of one genre.\nCH+ and CH- stay within them.";
+            return "Show only one kind of program: movies, series, songs...\nCH+ and CH- stay within them.";
         } else if (TvModeService.ACTION_LANGUAGE.equals(action)) {
             return "Show only the channels in one language.\nCH+ and CH- stay within them.";
         } else if (TvModeService.ACTION_FAVOURITES.equals(action)) {

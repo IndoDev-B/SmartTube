@@ -40,11 +40,12 @@
         "teaser",
         "hindi"
       ],
-      "genre": "Trending",
+      "genre": "Popular",
       "languages": [
         "en"
       ],
-      "chart": "US"
+      "chart": "US",
+      "kind": "Trending"
     },
     {
       "id": "trending-hindi",
@@ -71,11 +72,12 @@
         "teaser",
         "dubbed"
       ],
-      "genre": "Trending",
+      "genre": "Popular",
       "languages": [
         "hi"
       ],
-      "chart": "IN"
+      "chart": "IN",
+      "kind": "Trending"
     },
     {
       "id": "viral-english",
@@ -94,10 +96,11 @@
         "movie",
         "hindi"
       ],
-      "genre": "Trending",
+      "genre": "Viral",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Trending"
     },
     {
       "id": "viral-hindi",
@@ -117,10 +120,11 @@
         "jukebox",
         "dubbed"
       ],
-      "genre": "Trending",
+      "genre": "Viral",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Trending"
     },
     {
       "id": "westerns",
@@ -182,11 +186,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Western",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "classic-movies",
@@ -249,11 +254,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Classics",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "retro-80s-movies",
@@ -315,11 +321,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Retro 80s",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "retro-90s-movies",
@@ -381,11 +388,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Retro 90s",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "action-movies",
@@ -447,11 +455,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Action",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "comedy-movies",
@@ -513,11 +522,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Comedy",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "sci-fi-movies",
@@ -579,11 +589,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Sci-fi",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "horror-movies",
@@ -645,11 +656,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Horror",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "family-movies",
@@ -711,11 +723,12 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Family",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
     },
     {
       "id": "bollywood-classics",
@@ -738,10 +751,11 @@
         "new",
         "latest"
       ],
-      "genre": "Movies",
+      "genre": "Classics",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "bollywood-80s",
@@ -753,10 +767,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Retro 80s",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "bollywood-90s",
@@ -768,10 +783,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Retro 90s",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "bollywood-action",
@@ -783,10 +799,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Action",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "bollywood-comedy",
@@ -798,10 +815,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Comedy",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "bollywood-romance",
@@ -813,10 +831,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Romance",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "south-dubbed",
@@ -831,10 +850,11 @@
       "creators": [
         "Goldmines"
       ],
-      "genre": "Movies",
+      "genre": "South Indian",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "hollywood-dubbed",
@@ -846,10 +866,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Hollywood",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Movies"
     },
     {
       "id": "hindi-family-movies",
@@ -861,57 +882,11 @@
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
-      "genre": "Movies",
+      "genre": "Family",
       "languages": [
         "hi"
-      ]
-    },
-    {
-      "id": "movies-explained",
-      "name": "Movies Explained",
-      "terms": [
-        "movie explained in english",
-        "film analysis",
-        "behind the scenes film"
       ],
-      "length": "medium",
-      "blocked": [
-        "Pen Movies",
-        "Shemaroo Movies",
-        "Shemaroo",
-        "Goldmines",
-        "Goldmines Bollywood",
-        "Goldmines Telefilms",
-        "Ultra Movie Parlour",
-        "Ultra Bollywood",
-        "Rajshri",
-        "NH Studioz",
-        "Venus Movies",
-        "Tips Films",
-        "Navsaar Movies",
-        "Unisys Music",
-        "Sadabahar HD Songs",
-        "Zee Bollywood",
-        "Eros Now Movies Preview",
-        "Shemaroo Comedy",
-        "Bollywood Classics",
-        "SEPL Vintage",
-        "Cinecurry Classics",
-        "NFDC",
-        "Movies Heritage",
-        "Bollywood Premium",
-        "B4U Movies",
-        "Aditya Movies",
-        "Wamindia Movies",
-        "RKD Studios",
-        "Pen Multiplex",
-        "Lehren Retro"
-      ],
-      "genre": "Movies",
-      "languages": [
-        "en"
-      ],
-      "region": "US"
+      "kind": "Movies"
     },
     {
       "id": "short-films",
@@ -954,11 +929,46 @@
         "Pen Multiplex",
         "Lehren Retro"
       ],
-      "genre": "Movies",
+      "genre": "Short films",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Movies"
+    },
+    {
+      "id": "mythology-serials",
+      "name": "Mythology Serials",
+      "kind": "Series",
+      "genre": "Mythology",
+      "terms": [
+        "hindi mythology serial all episodes"
+      ],
+      "seriesRun": 1,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PLa6CHPhFNfadNcnVZRXa6csHL5sFdkwmV",
+          "title": "Mahabharat",
+          "author": "Pen Bhakti",
+          "count": 139
+        },
+        {
+          "id": "PLFPJRCFRDARSfz9y9YPMG_tCTSeYeGNA3",
+          "title": "Ramayan",
+          "author": "Tilak",
+          "count": 78
+        },
+        {
+          "id": "PLFPJRCFRDARR9IkjkVi6O9ue5DjKiKtkI",
+          "title": "Shri Krishna",
+          "author": "Tilak",
+          "count": 221
+        }
+      ],
+      "languages": [
+        "hi"
+      ]
     },
     {
       "id": "classic-hits",
@@ -970,11 +980,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Classics",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "retro-80s-hits",
@@ -985,11 +996,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Retro 80s",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "retro-90s-hits",
@@ -1000,11 +1012,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Retro 90s",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "2000s-hits",
@@ -1015,11 +1028,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "2000s",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "pop-hits",
@@ -1031,11 +1045,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Pop",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "rock",
@@ -1047,10 +1062,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Rock",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "hip-hop",
@@ -1062,11 +1078,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Hip hop",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "country",
@@ -1078,11 +1095,12 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Country",
       "languages": [
         "en"
       ],
-      "region": "US"
+      "region": "US",
+      "kind": "Songs"
     },
     {
       "id": "music-live",
@@ -1093,24 +1111,11 @@
         "live acoustic session"
       ],
       "mode": "live",
-      "genre": "Songs",
+      "genre": "Concerts",
       "languages": [
         "en"
-      ]
-    },
-    {
-      "id": "music-lessons",
-      "name": "Music Lessons",
-      "terms": [
-        "guitar lesson",
-        "piano tutorial",
-        "music theory explained"
       ],
-      "length": "medium",
-      "genre": "Songs",
-      "languages": [
-        "en"
-      ]
+      "kind": "Songs"
     },
     {
       "id": "classical-music",
@@ -1121,10 +1126,11 @@
         "piano recital"
       ],
       "length": "long",
-      "genre": "Songs",
+      "genre": "Classical",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "jazz",
@@ -1135,10 +1141,11 @@
         "jazz full album"
       ],
       "length": "long",
-      "genre": "Songs",
+      "genre": "Jazz",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "electronic",
@@ -1149,10 +1156,11 @@
         "techno boiler room"
       ],
       "length": "long",
-      "genre": "Songs",
+      "genre": "Electronic",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "lo-fi-and-chill",
@@ -1163,10 +1171,11 @@
         "study music"
       ],
       "length": "long",
-      "genre": "Songs",
+      "genre": "Lo-fi",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "world-music",
@@ -1177,10 +1186,11 @@
         "flamenco live"
       ],
       "length": "medium",
-      "genre": "Songs",
+      "genre": "World",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "indian-classical",
@@ -1191,10 +1201,11 @@
         "sitar recital"
       ],
       "length": "long",
-      "genre": "Songs",
+      "genre": "Indian classical",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "old-hindi-songs",
@@ -1206,10 +1217,11 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Classics",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "bollywood-80s-songs",
@@ -1220,10 +1232,11 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Retro 80s",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "bollywood-90s-songs",
@@ -1235,10 +1248,11 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Retro 90s",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "bollywood-2000s-songs",
@@ -1249,10 +1263,11 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "2000s",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "bollywood-songs",
@@ -1264,10 +1279,11 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Bollywood",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "ghazals",
@@ -1278,10 +1294,11 @@
         "ghulam ali ghazal"
       ],
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Ghazals",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "sufi-and-qawwali",
@@ -1292,10 +1309,11 @@
         "nusrat fateh ali khan"
       ],
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Sufi",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "devotional",
@@ -1307,10 +1325,11 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Devotional",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
     },
     {
       "id": "hindi-indie",
@@ -1322,10 +1341,59 @@
       ],
       "length": "medium",
       "playlists": true,
-      "genre": "Songs",
+      "genre": "Indie",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Songs"
+    },
+    {
+      "id": "movies-explained",
+      "name": "Movies Explained",
+      "terms": [
+        "movie explained in english",
+        "film analysis",
+        "behind the scenes film"
+      ],
+      "length": "medium",
+      "blocked": [
+        "Pen Movies",
+        "Shemaroo Movies",
+        "Shemaroo",
+        "Goldmines",
+        "Goldmines Bollywood",
+        "Goldmines Telefilms",
+        "Ultra Movie Parlour",
+        "Ultra Bollywood",
+        "Rajshri",
+        "NH Studioz",
+        "Venus Movies",
+        "Tips Films",
+        "Navsaar Movies",
+        "Unisys Music",
+        "Sadabahar HD Songs",
+        "Zee Bollywood",
+        "Eros Now Movies Preview",
+        "Shemaroo Comedy",
+        "Bollywood Classics",
+        "SEPL Vintage",
+        "Cinecurry Classics",
+        "NFDC",
+        "Movies Heritage",
+        "Bollywood Premium",
+        "B4U Movies",
+        "Aditya Movies",
+        "Wamindia Movies",
+        "RKD Studios",
+        "Pen Multiplex",
+        "Lehren Retro"
+      ],
+      "genre": "Film",
+      "languages": [
+        "en"
+      ],
+      "region": "US",
+      "kind": "Shows"
     },
     {
       "id": "comedy",
@@ -1335,10 +1403,11 @@
         "stand up comedy clip",
         "sketch comedy"
       ],
-      "genre": "Entertainment",
+      "genre": "Comedy",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "stand-up-comedy",
@@ -1349,10 +1418,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Stand-up",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "sketch-comedy",
@@ -1363,10 +1433,11 @@
         "improv comedy"
       ],
       "length": "medium",
-      "genre": "Entertainment",
+      "genre": "Comedy",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "comedy-shows",
@@ -1377,10 +1448,11 @@
         "comedy show full episode"
       ],
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Comedy",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "reality-shows",
@@ -1390,10 +1462,11 @@
         "talent show auditions"
       ],
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Reality",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "talk-shows",
@@ -1404,10 +1477,11 @@
         "talk show full episode"
       ],
       "length": "medium",
-      "genre": "Entertainment",
+      "genre": "Talk",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "retro-tv",
@@ -1417,10 +1491,11 @@
         "classic tv show full episode",
         "80s commercials"
       ],
-      "genre": "Entertainment",
+      "genre": "Classics",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "magic",
@@ -1431,10 +1506,11 @@
         "illusionist show"
       ],
       "length": "medium",
-      "genre": "Entertainment",
+      "genre": "Magic",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "hindi-stand-up",
@@ -1444,10 +1520,11 @@
         "hindi stand up comedy special"
       ],
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Stand-up",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "hindi-comedy-shows",
@@ -1457,10 +1534,11 @@
         "hindi comedy show full episode"
       ],
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Comedy",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "hindi-reality-shows",
@@ -1471,10 +1549,11 @@
         "shark tank india"
       ],
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Reality",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "kavi-sammelan",
@@ -1483,10 +1562,11 @@
         "kavi sammelan",
         "hasya kavi sammelan"
       ],
-      "genre": "Entertainment",
+      "genre": "Poetry",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "doordarshan-classics",
@@ -1496,10 +1576,11 @@
         "old hindi tv serial full episode"
       ],
       "playlists": true,
-      "genre": "Entertainment",
+      "genre": "Classics",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Shows"
     },
     {
       "id": "cartoons",
@@ -1509,10 +1590,11 @@
         "kids cartoon"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Cartoons",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "nursery-rhymes",
@@ -1522,10 +1604,11 @@
         "kids songs"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Rhymes",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "kids-stories",
@@ -1535,10 +1618,11 @@
         "fairy tales for kids"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Stories",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "kids-learning",
@@ -1548,10 +1632,11 @@
         "science for kids"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Learning",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "animation",
@@ -1562,10 +1647,11 @@
         "classic cartoons"
       ],
       "length": "medium",
-      "genre": "Kids",
+      "genre": "Animation",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "anime",
@@ -1576,10 +1662,11 @@
         "anime opening compilation"
       ],
       "length": "medium",
-      "genre": "Kids",
+      "genre": "Anime",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "hindi-cartoons",
@@ -1589,10 +1676,11 @@
         "cartoon in hindi for kids"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Cartoons",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "bal-geet",
@@ -1603,10 +1691,11 @@
         "hindi nursery rhymes"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Rhymes",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "kahaniyan",
@@ -1617,10 +1706,11 @@
         "bachon ki kahani"
       ],
       "playlists": true,
-      "genre": "Kids",
+      "genre": "Stories",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Kids"
     },
     {
       "id": "documentaries",
@@ -1631,10 +1721,11 @@
         "investigative documentary"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "history",
@@ -1645,10 +1736,11 @@
         "world war documentary"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "History",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "true-crime",
@@ -1658,10 +1750,11 @@
         "crime investigation documentary"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "True crime",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "war",
@@ -1671,10 +1764,11 @@
         "ww2 documentary full"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "War",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "biographies",
@@ -1684,10 +1778,11 @@
         "life story documentary"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "Biography",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "mysteries",
@@ -1697,10 +1792,11 @@
         "mystery documentary"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "Mystery",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "hindi-documentaries",
@@ -1710,10 +1806,11 @@
         "hindi documentary full"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Documentary"
     },
     {
       "id": "itihaas",
@@ -1723,10 +1820,116 @@
         "indian history in hindi"
       ],
       "length": "long",
-      "genre": "Documentary",
+      "genre": "History",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "nature",
+      "name": "Nature",
+      "terms": [
+        "wildlife nature documentary 4k",
+        "bbc earth animals",
+        "ocean documentary"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "mountains",
+      "name": "Mountains",
+      "terms": [
+        "mountaineering documentary",
+        "everest documentary",
+        "alpine climb film"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "oceans",
+      "name": "Oceans",
+      "terms": [
+        "ocean documentary 4k",
+        "deep sea creatures",
+        "coral reef 4k"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "animals",
+      "name": "Animals",
+      "terms": [
+        "animal documentary",
+        "funny animals compilation",
+        "zoo keeper"
+      ],
+      "length": "medium",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "dogs-and-cats",
+      "name": "Dogs and Cats",
+      "terms": [
+        "dog training",
+        "cat videos compilation",
+        "puppy rescue"
+      ],
+      "length": "medium",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "birds",
+      "name": "Birds",
+      "terms": [
+        "bird documentary",
+        "birdwatching 4k",
+        "bird song nature"
+      ],
+      "length": "long",
+      "genre": "Nature",
+      "languages": [
+        "en"
+      ],
+      "kind": "Documentary"
+    },
+    {
+      "id": "music-lessons",
+      "name": "Music Lessons",
+      "terms": [
+        "guitar lesson",
+        "piano tutorial",
+        "music theory explained"
+      ],
+      "length": "medium",
+      "genre": "Music",
+      "languages": [
+        "en"
+      ],
+      "kind": "Learning"
     },
     {
       "id": "science",
@@ -1740,7 +1943,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "space",
@@ -1754,7 +1958,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "science-experiments",
@@ -1768,7 +1973,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "mathematics",
@@ -1782,7 +1988,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "physics",
@@ -1796,7 +2003,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "biology",
@@ -1810,7 +2018,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "medicine",
@@ -1824,7 +2033,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "psychology",
@@ -1835,10 +2045,11 @@
         "psychology lecture"
       ],
       "length": "medium",
-      "genre": "Science",
+      "genre": "Psychology",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "philosophy",
@@ -1849,10 +2060,11 @@
         "philosophy documentary"
       ],
       "length": "long",
-      "genre": "Science",
+      "genre": "Philosophy",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "lectures",
@@ -1867,7 +2079,8 @@
       "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "languages",
@@ -1878,10 +2091,11 @@
         "learn spanish"
       ],
       "length": "medium",
-      "genre": "Science",
+      "genre": "Languages",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "book-reviews",
@@ -1892,10 +2106,11 @@
         "author interview"
       ],
       "length": "medium",
-      "genre": "Science",
+      "genre": "Books",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "vigyan",
@@ -1908,7 +2123,8 @@
       "genre": "Science",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "hindi-gyan",
@@ -1921,7 +2137,8 @@
       "genre": "Science",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "technology",
@@ -1935,7 +2152,8 @@
       "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "engineering",
@@ -1949,7 +2167,8 @@
       "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "electronics",
@@ -1963,7 +2182,8 @@
       "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "programming",
@@ -1977,7 +2197,8 @@
       "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "ai-and-robots",
@@ -1991,7 +2212,8 @@
       "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "gadgets",
@@ -2005,7 +2227,8 @@
       "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "hindi-tech",
@@ -2018,7 +2241,8 @@
       "genre": "Tech",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "hindi-coding",
@@ -2031,7 +2255,8 @@
       "genre": "Tech",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Learning"
     },
     {
       "id": "news-analysis",
@@ -2042,10 +2267,11 @@
         "geopolitics explained"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "business",
@@ -2056,10 +2282,11 @@
         "entrepreneur interview"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "Business",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "economics",
@@ -2070,10 +2297,11 @@
         "how money works"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "Business",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "investing",
@@ -2084,10 +2312,11 @@
         "personal finance"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "Business",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "startups",
@@ -2098,10 +2327,11 @@
         "how i built this"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "Business",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "hindi-news-analysis",
@@ -2111,10 +2341,11 @@
         "current affairs hindi"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "hindi-finance",
@@ -2124,10 +2355,11 @@
         "personal finance hindi"
       ],
       "length": "medium",
-      "genre": "News and Business",
+      "genre": "Business",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "News"
     },
     {
       "id": "podcasts",
@@ -2139,10 +2371,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "science-podcasts",
@@ -2152,10 +2385,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Science",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "tech-podcasts",
@@ -2165,10 +2399,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Tech",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "business-podcasts",
@@ -2178,10 +2413,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Business",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "history-podcasts",
@@ -2191,10 +2427,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "History",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "comedy-podcasts",
@@ -2204,10 +2441,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Comedy",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "hindi-podcasts",
@@ -2218,10 +2456,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "hindi-business-podcasts",
@@ -2232,10 +2471,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Business",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "spirituality",
@@ -2246,10 +2486,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Devotional",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "hindi-comedy-podcasts",
@@ -2259,10 +2500,11 @@
       ],
       "length": "long",
       "playlists": true,
-      "genre": "Podcasts",
+      "genre": "Comedy",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Podcasts"
     },
     {
       "id": "cricket",
@@ -2273,10 +2515,11 @@
         "cricket documentary"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Cricket",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Sports"
     },
     {
       "id": "football",
@@ -2287,10 +2530,11 @@
         "best goals"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Football",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Sports"
     },
     {
       "id": "tennis",
@@ -2300,10 +2544,11 @@
         "tennis classic match"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Tennis",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Sports"
     },
     {
       "id": "basketball",
@@ -2313,10 +2558,11 @@
         "basketball documentary"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Basketball",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Sports"
     },
     {
       "id": "combat-sports",
@@ -2327,10 +2573,11 @@
         "martial arts documentary"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Combat",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Sports"
     },
     {
       "id": "extreme-sports",
@@ -2341,38 +2588,11 @@
         "mountain bike downhill"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Extreme",
       "languages": [
         "en"
-      ]
-    },
-    {
-      "id": "fitness",
-      "name": "Fitness",
-      "terms": [
-        "full body workout",
-        "home workout no equipment",
-        "yoga for beginners"
       ],
-      "length": "medium",
-      "genre": "Sports",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "yoga-and-meditation",
-      "name": "Yoga and Meditation",
-      "terms": [
-        "yoga flow",
-        "guided meditation",
-        "breathing exercise"
-      ],
-      "length": "medium",
-      "genre": "Sports",
-      "languages": [
-        "en"
-      ]
+      "kind": "Sports"
     },
     {
       "id": "running-and-cycling",
@@ -2383,10 +2603,11 @@
         "trail running film"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Running",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Sports"
     },
     {
       "id": "cricket-hindi",
@@ -2396,23 +2617,11 @@
         "cricket analysis hindi"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Cricket",
       "languages": [
         "hi"
-      ]
-    },
-    {
-      "id": "hindi-fitness",
-      "name": "Hindi Fitness",
-      "terms": [
-        "workout hindi",
-        "yoga in hindi"
       ],
-      "length": "medium",
-      "genre": "Sports",
-      "languages": [
-        "hi"
-      ]
+      "kind": "Sports"
     },
     {
       "id": "kabaddi-and-kushti",
@@ -2422,10 +2631,55 @@
         "kushti dangal"
       ],
       "length": "medium",
-      "genre": "Sports",
+      "genre": "Kabaddi",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Sports"
+    },
+    {
+      "id": "fitness",
+      "name": "Fitness",
+      "terms": [
+        "full body workout",
+        "home workout no equipment",
+        "yoga for beginners"
+      ],
+      "length": "medium",
+      "genre": "Fitness",
+      "languages": [
+        "en"
+      ],
+      "kind": "Lifestyle"
+    },
+    {
+      "id": "yoga-and-meditation",
+      "name": "Yoga and Meditation",
+      "terms": [
+        "yoga flow",
+        "guided meditation",
+        "breathing exercise"
+      ],
+      "length": "medium",
+      "genre": "Fitness",
+      "languages": [
+        "en"
+      ],
+      "kind": "Lifestyle"
+    },
+    {
+      "id": "hindi-fitness",
+      "name": "Hindi Fitness",
+      "terms": [
+        "workout hindi",
+        "yoga in hindi"
+      ],
+      "length": "medium",
+      "genre": "Fitness",
+      "languages": [
+        "hi"
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "cooking",
@@ -2438,7 +2692,8 @@
       "genre": "Food",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "baking",
@@ -2452,7 +2707,8 @@
       "genre": "Food",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "world-cuisine",
@@ -2466,7 +2722,8 @@
       "genre": "Food",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "indian-cooking",
@@ -2480,7 +2737,8 @@
       "genre": "Food",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "barbecue",
@@ -2494,7 +2752,8 @@
       "genre": "Food",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "hindi-recipes",
@@ -2507,7 +2766,8 @@
       "genre": "Food",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "indian-street-food",
@@ -2520,7 +2780,8 @@
       "genre": "Food",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "travel",
@@ -2534,7 +2795,8 @@
       "genre": "Travel",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "road-trips",
@@ -2547,7 +2809,8 @@
       "genre": "Travel",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "hiking-and-camping",
@@ -2561,7 +2824,8 @@
       "genre": "Travel",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "fishing",
@@ -2575,7 +2839,8 @@
       "genre": "Travel",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "survival",
@@ -2589,7 +2854,8 @@
       "genre": "Travel",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "india-travel",
@@ -2602,91 +2868,8 @@
       "genre": "Travel",
       "languages": [
         "hi"
-      ]
-    },
-    {
-      "id": "nature",
-      "name": "Nature",
-      "terms": [
-        "wildlife nature documentary 4k",
-        "bbc earth animals",
-        "ocean documentary"
       ],
-      "length": "long",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "mountains",
-      "name": "Mountains",
-      "terms": [
-        "mountaineering documentary",
-        "everest documentary",
-        "alpine climb film"
-      ],
-      "length": "long",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "oceans",
-      "name": "Oceans",
-      "terms": [
-        "ocean documentary 4k",
-        "deep sea creatures",
-        "coral reef 4k"
-      ],
-      "length": "long",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "animals",
-      "name": "Animals",
-      "terms": [
-        "animal documentary",
-        "funny animals compilation",
-        "zoo keeper"
-      ],
-      "length": "medium",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "dogs-and-cats",
-      "name": "Dogs and Cats",
-      "terms": [
-        "dog training",
-        "cat videos compilation",
-        "puppy rescue"
-      ],
-      "length": "medium",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "birds",
-      "name": "Birds",
-      "terms": [
-        "bird documentary",
-        "birdwatching 4k",
-        "bird song nature"
-      ],
-      "length": "long",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ]
+      "kind": "Lifestyle"
     },
     {
       "id": "aviation",
@@ -2700,7 +2883,8 @@
       "genre": "Vehicles",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "trains",
@@ -2714,7 +2898,8 @@
       "genre": "Vehicles",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "ships-and-sea",
@@ -2728,7 +2913,8 @@
       "genre": "Vehicles",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "cars",
@@ -2742,7 +2928,8 @@
       "genre": "Vehicles",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "motorcycles",
@@ -2756,7 +2943,8 @@
       "genre": "Vehicles",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "formula-1",
@@ -2770,7 +2958,8 @@
       "genre": "Vehicles",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "hindi-auto",
@@ -2783,7 +2972,8 @@
       "genre": "Vehicles",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "woodworking",
@@ -2796,7 +2986,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "farming",
@@ -2810,7 +3001,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "gardening",
@@ -2824,7 +3016,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "home-renovation",
@@ -2838,7 +3031,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "interior-design",
@@ -2852,7 +3046,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "architecture",
@@ -2866,7 +3061,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "tiny-homes",
@@ -2880,7 +3076,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "diy-and-crafts",
@@ -2894,7 +3091,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "restoration",
@@ -2908,7 +3106,8 @@
       "genre": "Home and DIY",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "metalwork",
@@ -2922,7 +3121,8 @@
       "genre": "Home and DIY",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "kheti",
@@ -2935,88 +3135,8 @@
       "genre": "Home and DIY",
       "languages": [
         "hi"
-      ]
-    },
-    {
-      "id": "gaming",
-      "name": "Gaming",
-      "terms": [
-        "gameplay walkthrough",
-        "game review",
-        "gaming documentary"
       ],
-      "length": "medium",
-      "genre": "Gaming",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "retro-gaming",
-      "name": "Retro Gaming",
-      "terms": [
-        "retro games",
-        "classic console review",
-        "arcade history"
-      ],
-      "length": "medium",
-      "genre": "Gaming",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "esports",
-      "name": "Esports",
-      "terms": [
-        "esports tournament highlights",
-        "esports documentary"
-      ],
-      "length": "medium",
-      "genre": "Gaming",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "chess",
-      "name": "Chess",
-      "terms": [
-        "chess game analysis",
-        "chess grandmaster",
-        "chess tournament"
-      ],
-      "length": "medium",
-      "genre": "Gaming",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "board-games",
-      "name": "Board Games",
-      "terms": [
-        "board game review",
-        "how to play board game"
-      ],
-      "length": "medium",
-      "genre": "Gaming",
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "hindi-gaming",
-      "name": "Hindi Gaming",
-      "terms": [
-        "gaming hindi",
-        "gameplay hindi commentary"
-      ],
-      "length": "medium",
-      "genre": "Gaming",
-      "languages": [
-        "hi"
-      ]
+      "kind": "Lifestyle"
     },
     {
       "id": "art",
@@ -3030,7 +3150,8 @@
       "genre": "Art",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "painting-and-drawing",
@@ -3044,7 +3165,8 @@
       "genre": "Art",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "photography",
@@ -3058,7 +3180,8 @@
       "genre": "Art",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "filmmaking",
@@ -3072,7 +3195,8 @@
       "genre": "Art",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
     },
     {
       "id": "fashion",
@@ -3086,7 +3210,95 @@
       "genre": "Art",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Lifestyle"
+    },
+    {
+      "id": "gaming",
+      "name": "Gaming",
+      "terms": [
+        "gameplay walkthrough",
+        "game review",
+        "gaming documentary"
+      ],
+      "length": "medium",
+      "genre": "",
+      "languages": [
+        "en"
+      ],
+      "kind": "Gaming"
+    },
+    {
+      "id": "retro-gaming",
+      "name": "Retro Gaming",
+      "terms": [
+        "retro games",
+        "classic console review",
+        "arcade history"
+      ],
+      "length": "medium",
+      "genre": "Retro",
+      "languages": [
+        "en"
+      ],
+      "kind": "Gaming"
+    },
+    {
+      "id": "esports",
+      "name": "Esports",
+      "terms": [
+        "esports tournament highlights",
+        "esports documentary"
+      ],
+      "length": "medium",
+      "genre": "Esports",
+      "languages": [
+        "en"
+      ],
+      "kind": "Gaming"
+    },
+    {
+      "id": "chess",
+      "name": "Chess",
+      "terms": [
+        "chess game analysis",
+        "chess grandmaster",
+        "chess tournament"
+      ],
+      "length": "medium",
+      "genre": "Chess",
+      "languages": [
+        "en"
+      ],
+      "kind": "Gaming"
+    },
+    {
+      "id": "board-games",
+      "name": "Board Games",
+      "terms": [
+        "board game review",
+        "how to play board game"
+      ],
+      "length": "medium",
+      "genre": "Board games",
+      "languages": [
+        "en"
+      ],
+      "kind": "Gaming"
+    },
+    {
+      "id": "hindi-gaming",
+      "name": "Hindi Gaming",
+      "terms": [
+        "gaming hindi",
+        "gameplay hindi commentary"
+      ],
+      "length": "medium",
+      "genre": "",
+      "languages": [
+        "hi"
+      ],
+      "kind": "Gaming"
     },
     {
       "id": "fireplace",
@@ -3096,10 +3308,11 @@
         "fireplace burning relaxing"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Fireplace",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "rain",
@@ -3109,10 +3322,11 @@
         "rain on window 4k"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Rain",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "ocean-waves",
@@ -3122,10 +3336,11 @@
         "beach waves relaxing"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Ocean Waves",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "forest",
@@ -3135,10 +3350,11 @@
         "birdsong forest ambience"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Forest",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "city-walks",
@@ -3148,10 +3364,11 @@
         "walking tour 4k no talking"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "City Walks",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "scenic-rides",
@@ -3161,10 +3378,11 @@
         "driving 4k scenic"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Scenic Rides",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "aquarium",
@@ -3174,10 +3392,11 @@
         "coral reef aquarium relaxing"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Aquarium",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "cafe",
@@ -3187,10 +3406,11 @@
         "cafe jazz ambience"
       ],
       "length": "long",
-      "genre": "Ambience",
+      "genre": "Cafe",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "asmr",
@@ -3200,10 +3420,11 @@
         "asmr relaxing sounds"
       ],
       "length": "medium",
-      "genre": "Ambience",
+      "genre": "ASMR",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Ambience"
     },
     {
       "id": "live-news-english",
@@ -3215,10 +3436,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "News",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "live-news-hindi",
@@ -3230,10 +3452,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "News",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "live-business-news",
@@ -3245,10 +3468,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Business",
       "languages": [
         "en"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "space-live",
@@ -3261,10 +3485,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Science",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "music-radio",
@@ -3276,10 +3501,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Music",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "lo-fi-radio",
@@ -3291,10 +3517,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Lo-fi",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "nature-cams",
@@ -3307,10 +3534,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Webcams",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "city-cams",
@@ -3323,10 +3551,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Webcams",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "beach-cams",
@@ -3338,10 +3567,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Webcams",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "airport-cams",
@@ -3353,10 +3583,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Webcams",
       "languages": [
         "*"
-      ]
+      ],
+      "kind": "Live streams"
     },
     {
       "id": "aarti-and-darshan",
@@ -3369,10 +3600,11 @@
       "features": [
         "live"
       ],
-      "genre": "Live streams",
+      "genre": "Devotional",
       "languages": [
         "hi"
-      ]
+      ],
+      "kind": "Live streams"
     }
   ],
   "ideas": [
@@ -3429,26 +3661,98 @@
     }
   ],
   "genres": [
-    "Trending",
-    "Movies",
-    "Songs",
-    "Entertainment",
-    "Kids",
-    "Documentary",
-    "Science",
-    "Tech",
-    "News and Business",
-    "Podcasts",
-    "Sports",
-    "Food",
-    "Travel",
-    "Nature",
-    "Vehicles",
-    "Home and DIY",
-    "Gaming",
+    "Action",
+    "Adventure",
+    "Comedy",
+    "Romance",
+    "Drama",
+    "Thriller",
+    "Crime",
+    "Horror",
+    "Sci-fi",
+    "Family",
+    "Mythology",
+    "Devotional",
+    "Classics",
+    "Retro 80s",
+    "Retro 90s",
+    "2000s",
+    "ASMR",
+    "Animation",
+    "Anime",
+    "Aquarium",
     "Art",
-    "Ambience",
-    "Live streams"
+    "Basketball",
+    "Biography",
+    "Board games",
+    "Bollywood",
+    "Books",
+    "Business",
+    "Cafe",
+    "Cartoons",
+    "Chess",
+    "City Walks",
+    "Classical",
+    "Combat",
+    "Concerts",
+    "Country",
+    "Cricket",
+    "Electronic",
+    "Esports",
+    "Extreme",
+    "Film",
+    "Fireplace",
+    "Fitness",
+    "Food",
+    "Football",
+    "Forest",
+    "Ghazals",
+    "Hip hop",
+    "History",
+    "Hollywood",
+    "Home and DIY",
+    "Indian classical",
+    "Indie",
+    "Jazz",
+    "Kabaddi",
+    "Languages",
+    "Learning",
+    "Lo-fi",
+    "Magic",
+    "Music",
+    "Mystery",
+    "Nature",
+    "News",
+    "Ocean Waves",
+    "Philosophy",
+    "Poetry",
+    "Pop",
+    "Popular",
+    "Psychology",
+    "Rain",
+    "Reality",
+    "Retro",
+    "Rhymes",
+    "Rock",
+    "Running",
+    "Scenic Rides",
+    "Science",
+    "Short films",
+    "South Indian",
+    "Stand-up",
+    "Stories",
+    "Sufi",
+    "Talk",
+    "Tech",
+    "Tennis",
+    "Travel",
+    "True crime",
+    "Vehicles",
+    "Viral",
+    "War",
+    "Webcams",
+    "Western",
+    "World"
   ],
   "foreignHints": {
     "en": [
@@ -3467,5 +3771,22 @@
       "gujarati",
       "urdu"
     ]
-  }
+  },
+  "kinds": [
+    "Trending",
+    "Movies",
+    "Series",
+    "Songs",
+    "Shows",
+    "Kids",
+    "Documentary",
+    "Learning",
+    "News",
+    "Podcasts",
+    "Sports",
+    "Lifestyle",
+    "Gaming",
+    "Ambience",
+    "Live streams"
+  ]
 }

@@ -923,7 +923,7 @@ public class TvModeService {
 
             for (TvChannel channel : mChannels) {
                 if ((!mFavOnly || channel.fav)
-                        && (mFilterGenre.isEmpty() || mFilterGenre.equalsIgnoreCase(channel.genre))
+                        && (mFilterKind.isEmpty() || mFilterKind.equalsIgnoreCase(channel.kind))
                         && (mFilterLanguage.isEmpty() || mFilterLanguage.equals(channel.language()))) {
                     shown.add(channel);
                 }
@@ -933,6 +933,582 @@ public class TvModeService {
         }
 
         return mShown;
+    }
+
+    // ---------------- program types ----------------
+
+    /** The guide's Type filter: only channels with this kind of program are shown. Empty = any. */
+    private String mFilterKind = "";
+    /** Program types in the order the preset list names them. */
+    private final List<String> mKindOrder = new ArrayList<>();
+    /**
+     * What a channel built from a program type searches for and how it filters. One row for a
+     * type: its name, then the search patterns with {genre} and {language} to fill in, then
+     * settings as name=value. Used when a type is picked in the editor or in New channel.
+     */
+    private static final String[][] KINDS = {
+            {"Movies", "{language} {genre} full movie", "{genre} movie {language} full length", "type=movie", "minMinutes=60", "playlists=true"},
+            {TvChannel.KIND_SERIES, "{language} {genre} serial all episodes", "{genre} series full episodes {language}"},
+            {"Songs", "{language} {genre} songs", "{genre} music video {language}", "length=medium", "playlists=true"},
+            {"Shows", "{language} {genre} show full episode", "{genre} show {language}", "length=long"},
+            {"Documentary", "{genre} documentary {language}", "{language} documentary {genre} full", "length=long"},
+            {"Podcasts", "{genre} podcast full episode {language}", "{language} {genre} podcast", "length=long"},
+            {"News", "{language} {genre} news", "{genre} news analysis {language}", "length=medium", "uploaded=week"},
+            {"Sports", "{genre} highlights {language}", "{language} {genre} full match", "length=medium"},
+            {"Kids", "{genre} for kids {language}", "{language} kids {genre}"},
+            {"Learning", "{genre} explained {language}", "{language} {genre} lecture", "length=medium"},
+            {"Lifestyle", "{language} {genre}", "{genre} vlog {language}", "length=medium"},
+            {"Gaming", "{genre} gameplay {language}", "{language} {genre} gaming", "length=medium"},
+            {"Ambience", "{genre} ambience", "{genre} 4k relaxing", "length=long"},
+            {"Live streams", "{genre} live {language}", "{language} {genre} live stream", "feature=live"},
+            {"Trending", "{language} {genre}", "{genre} viral {language}", "length=medium", "order=trending"},
+    };
+
+    public String getFilterKind() {
+        ensureLoaded();
+        return mFilterKind;
+    }
+
+    public void setFilterKind(String kind) {
+        mFilterKind = kind != null ? kind : "";
+        save();
+    }
+
+    /** The program types that have channels: first the ones the preset list names, in its order, then any others. */
+    public List<String> getKinds() {
+        ensureLoaded();
+        List<String> kinds = new ArrayList<>();
+
+        for (String kind : mKindOrder) {
+            for (TvChannel channel : mChannels) {
+                if (kind.equalsIgnoreCase(channel.kind)) {
+                    kinds.add(kind);
+                    break;
+                }
+            }
+        }
+
+        for (TvChannel channel : mChannels) {
+            if (!channel.kind.isEmpty() && !containsIgnoreCase(kinds, channel.kind)) {
+                kinds.add(channel.kind);
+            }
+        }
+
+        return kinds;
+    }
+
+    /** Every program type a channel can be given, whether or not a channel has it yet. */
+    public List<String> getAllKinds() {
+        ensureLoaded();
+        List<String> kinds = new ArrayList<>();
+
+        for (String[] kind : KINDS) {
+            kinds.add(kind[0]);
+        }
+
+        for (String kind : getKinds()) {
+            if (!containsIgnoreCase(kinds, kind)) {
+                kinds.add(kind);
+            }
+        }
+
+        return kinds;
+    }
+
+    /** Every genre a channel can be given: the preset list's, then any others channels have. */
+    public List<String> getAllGenres() {
+        ensureLoaded();
+        List<String> genres = new ArrayList<>(mGenreOrder);
+
+        for (TvChannel channel : mChannels) {
+            if (!channel.genre.isEmpty() && !containsIgnoreCase(genres, channel.genre)) {
+                genres.add(channel.genre);
+            }
+        }
+
+        return genres;
+    }
+
+    private static String[] kindRow(String kind) {
+        for (String[] row : KINDS) {
+            if (row[0].equalsIgnoreCase(kind)) {
+                return row;
+            }
+        }
+
+        return null;
+    }
+
+    /** The search terms a channel of this type, genre and language starts with. */
+    private static List<String> termsFor(String kind, String genre, String language) {
+        List<String> terms = new ArrayList<>();
+        String[] row = kindRow(kind);
+        String genreWord = genre != null ? genre.toLowerCase(Locale.ROOT) : "";
+        String languageWord = language == null || language.isEmpty() || TvLanguage.ANY.equals(language) ? "" : TvLanguage.nameOf(language).toLowerCase(Locale.ROOT);
+
+        for (int i = 1; row != null && i < row.length; i++) {
+            if (row[i].contains("=")) {
+                continue;
+            }
+
+            String term = row[i].replace("{genre}", genreWord).replace("{language}", languageWord).replaceAll("\\s+", " ").trim();
+            if (!term.isEmpty() && !terms.contains(term)) {
+                terms.add(term);
+            }
+        }
+
+        if (terms.isEmpty() && !genreWord.isEmpty()) {
+            terms.add((languageWord + " " + genreWord).trim());
+        }
+
+        return terms;
+    }
+
+    /** Sets the filters that suit a program type. The search terms and everything else stay. */
+    private static void applyKind(TvChannel channel, String kind) {
+        channel.kind = kind != null ? kind : "";
+        channel.type = TvChannel.TYPE_VIDEO;
+        channel.length = TvChannel.ANY;
+        channel.uploaded = TvChannel.ANY;
+        channel.order = TvChannel.ORDER_MIXED;
+        channel.minMinutes = 0;
+        channel.playlists = false;
+        channel.features.remove(TvChannel.FEATURE_LIVE);
+        String[] row = kindRow(kind);
+
+        for (int i = 1; row != null && i < row.length; i++) {
+            int equals = row[i].indexOf('=');
+            if (equals < 0) {
+                continue;
+            }
+
+            String name = row[i].substring(0, equals);
+            String value = row[i].substring(equals + 1);
+
+            if ("type".equals(name)) {
+                channel.type = value;
+            } else if ("length".equals(name)) {
+                channel.length = value;
+            } else if ("uploaded".equals(name)) {
+                channel.uploaded = value;
+            } else if ("order".equals(name)) {
+                channel.order = value;
+            } else if ("minMinutes".equals(name)) {
+                channel.minMinutes = Integer.parseInt(value);
+            } else if ("playlists".equals(name)) {
+                channel.playlists = "true".equals(value);
+            } else if ("feature".equals(name) && !channel.features.contains(value)) {
+                channel.features.add(value);
+            }
+        }
+    }
+
+    /** The editor's Program type: the channel takes the type's filters, and what was queued under the old ones goes. */
+    public void setKind(TvChannel channel, String kind, Runnable onDone) {
+        applyKind(channel, kind);
+        mShown = null;
+        onSearchChanged(channel, onDone);
+    }
+
+    /**
+     * New channel from a program type, a genre and a language. A Series channel starts without
+     * videos: its playlists are picked next, with {@link #findSeries}.
+     */
+    public TvChannel build(String kind, String genre, String language, Runnable onDone) {
+        TvChannel channel = new TvChannel();
+        channel.id = "my-" + System.currentTimeMillis();
+        channel.genre = genre != null ? genre : "";
+        channel.languages.add(language == null || language.isEmpty() ? TvLanguage.ANY : language);
+        String languageName = channel.language().isEmpty() ? "" : TvLanguage.nameOf(channel.language()) + " ";
+        channel.name = (languageName + channel.genre + " " + kind).replaceAll("\\s+", " ").trim();
+        channel.terms.addAll(termsFor(kind, genre, channel.language()));
+        applyKind(channel, kind);
+        channel.edited = true;
+        mChannels.add(channel);
+        mShown = null;
+        save();
+        fill(channel, onDone);
+        return channel;
+    }
+
+    // ---------------- series: playlists played in order ----------------
+
+    /** The episodes of a playlist, in its order. Read once for a run of the app. */
+    private final Map<String, List<Video>> mEpisodes = new ConcurrentHashMap<>();
+    /** A playlist is read to its end, in pages, up to this many. */
+    private static final int MAX_EPISODE_PAGES = 60;
+    private static final int SERIES_FOUND = 14;
+
+    public interface OnSeriesFound {
+        void onFound(List<TvChannel.Series> found);
+    }
+
+    /** Searches for playlists to play as a series. Shows and courses, which YouTube keeps in order itself, come first. */
+    public void findSeries(final String query, final OnSeriesFound onFound) {
+        mWorker.execute(() -> {
+            final List<TvChannel.Series> found = new ArrayList<>();
+
+            try {
+                ContentService service = YouTubeServiceManager.instance().getContentService();
+                List<MediaGroup> groups = service.getSearch(query, SearchOptions.TYPE_PLAYLIST | OPT_BUILD);
+
+                for (int g = 0; groups != null && g < groups.size(); g++) {
+                    MediaGroup group = groups.get(g);
+
+                    for (int i = 0; group != null && group.getMediaItems() != null && i < group.getMediaItems().size(); i++) {
+                        MediaItem item = group.getMediaItems().get(i);
+
+                        if (item == null || item.getVideoId() != null || item.getPlaylistId() == null || found.size() >= SERIES_FOUND) {
+                            continue;
+                        }
+
+                        TvChannel.Series one = new TvChannel.Series();
+                        one.playlistId = item.getPlaylistId();
+                        one.pageKey = item.getReloadPageKey();
+                        one.title = item.getTitle() != null ? item.getTitle() : "";
+                        one.author = creatorOf(item.getAuthor()) != null ? creatorOf(item.getAuthor()) : "";
+                        one.count = countIn(item.getBadgeText());
+                        if (one.count == 0) {
+                            one.count = countIn(item.getSecondTitle());
+                        }
+                        Log.d(TAG, "Series search \"%s\": %s | %s | %s | badge %s | %s", query, one.playlistId, one.title, one.author, item.getBadgeText(), item.getSecondTitle());
+                        found.add(one);
+                    }
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "Series search failed for %s: %s", query, e.getMessage());
+            }
+
+            mMain.post(() -> onFound.onFound(found));
+        });
+    }
+
+    /** The first number in a text like "139 episodes", or 0. */
+    private static int countIn(CharSequence text) {
+        if (text == null) {
+            return 0;
+        }
+
+        java.util.regex.Matcher matcher = COUNT.matcher(text);
+
+        try {
+            return matcher.find() ? Integer.parseInt(matcher.group(1).replace(",", "")) : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static final java.util.regex.Pattern COUNT = java.util.regex.Pattern.compile("([\\d,]+)\\s*(?:episodes|videos|lessons|episode|video)");
+
+    public void addSeries(TvChannel channel, TvChannel.Series one, Runnable onDone) {
+        if (one == null || one.playlistId == null || channel.findSeries(one.playlistId) != null) {
+            return;
+        }
+
+        one.next = 0;
+        channel.series.add(one);
+        channel.edited = true;
+        save();
+        fill(channel, onDone);
+    }
+
+    public void removeSeries(TvChannel channel, TvChannel.Series one, Runnable onDone) {
+        channel.series.remove(one);
+        channel.seriesTurn = 0;
+        channel.edited = true;
+
+        // Its episodes that are queued go. What is on now plays out.
+        for (int i = channel.lineup.size() - 1; i > channel.pos; i--) {
+            if (channel.seriesOf(channel.lineup.get(i).videoId) == null) {
+                unqueue(channel, channel.lineup.remove(i));
+            }
+        }
+
+        channel.group = null;
+        save();
+        fill(channel, onDone);
+    }
+
+    /** Moves a series to an episode, counted from 1. What is queued is rebuilt from there. */
+    public void setEpisode(TvChannel channel, TvChannel.Series one, int episode, Runnable onDone) {
+        requeue(channel);
+        one.next = Math.max(0, episode - 1);
+        channel.edited = true;
+        save();
+        fill(channel, onDone);
+    }
+
+    public void setSeriesRun(TvChannel channel, int run, Runnable onDone) {
+        requeue(channel);
+        channel.seriesRun = Math.max(0, run);
+        channel.edited = true;
+        save();
+        fill(channel, onDone);
+    }
+
+    public void setSeriesLoop(TvChannel channel, boolean loop) {
+        channel.seriesLoop = loop;
+        channel.edited = true;
+        save();
+    }
+
+    /** Takes back everything that is queued after what's on now, so the next fill deals the episodes again. */
+    private void requeue(TvChannel channel) {
+        while (channel.lineup.size() > channel.pos + 1) {
+            unqueue(channel, channel.lineup.remove(channel.lineup.size() - 1));
+        }
+
+        channel.group = null;
+    }
+
+    /**
+     * Forgets a video that left the lineup before its turn. An episode goes back to its series:
+     * the series continues from it, so nothing is skipped by a shuffle or an edit.
+     */
+    private void unqueue(TvChannel channel, Video removed) {
+        channel.durations.remove(removed.videoId);
+        TvChannel.Series one = channel.seriesOf(removed.videoId);
+        int number = channel.episodeOf(removed.videoId);
+
+        if (one != null && number >= 0) {
+            one.next = Math.min(one.next, number);
+        }
+
+        channel.episodes.remove(removed.videoId);
+    }
+
+    /** A Series channel's fill: reads the playlists that haven't been read, then deals out the next episodes. */
+    private void fillSeries(final TvChannel channel, final Runnable onDone, final boolean urgent) {
+        if (channel.series.isEmpty()) {
+            if (onDone != null) {
+                onDone.run();
+            }
+            return;
+        }
+
+        if (channel.loading) {
+            if (onDone != null) {
+                channel.waiters.add(onDone);
+            }
+            return;
+        }
+
+        channel.loading = true;
+        channel.lastFillMs = System.currentTimeMillis();
+        final List<String[]> toRead = new ArrayList<>(); // playlist id, page key
+
+        for (TvChannel.Series one : channel.series) {
+            if (!mEpisodes.containsKey(one.playlistId)) {
+                toRead.add(new String[] {one.playlistId, one.pageKey});
+            }
+        }
+
+        (urgent ? mWorker : mBackground).execute(() -> {
+            for (String[] playlist : toRead) {
+                List<Video> episodes = readEpisodes(playlist[0], playlist[1]);
+                Log.d(TAG, "%s: playlist %s has %s episodes", channel.name, playlist[0], episodes.size());
+                if (!episodes.isEmpty()) {
+                    mEpisodes.put(playlist[0], episodes);
+                }
+            }
+
+            mMain.post(() -> {
+                channel.loading = false;
+
+                if (mChannels.contains(channel) && channel.isSeries()) {
+                    int added = dealEpisodes(channel);
+                    Log.d(TAG, "%s: +%s episodes", channel.name, added);
+                    if (added > 0) {
+                        save();
+                    }
+                }
+
+                List<Runnable> waiters = new ArrayList<>(channel.waiters);
+                channel.waiters.clear();
+
+                if (onDone != null) {
+                    onDone.run();
+                }
+
+                for (Runnable waiter : waiters) {
+                    waiter.run();
+                }
+            });
+        });
+    }
+
+    /** Every video of a playlist, in the playlist's order. Worker threads. */
+    private List<Video> readEpisodes(String playlistId, String pageKey) {
+        List<Video> episodes = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        try {
+            ContentService service = YouTubeServiceManager.instance().getContentService();
+            MediaGroup group = service.getGroup(pageKey != null ? pageKey : "VL" + playlistId);
+
+            for (int page = 0; group != null && page < MAX_EPISODE_PAGES; page++) {
+                List<MediaItem> items = group.getMediaItems();
+
+                for (int i = 0; items != null && i < items.size(); i++) {
+                    MediaItem item = items.get(i);
+
+                    if (item == null || item.getVideoId() == null || item.getTitle() == null || !seen.add(item.getVideoId())) {
+                        continue;
+                    }
+
+                    Video video = Video.from(item);
+                    video.playlistId = null; // plays as a single video: the channel decides what is next
+                    video.playlistParams = null;
+                    video.playlistIndex = -1;
+                    episodes.add(video);
+                }
+
+                if (group.getNextPageKey() == null) {
+                    break;
+                }
+
+                group = service.continueGroup(group);
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't read playlist %s: %s", playlistId, e.getMessage());
+        }
+
+        // The app's own reader came back empty: with a Data API key the same list is one request per 50 videos.
+        if (episodes.isEmpty() && mApi.ready()) {
+            try {
+                List<String> ids = mApi.playlist(playlistId);
+                Map<String, TvDataApi.Facts> facts = mApi.videos(ids);
+
+                for (String id : ids) {
+                    TvDataApi.Facts one = facts.get(id);
+                    if (one != null && one.title != null && seen.add(id)) {
+                        mFacts.put(id, one);
+                        episodes.add(videoOf(one));
+                    }
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "Data API: can't read playlist %s: %s", playlistId, e.getMessage());
+            }
+        }
+
+        return episodes;
+    }
+
+    /** A video built from what the Data API said, for a source that has no search result to build it from. */
+    private static Video videoOf(TvDataApi.Facts facts) {
+        Video video = new Video();
+        video.videoId = facts.id;
+        video.title = facts.title;
+        video.author = facts.author;
+        video.channelId = facts.channelId;
+        video.cardImageUrl = facts.imageUrl;
+        video.bgImageUrl = facts.imageUrl;
+        video.isLive = facts.live;
+        video.secondTitle = facts.author;
+        return video;
+    }
+
+    /** Puts the next episodes at the end of the lineup: the series take turns, each from where it is. Main thread. */
+    private int dealEpisodes(TvChannel channel) {
+        int added = 0;
+        int count = channel.series.size();
+        int turn = count > 0 ? Math.abs(channel.seriesTurn) % count : 0;
+        int run = channel.seriesRun <= 0 ? Integer.MAX_VALUE : channel.seriesRun;
+        Set<String> queued = new HashSet<>();
+
+        for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+            queued.add(channel.lineup.get(i).videoId);
+        }
+
+        for (int guard = 0; guard < 400 && channel.ahead() < mMinAhead; guard++) {
+            TvChannel.Series one = null;
+            List<Video> episodes = null;
+
+            for (int i = 0; i < count; i++) {
+                TvChannel.Series candidate = channel.series.get((turn + i) % count);
+                List<Video> its = mEpisodes.get(candidate.playlistId);
+
+                if (its == null || its.isEmpty()) {
+                    continue; // couldn't be read: the others go on without it
+                }
+
+                candidate.count = its.size();
+
+                if (candidate.next >= its.size()) {
+                    if (!channel.seriesLoop) {
+                        continue;
+                    }
+                    candidate.next = 0;
+                }
+
+                one = candidate;
+                episodes = its;
+                turn = (turn + i) % count;
+                break;
+            }
+
+            if (one == null) {
+                break;
+            }
+
+            int dealt = 0;
+
+            while (dealt < run && one.next < episodes.size() && channel.ahead() < mMinAhead) {
+                Video source = episodes.get(one.next);
+
+                if (!queued.add(source.videoId)) {
+                    dealt = -1; // a short series came round to an episode that is still queued: enough for now
+                    break;
+                }
+
+                Video video = Video.from(source);
+                video.playlistId = null;
+                video.playlistParams = null;
+                video.playlistIndex = -1;
+                video.author = source.author != null ? source.author : one.author;
+                video.tvChannelId = channel.id;
+                channel.lineup.add(video);
+                channel.episodes.put(video.videoId, one.playlistId + "#" + one.next);
+
+                TvDataApi.Facts facts = mFacts.get(video.videoId);
+                long durationMs = source.getDurationMs() > 0 ? source.getDurationMs() : facts != null ? facts.durationMs : 0;
+                if (durationMs > 0) {
+                    channel.durations.put(video.videoId, durationMs);
+                }
+
+                if (channel.group != null) {
+                    channel.group.add(video);
+                }
+
+                one.next++;
+                dealt++;
+                added++;
+            }
+
+            if (dealt < 0) {
+                break;
+            }
+
+            // The whole-series setting stays with a series until it ends.
+            if (run != Integer.MAX_VALUE || one.next >= episodes.size()) {
+                turn = (turn + 1) % count;
+            }
+        }
+
+        channel.seriesTurn = turn;
+        return added;
+    }
+
+    /** "Mahabharat · Ep 41" for an episode in a lineup, or null for a video that isn't one. */
+    public String episodeLabel(TvChannel channel, Video video) {
+        if (channel == null || video == null) {
+            return null;
+        }
+
+        TvChannel.Series one = channel.seriesOf(video.videoId);
+        int number = channel.episodeOf(video.videoId);
+
+        return one != null && number >= 0 ? "Ep " + (number + 1) + (one.count > 0 ? " of " + one.count : "") : null;
     }
 
     public String getFilterGenre() {
@@ -1140,8 +1716,11 @@ public class TvModeService {
     public void shuffle(TvChannel channel, Runnable onDone) {
         while (channel.lineup.size() > channel.pos + 1) {
             Video removed = channel.lineup.remove(channel.lineup.size() - 1);
-            channel.durations.remove(removed.videoId);
-            remember(removed.videoId);
+            boolean episode = channel.seriesOf(removed.videoId) != null;
+            unqueue(channel, removed);
+            if (!episode) { // an episode isn't used up by a shuffle: its series continues from it
+                remember(removed.videoId);
+            }
         }
 
         channel.group = null;
@@ -1225,7 +1804,7 @@ public class TvModeService {
         dropComingUp(channel);
 
         while (channel.lineup.size() > channel.pos + 1) { // nothing from the old search may stay queued
-            channel.durations.remove(channel.lineup.remove(channel.lineup.size() - 1).videoId);
+            unqueue(channel, channel.lineup.remove(channel.lineup.size() - 1));
         }
 
         String prefix = channel.id + "|";
@@ -1331,6 +1910,11 @@ public class TvModeService {
 
     /** urgent: somebody is waiting for this channel. Otherwise it queues behind the other background searches. */
     private void fill(final TvChannel channel, final Runnable onDone, final boolean urgent) {
+        if (channel.isSeries()) { // playlists in order: nothing is searched, shuffled or filtered
+            fillSeries(channel, onDone, urgent);
+            return;
+        }
+
         final long now = System.currentTimeMillis();
         // Sources take turns: each search term, each YouTube channel, then (when the channel also
         // looks in playlists) each search term again as a search for playlists. With a Data API
@@ -2316,7 +2900,7 @@ public class TvModeService {
     private void checkDescription(Video video, String description) {
         TvChannel channel = findChannel(video);
 
-        if (channel == null || description == null || description.isEmpty() || channel.language().isEmpty()) {
+        if (channel == null || description == null || description.isEmpty() || channel.language().isEmpty() || channel.isSeries()) {
             return;
         }
 
@@ -2391,6 +2975,10 @@ public class TvModeService {
      */
     private boolean stale(TvChannel channel, Video video) {
         String title = video.getTitle();
+
+        if (channel.isSeries()) { // its playlists were picked by hand: only an episode that no longer exists goes
+            return mGone.contains(video.videoId);
+        }
 
         if (title == null) {
             return false;
@@ -2550,6 +3138,15 @@ public class TvModeService {
                 }
             }
 
+            JSONArray kinds = config.optJSONArray("kinds");
+            mKindOrder.clear();
+            for (int i = 0; kinds != null && i < kinds.length(); i++) {
+                String kind = kinds.optString(i, "");
+                if (!kind.isEmpty()) {
+                    mKindOrder.add(kind);
+                }
+            }
+
             JSONArray genres = config.optJSONArray("genres");
             mGenreOrder.clear();
             for (int i = 0; genres != null && i < genres.length(); i++) {
@@ -2605,6 +3202,12 @@ public class TvModeService {
                 } else if (channel.edited) {
                     // Edited here, so its search stays as it is. It still gets a genre and a
                     // language when it has none, or the guide's filters would never show it.
+                    // The same for its program type, which channels saved before types existed don't have.
+                    // Its genre then comes along: what "genre" meant changed with it.
+                    if (channel.kind.isEmpty()) {
+                        channel.kind = preset.optString("kind", "");
+                        channel.genre = preset.optString("genre", "");
+                    }
                     if (channel.genre.isEmpty()) {
                         channel.genre = preset.optString("genre", "");
                     }
@@ -2683,8 +3286,7 @@ public class TvModeService {
     /** The channel's search changed: keep what's on now and the next two, refill the rest. */
     private void dropComingUp(TvChannel channel) {
         while (channel.lineup.size() > channel.pos + 3) {
-            Video removed = channel.lineup.remove(channel.lineup.size() - 1);
-            channel.durations.remove(removed.videoId);
+            unqueue(channel, channel.lineup.remove(channel.lineup.size() - 1));
         }
 
         channel.group = null;
@@ -2730,7 +3332,7 @@ public class TvModeService {
                     // It now hides channels in the guide, which nobody asked for by ticking the old setting.
                     mFavOnly = false;
                 }
-                mFilterGenre = settings.optString("filterGenre", "");
+                mFilterKind = settings.optString("filterKind", "");
                 mFilterLanguage = settings.optString("filterLanguage", "");
                 mApi.restore(settings.optString("apiKey", ""), settings.optString("apiDay", ""), settings.optInt("apiUsed", 0), settings.optInt("apiSearches", 0));
             }
@@ -2783,7 +3385,8 @@ public class TvModeService {
             settings.put("openMode", mOpenMode);
             settings.put("lastChannel", mLastChannelId);
             settings.put("guideChannel", mGuideChannelId);
-            settings.put("filterGenre", mFilterGenre);
+            settings.put("filterGenre", ""); // kept so an older build finds the key; the guide filters by type now
+            settings.put("filterKind", mFilterKind);
             settings.put("filterLanguage", mFilterLanguage);
             // The key stays on this TV. It is never part of the channel list, which is public.
             settings.put("apiKey", mApi.key());
