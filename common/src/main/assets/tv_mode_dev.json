@@ -10,8 +10,8 @@
       "teaser"
     ],
     "recentEvery": 3,
-    "apiSearchesPerDay": 60,
-    "apiSearchGapHours": 12,
+    "apiSearchesPerDay": 80,
+    "apiSearchGapHours": 2,
     "chartGapMinutes": 120,
     "minViews": 3000
   },

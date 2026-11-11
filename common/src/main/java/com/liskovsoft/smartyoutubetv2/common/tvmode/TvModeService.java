@@ -168,8 +168,8 @@ public class TvModeService {
     private final Map<String, String> mApiPages = new ConcurrentHashMap<>();
     /** A Data API search costs 100 of the day's 10,000 units, so they are rationed: this many a day... */
     private int mApiSearchesPerDay = 60;
-    /** ...and one channel searches that way at most this often. One search brings up to 50 videos. */
-    private long mApiSearchGapMs = 12 * 60 * 60_000L;
+    /** ...shared out among the channels that search that way, and one channel never more often than this. */
+    private long mApiSearchGapMs = 2 * 60 * 60_000L;
     /** A chart page costs 1 unit. The chart itself changes a few times a day. */
     private long mChartGapMs = 2 * 60 * 60_000L;
 
@@ -1958,7 +1958,7 @@ public class TvModeService {
         // channel that names a chart reads it. Those two are rationed, so they come and go.
         final int playlistTurns = channel.playlists ? channel.terms.size() : 0;
         final int ownTurns = channel.terms.size() + channel.creators.size() + playlistTurns;
-        final int apiTurns = !channel.region.isEmpty() && now - channel.lastApiSearchMs > mApiSearchGapMs
+        final int apiTurns = !channel.region.isEmpty() && now - channel.lastApiSearchMs > apiSearchGapMs()
                 && mApi.canSearch(mApiSearchesPerDay) ? channel.terms.size() : 0;
         final int chartTurns = !channel.chart.isEmpty() && now - channel.lastChartMs > mChartGapMs && mApi.ready() ? 1 : 0;
 
@@ -2628,7 +2628,23 @@ public class TvModeService {
 
         String problem = mApi.problem();
 
-        return problem != null ? problem : mApi.used() + " of " + TvDataApi.DAILY_UNITS + " units used today";
+        return problem != null ? problem : "set";
+    }
+
+    /**
+     * How long a channel waits between its Data API searches. The day's searches are shared out
+     * among the channels that use them: few channels search often, many take longer turns. Never
+     * less than the gap the preset list names.
+     */
+    private long apiSearchGapMs() {
+        int channels = 0;
+
+        for (TvChannel channel : mChannels) {
+            channels += channel.region.isEmpty() ? 0 : 1;
+        }
+
+        long shared = mApiSearchesPerDay > 0 ? 24 * 60 * 60_000L * Math.max(1, channels) / mApiSearchesPerDay : Long.MAX_VALUE;
+        return Math.max(mApiSearchGapMs, shared);
     }
 
     public interface OnApiTest {
