@@ -444,6 +444,12 @@ public class TvGuideGridView extends View {
                 mProgram = -1;
             } else if (mProgram < 0) {
                 // Just arrived on this channel: whatever it has on at the time the focus was at.
+                // Only a time still ahead counts. One that has passed since it was set, by the
+                // clock running on or by coming down from the top line a while ago, sent the
+                // focus to a program that had already played instead of the one on now.
+                if (mFocusTimeMs <= now) {
+                    mFocusTimeMs = 0;
+                }
                 mProgram = programAt(channel, mFocusTimeMs > 0 ? mFocusTimeMs : now, now);
             }
 
@@ -529,7 +535,7 @@ public class TvGuideGridView extends View {
                 if (mRow < channels.size() - 1) {
                     if (mRow < 0) {
                         mShelf = null;
-                        mFocusTimeMs = now;
+                        mFocusTimeMs = 0; // what is on now, and it stays "now" as the clock runs
                         // After Back, Down goes back to the channel Back was pressed on.
                         mRow = mReturnRow > 0 && mReturnRow < channels.size() ? mReturnRow - 1 : -1;
                         mReturnRow = -1;
