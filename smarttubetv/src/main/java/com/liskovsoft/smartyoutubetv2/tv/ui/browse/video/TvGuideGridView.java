@@ -177,7 +177,7 @@ public class TvGuideGridView extends View {
     /** Where the time grid starts: under the buttons, and under the lines above the grid when there are any. */
     private float gridTop() {
         int count = shelves().size();
-        return dp(36) + (count == 0 ? 0 : shelvesOpen() ? count * dp(44) + dp(2) : dp(17));
+        return dp(36) + (count == 0 ? 0 : shelvesOpen() ? count * dp(44) + dp(2) : dp(24));
     }
 
     private static String shelfName(String shelf) {
@@ -864,15 +864,44 @@ public class TvGuideGridView extends View {
         }
 
         if (!shelvesOpen()) {
+            // Closed: a tab for each line, with a red mark and its count, and how to open them.
+            // Plain grey text here went unseen.
             float x = left;
-            mName.setColor(0xFF9E9E9E);
+            float top = dp(35);
+            float height = dp(20);
 
             for (String shelf : lines) {
-                String text = shelfName(shelf) + "  " + mService.getShelf(shelf).size();
-                canvas.drawText(text, x, dp(36 + 11), mName);
-                x += mName.measureText(text) + dp(24);
+                String text = shelfName(shelf) + "   " + mService.getShelf(shelf).size();
+                float textLeft = x + dp(25);
+                float tabWidth = dp(25) + mName.measureText(text) + dp(11);
+                mRect.set(x, top, x + tabWidth, top + height);
+                mFill.setColor(0x33FFFFFF);
+                canvas.drawRoundRect(mRect, dp(10), dp(10), mFill);
+
+                float cx = x + dp(14);
+                float cy = top + height / 2;
+                float r = dp(4.5f);
+                mFill.setColor(RED);
+
+                if (TvModeService.SHELF_RESUME.equals(shelf)) { // a play mark
+                    mPath.reset();
+                    mPath.moveTo(cx - r * 0.7f, cy - r);
+                    mPath.lineTo(cx + r, cy);
+                    mPath.lineTo(cx - r * 0.7f, cy + r);
+                    mPath.close();
+                    canvas.drawPath(mPath, mFill);
+                } else { // a plus
+                    canvas.drawRect(cx - r, cy - dp(1), cx + r, cy + dp(1), mFill);
+                    canvas.drawRect(cx - dp(1), cy - r, cx + dp(1), cy + r, mFill);
+                }
+
+                mName.setColor(0xFFFFFFFF);
+                canvas.drawText(text, textLeft, top + dp(13.5f), mName);
+                x += tabWidth + dp(8);
             }
 
+            mName.setColor(0xFF9E9E9E);
+            canvas.drawText("Press Up on the first channel to open", x + dp(6), top + dp(13.5f), mName);
             return;
         }
 
