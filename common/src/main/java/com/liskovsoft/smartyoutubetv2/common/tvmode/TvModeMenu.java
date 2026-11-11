@@ -222,6 +222,25 @@ public class TvModeMenu {
         mDialog.appendSingleSwitch(UiOptionItem.from("Save to YouTube history",
                 option -> mService.setYtHistoryEnabled(option.isSelected()), mService.isYtHistoryEnabled()));
 
+        // Optional. With it channels know each video's language, description and view count before
+        // it airs, English channels can search as the US, and Trending reads YouTube's own chart.
+        mDialog.appendSingleButton(UiOptionItem.from("YouTube API key: " + mService.getApiStatus(), option -> {
+            mDialog.closeDialog();
+            SimpleEditDialog.show(mContext, "YouTube Data API key (empty = don't use one)", mService.getApiKey(), value -> {
+                String key = value != null ? value.trim() : "";
+                mService.setApiKey(key);
+
+                if (key.isEmpty()) {
+                    toast("API key removed");
+                } else {
+                    toast("Checking the key");
+                    mService.testApiKey((works, message) -> toast(message));
+                }
+
+                return true;
+            });
+        }));
+
         mDialog.appendSingleButton(UiOptionItem.from("Refresh channels", option -> {
             mDialog.closeDialog();
             mService.refreshChannels(this::refreshGuide);

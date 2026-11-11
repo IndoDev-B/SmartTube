@@ -150,6 +150,28 @@ public class TvModeService {
     private long mConfigCheckedMs;
     private BrowseSection mSection;
     private int mGuideToken;
+    /** YouTube's Data API with the viewer's own key. Not in use until a key is entered in TV settings. */
+    private final TvDataApi mApi = new TvDataApi();
+    private static final int MAX_FACTS = 4_000;
+    /** What the Data API said about a video, by video id. Read on the main thread, filled by the workers. */
+    private final Map<String, TvDataApi.Facts> mFacts = Collections.synchronizedMap(
+            new java.util.LinkedHashMap<String, TvDataApi.Facts>(256, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, TvDataApi.Facts> eldest) {
+                    return size() > MAX_FACTS;
+                }
+            });
+    private boolean mLineupsChecked;
+    /** Videos the Data API no longer knows: deleted or private. */
+    private final Set<String> mGone = Collections.synchronizedSet(new HashSet<String>());
+    /** Where the next Data API search or chart page of a source continues. Worker threads only. */
+    private final Map<String, String> mApiPages = new ConcurrentHashMap<>();
+    /** A Data API search costs 100 of the day's 10,000 units, so they are rationed: this many a day... */
+    private int mApiSearchesPerDay = 60;
+    /** ...and one channel searches that way at most this often. One search brings up to 50 videos. */
+    private long mApiSearchGapMs = 12 * 60 * 60_000L;
+    /** A chart page costs 1 unit. The chart itself changes a few times a day. */
+    private long mChartGapMs = 2 * 60 * 60_000L;
 
     public interface OnGroup {
         void onGroup(VideoGroup group);
@@ -181,6 +203,11 @@ public class TvModeService {
     public void loadGuide(BrowseSection section, OnGroup onGroup, Runnable onReady) {
         ensureLoaded();
         refreshConfig();
+
+        if (!mLineupsChecked) { // once after a start: saved lineups come back without what the Data API said
+            mLineupsChecked = true;
+            checkLineups(null);
+        }
 
         mSection = section;
         final int token = ++mGuideToken;
@@ -1304,7 +1331,18 @@ public class TvModeService {
 
     /** urgent: somebody is waiting for this channel. Otherwise it queues behind the other background searches. */
     private void fill(final TvChannel channel, final Runnable onDone, final boolean urgent) {
-        if (channel.terms.isEmpty() && channel.creators.isEmpty()) {
+        final long now = System.currentTimeMillis();
+        // Sources take turns: each search term, each YouTube channel, then (when the channel also
+        // looks in playlists) each search term again as a search for playlists. With a Data API
+        // key, a channel that names a country also searches each term as that country, and a
+        // channel that names a chart reads it. Those two are rationed, so they come and go.
+        final int playlistTurns = channel.playlists ? channel.terms.size() : 0;
+        final int ownTurns = channel.terms.size() + channel.creators.size() + playlistTurns;
+        final int apiTurns = !channel.region.isEmpty() && now - channel.lastApiSearchMs > mApiSearchGapMs
+                && mApi.canSearch(mApiSearchesPerDay) ? channel.terms.size() : 0;
+        final int chartTurns = !channel.chart.isEmpty() && now - channel.lastChartMs > mChartGapMs && mApi.ready() ? 1 : 0;
+
+        if (ownTurns + apiTurns + chartTurns == 0) {
             if (onDone != null) {
                 onDone.run();
             }
@@ -1319,19 +1357,32 @@ public class TvModeService {
         }
 
         channel.loading = true;
-        channel.lastFillMs = System.currentTimeMillis();
-        // Sources take turns: each search term, each YouTube channel, then (when the channel also
-        // looks in playlists) each search term again as a search for playlists.
-        final int playlistTurns = channel.playlists ? channel.terms.size() : 0;
-        final int turn = Math.abs(channel.termCursor++) % (channel.terms.size() + channel.creators.size() + playlistTurns);
-        final boolean fromPlaylist = turn >= channel.terms.size() + channel.creators.size();
-        final boolean fromCreator = !fromPlaylist && turn >= channel.terms.size();
-        final String term = fromPlaylist ? channel.terms.get(turn - channel.terms.size() - channel.creators.size())
+        channel.lastFillMs = now;
+        // The rationed sources go first whenever they are allowed: they are the better ones, and a
+        // channel that is rarely low on videos would otherwise almost never get to them.
+        final boolean fromChart = chartTurns > 0;
+        final boolean fromApi = !fromChart && apiTurns > 0;
+        final int turn = fromChart ? 0 : fromApi ? Math.abs(channel.fills) % channel.terms.size() : Math.abs(channel.termCursor++) % ownTurns;
+        final boolean fromPlaylist = !fromChart && !fromApi && turn >= channel.terms.size() + channel.creators.size();
+        final boolean fromCreator = !fromChart && !fromApi && !fromPlaylist && turn >= channel.terms.size();
+        final String term = fromChart ? channel.chart : fromApi ? channel.terms.get(turn)
+                : fromPlaylist ? channel.terms.get(turn - channel.terms.size() - channel.creators.size())
                 : fromCreator ? channel.creators.get(turn - channel.terms.size()) : channel.terms.get(turn);
         final String knownCreatorId = fromCreator ? channel.creatorIds.get(term) : null;
+        // Set now, not when the answer lands: a request that fails must not be repeated at once.
+        if (fromApi) {
+            channel.lastApiSearchMs = now;
+        } else if (fromChart) {
+            channel.lastChartMs = now;
+        }
+        final String apiRegion = channel.region;
+        final String apiLanguage = channel.language();
+        final String apiDuration = TvChannel.LENGTH_SHORT.equals(channel.length) ? "short" : TvChannel.LENGTH_MEDIUM.equals(channel.length) ? "medium"
+                : TvChannel.LENGTH_LONG.equals(channel.length) || channel.minMinutes >= 20 ? "long" : null;
+        final String apiOrder = TvChannel.ORDER_NEW.equals(channel.order) ? "date" : TvChannel.ORDER_VIEWS.equals(channel.order) ? "viewCount" : null;
         // Every few searches one asks for this week's uploads, so a channel isn't only YouTube's
         // evergreen results. Not when the channel has its own date or order setting.
-        final boolean recent = !fromCreator && !fromPlaylist && mRecentEvery > 0 && channel.fills % mRecentEvery == mRecentEvery - 1
+        final boolean recent = !fromCreator && !fromPlaylist && !fromApi && !fromChart && mRecentEvery > 0 && channel.fills % mRecentEvery == mRecentEvery - 1
                 && TvChannel.ANY.equals(channel.uploaded) && TvChannel.ORDER_MIXED.equals(channel.order);
         final int playlistIndex = channel.fills;
         // A movie channel takes turns between YouTube's Movies filter and a plain search for long
@@ -1339,7 +1390,7 @@ public class TvModeService {
         // in some regions little else. The plain search keeps the channel from running dry then.
         final boolean asMovie = TvChannel.TYPE_MOVIE.equals(channel.type) && channel.fills % 2 == 0;
         channel.fills++;
-        final int options = fromCreator ? 0 : fromPlaylist ? (SearchOptions.TYPE_PLAYLIST | OPT_BUILD) : searchOptions(channel, recent, asMovie);
+        final int options = fromCreator || fromApi || fromChart ? 0 : fromPlaylist ? (SearchOptions.TYPE_PLAYLIST | OPT_BUILD) : searchOptions(channel, recent, asMovie);
         // What is sent when YouTube returns nothing for the full set of filters: the type alone.
         // The checks in accept() still apply the rest.
         final int plainOptions = (asMovie ? SearchOptions.TYPE_MOVIE : SearchOptions.TYPE_VIDEO) | OPT_BUILD;
@@ -1348,19 +1399,42 @@ public class TvModeService {
         final String languageWord = fromCreator ? "" : TvLanguage.searchWord(channel.language());
         final String query = languageWord.isEmpty() || term.toLowerCase(Locale.ROOT).contains(languageWord)
                 || TvLanguage.detect(term) == null || !"en".equals(TvLanguage.detect(term)) ? term : term + " " + languageWord;
-        final String pageKey = channel.id + "|" + (fromCreator ? "@" : fromPlaylist ? "#" : "") + query + "|" + options;
+        final String pageKey = channel.id + "|" + (fromCreator ? "@" : fromPlaylist ? "#" : fromApi ? "~" : fromChart ? "^" : "") + query + "|" + options;
         final String searchKey = channel.searchKey();
 
         (urgent ? mWorker : mBackground).execute(() -> {
             final List<MediaItem> found = new ArrayList<>();
+            /** From the Data API, which answers with facts and no search result to build a video from. */
+            final List<TvDataApi.Facts> foundFacts = new ArrayList<>();
             final String[] creatorId = {knownCreatorId};
 
             try {
                 ContentService service = YouTubeServiceManager.instance().getContentService();
-                MediaGroup previous = fromPlaylist ? null : mPages.get(pageKey);
+                MediaGroup previous = fromPlaylist || fromApi || fromChart ? null : mPages.get(pageKey);
                 List<MediaGroup> groups;
 
-                if (fromPlaylist) {
+                if (fromChart) {
+                    // The whole chart, 200 videos in 4 pages at 1 unit each: after the channel's
+                    // own rules only a few of each page are left.
+                    String next = null;
+                    for (int i = 0; i < 4 && (i == 0 || next != null); i++) {
+                        TvDataApi.Page page = mApi.popular(term, next);
+                        foundFacts.addAll(page.facts);
+                        next = page.next;
+                    }
+                    groups = null;
+                } else if (fromApi) {
+                    TvDataApi.Page page = mApi.search(term, apiRegion, apiLanguage, apiDuration, apiOrder, mApiPages.get(pageKey));
+                    turnPage(pageKey, page.next);
+                    // In the order the search returned them.
+                    Map<String, TvDataApi.Facts> facts = mApi.videos(page.ids);
+                    for (String id : page.ids) {
+                        if (facts.get(id) != null) {
+                            foundFacts.add(facts.get(id));
+                        }
+                    }
+                    groups = null;
+                } else if (fromPlaylist) {
                     groups = playlistVideos(service, pageKey, query, options, playlistIndex);
                 } else if (previous != null) {
                     MediaGroup next = service.continueGroup(previous);
@@ -1398,6 +1472,10 @@ public class TvModeService {
                     while (found.size() > PLAYLIST_TAKE) {
                         found.remove(found.size() - 1);
                     }
+                } else if (fromApi || fromChart) {
+                    for (TvDataApi.Facts facts : foundFacts) {
+                        mFacts.put(facts.id, facts);
+                    }
                 } else if (lastPage != null) {
                     mPages.put(pageKey, lastPage);
                 } else {
@@ -1406,6 +1484,8 @@ public class TvModeService {
             } catch (Throwable e) {
                 Log.e(TAG, "Search failed for %s: %s", term, e.getMessage());
             }
+
+            learnFacts(found);
 
             mMain.post(() -> {
                 channel.loading = false;
@@ -1416,13 +1496,15 @@ public class TvModeService {
 
                 // The channel was edited while the search ran. These results no longer apply.
                 if (mChannels.contains(channel) && searchKey.equals(channel.searchKey())) {
-                    int added = append(channel, found, fromCreator ? term : null);
-                    Log.d(TAG, "%s: +%s videos from \"%s\"%s", channel.name, added, term, recent ? " (this week)" : "");
+                    int added = fromApi || fromChart ? appendFacts(channel, foundFacts, fromChart) : append(channel, found, fromCreator ? term : null);
+                    Log.d(TAG, "%s: +%s videos from \"%s\"%s", channel.name, added, term,
+                            recent ? " (this week)" : fromApi ? " (Data API, as " + apiRegion + ", of " + foundFacts.size() + ")"
+                                    : fromChart ? " (most popular chart, of " + foundFacts.size() + ")" : "");
 
                     if (added > 0) {
                         channel.emptyFills = 0;
                         save();
-                    } else if (!recent) { // a quiet week says nothing about the channel running dry
+                    } else if (!recent && !fromApi && !fromChart) { // a quiet week or a spent allowance says nothing about the channel running dry
                         channel.emptyFills++;
                         // Every term came back with nothing new: let watched videos return.
                         if (channel.emptyFills >= channel.sources() * 2) {
@@ -1623,9 +1705,75 @@ public class TvModeService {
             if (video.author == null && creator != null) {
                 video.author = creator;
             }
+            keepFacts(channel, video.videoId, video.getDurationMs());
             fresh.add(video);
         }
 
+        return addFresh(channel, fresh, seen);
+    }
+
+    /**
+     * The same for videos the Data API found, which come as facts instead of search results.
+     * fromChart: the chart is every language of a country at once, so only videos the uploader
+     * marked with the channel's language are taken.
+     */
+    private int appendFacts(TvChannel channel, List<TvDataApi.Facts> found, boolean fromChart) {
+        List<Video> fresh = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        for (Video video : channel.lineup) {
+            seen.add(video.videoId);
+        }
+
+        for (TvDataApi.Facts facts : found) {
+            if (facts.id == null || facts.title == null || facts.upcoming
+                    || !fits(channel, facts.title, facts.author, facts.live ? 0 : facts.durationMs, facts.live, false, facts.views)
+                    || !factsFit(channel, facts, fromChart) || !seen.add(facts.id)) {
+                continue;
+            }
+
+            if (!channel.exhausted && mWatched.contains(facts.id)) {
+                continue;
+            }
+
+            Video video = new Video();
+            video.videoId = facts.id;
+            video.title = facts.title;
+            video.author = facts.author;
+            video.channelId = facts.channelId;
+            video.cardImageUrl = facts.imageUrl;
+            video.bgImageUrl = facts.imageUrl;
+            video.isLive = facts.live;
+            video.secondTitle = facts.author;
+            video.tvChannelId = channel.id;
+            keepFacts(channel, facts.id, 0);
+            fresh.add(video);
+        }
+
+        return addFresh(channel, fresh, seen);
+    }
+
+    /** What the Data API said about a video that made it into a lineup: its length, and its description for the guide. */
+    private void keepFacts(TvChannel channel, String videoId, long knownDurationMs) {
+        TvDataApi.Facts facts = mFacts.get(videoId);
+
+        if (facts == null) {
+            return;
+        }
+
+        channel.checked.add(videoId);
+
+        if (knownDurationMs <= 0 && facts.durationMs > 0 && !facts.live) {
+            channel.durations.put(videoId, facts.durationMs);
+        }
+
+        if (!mDescriptions.containsKey(videoId)) {
+            mDescriptions.put(videoId, facts.description.length() > MAX_DESCRIPTION_CHARS ? facts.description.substring(0, MAX_DESCRIPTION_CHARS) : facts.description);
+        }
+    }
+
+    /** Adds the videos a source brought to the end of the lineup. seen: the ids in the lineup and in fresh. */
+    private int addFresh(TvChannel channel, List<Video> fresh, Set<String> seen) {
         // Videos that ran while nobody watched rejoin here, at the end, mixed with the new ones:
         // about one for every three new, or a batch of them when the search found nothing new.
         int rejoin = fresh.isEmpty() ? 10 : Math.max(1, fresh.size() / 3);
@@ -1656,7 +1804,7 @@ public class TvModeService {
             channel.lineup.add(video);
             if (video.isLive) {
                 channel.durations.put(video.videoId, TvChannel.STREAM_SLOT_MS); // a stream has no length: it gets a slot
-            } else if (video.getDurationMs() > 0) {
+            } else if (video.getDurationMs() > 0 && !channel.durations.containsKey(video.videoId)) {
                 channel.durations.put(video.videoId, video.getDurationMs());
             }
             if (channel.group != null) {
@@ -1674,18 +1822,30 @@ public class TvModeService {
             return false;
         }
 
-        // Streams only on a channel made for them, and such a channel plays nothing else.
-        if (item.isLive() != channel.hasFeature(TvChannel.FEATURE_LIVE)) {
-            return false;
-        }
-
+        // With a Data API key the exact length and view count are known, and more besides.
+        TvDataApi.Facts facts = mFacts.get(item.getVideoId());
         long durationMs = item.isLive() ? 0 : item.getDurationMs();
+        if (durationMs <= 0 && facts != null && !item.isLive()) {
+            durationMs = facts.durationMs;
+        }
+        long views = facts != null && facts.views >= 0 ? facts.views : parseViews(item.getSecondTitle());
 
-        if (channel.minMinutes > 0 && !item.isLive() && durationMs > 0 && durationMs < channel.minMinutes * 60_000L) {
+        return fits(channel, item.getTitle(), item.getAuthor(), durationMs, item.isLive(), item.isShorts(), views)
+                && (facts == null || factsFit(channel, facts, false));
+    }
+
+    /** The channel's own rules, on what both a search result and the Data API say about a video. views: -1 = unknown. */
+    private boolean fits(TvChannel channel, String itemTitle, String itemAuthor, long durationMs, boolean live, boolean shorts, long views) {
+        // Streams only on a channel made for them, and such a channel plays nothing else.
+        if (live != channel.hasFeature(TvChannel.FEATURE_LIVE)) {
             return false;
         }
 
-        if (channel.noShorts && (item.isShorts() || (durationMs > 0 && durationMs <= 61_000))) {
+        if (channel.minMinutes > 0 && !live && durationMs > 0 && durationMs < channel.minMinutes * 60_000L) {
+            return false;
+        }
+
+        if (channel.noShorts && (shorts || (durationMs > 0 && durationMs <= 61_000))) {
             return false;
         }
 
@@ -1700,17 +1860,14 @@ public class TvModeService {
 
         long minViews = Math.max(mMinViews, channel.minViews);
 
-        if (minViews > 0) {
-            long views = parseViews(item.getSecondTitle());
-            if (views >= 0 && views < minViews) {
-                return false;
-            }
+        if (minViews > 0 && views >= 0 && views < minViews) {
+            return false;
         }
 
         String channelLanguage = channel.language();
 
         if (!channelLanguage.isEmpty()) {
-            String language = TvLanguage.detect(item.getTitle());
+            String language = TvLanguage.detect(itemTitle);
             // A Hindi channel keeps titles in plain Latin letters: a great many Hindi videos are titled that way.
             boolean latinOnHindi = "en".equals(language) && !"en".equals(channelLanguage);
             if (language != null && !channelLanguage.equals(language) && !latinOnHindi) {
@@ -1718,13 +1875,13 @@ public class TvModeService {
             }
         }
 
-        String title = item.getTitle().toLowerCase(Locale.ROOT);
+        String title = itemTitle.toLowerCase(Locale.ROOT);
 
         if (containsAny(title, channel.skipWords) || containsAny(title, mGlobalSkipWords)) {
             return false;
         }
 
-        String author = creatorOf(item.getAuthor());
+        String author = creatorOf(itemAuthor);
 
         if (author != null) {
             for (String blocked : channel.blocked) {
@@ -1735,6 +1892,145 @@ public class TvModeService {
         }
 
         return true;
+    }
+
+    /**
+     * What only the Data API knows about a video, against the channel's language.
+     * strict: take only videos marked with the channel's language. Otherwise a video without a
+     * mark gets the benefit of the doubt.
+     */
+    private boolean factsFit(TvChannel channel, TvDataApi.Facts facts, boolean strict) {
+        // Age-restricted videos need a signed-in adult account and stop a channel dead without one.
+        // "YouTube Movies" is the store: titles to rent or buy.
+        if (facts.ageRestricted || facts.upcoming || (facts.author != null && facts.author.startsWith("YouTube Movies"))) {
+            return false;
+        }
+
+        String channelLanguage = channel.language();
+
+        if (channelLanguage.isEmpty()) {
+            return true;
+        }
+
+        String marked = facts.language;
+
+        if (strict && !channelLanguage.equals(marked)) {
+            return false;
+        }
+
+        if (!marked.isEmpty() && !marked.equals(channelLanguage)) {
+            // Uploaders in India often leave the mark on English for a Hindi video, so on a channel
+            // in another language "English" says nothing. Any other mark is deliberate and holds.
+            boolean saysNothing = "en".equals(marked) && !"en".equals(channelLanguage);
+            // Hindi and Urdu are one spoken language: ghazals and qawwali are marked either way.
+            boolean sameSpeech = ("hi".equals(marked) && "ur".equals(channelLanguage)) || ("ur".equals(marked) && "hi".equals(channelLanguage));
+
+            if (!saysNothing && !sameSpeech) {
+                return false;
+            }
+        }
+
+        // Tags and description name the language or the film industry when the title doesn't.
+        List<String> hints = mForeignHints.get(channelLanguage);
+
+        if (hints != null) {
+            for (String word : hints) {
+                if (facts.text.contains(word)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /** Asks the Data API about search results it hasn't been asked about yet. Worker threads. Does nothing without a key. */
+    private void learnFacts(List<MediaItem> found) {
+        if (found.isEmpty() || !mApi.ready()) {
+            return;
+        }
+
+        List<String> ids = new ArrayList<>();
+
+        for (MediaItem item : found) {
+            String id = item != null ? item.getVideoId() : null;
+            if (id != null && !mFacts.containsKey(id) && !ids.contains(id) && ids.size() < 150) {
+                ids.add(id);
+            }
+        }
+
+        if (ids.isEmpty()) {
+            return;
+        }
+
+        try {
+            mFacts.putAll(mApi.videos(ids));
+        } catch (Throwable e) {
+            Log.e(TAG, "Data API: no details for %s videos: %s", ids.size(), e.getMessage());
+        }
+    }
+
+    private void turnPage(String pageKey, String next) {
+        if (next != null) {
+            mApiPages.put(pageKey, next);
+        } else {
+            mApiPages.remove(pageKey);
+        }
+    }
+
+    // ---------------- Data API key (TV settings) ----------------
+
+    public String getApiKey() {
+        ensureLoaded();
+        return mApi.key();
+    }
+
+    public void setApiKey(String key) {
+        ensureLoaded();
+        mApi.setKey(key);
+        saveNow();
+    }
+
+    /** One line for TV settings: whether a key is set and how much of the day's allowance is used. */
+    public String getApiStatus() {
+        ensureLoaded();
+
+        if (mApi.key().isEmpty()) {
+            return "not set";
+        }
+
+        String problem = mApi.problem();
+
+        return problem != null ? problem : mApi.used() + " of " + TvDataApi.DAILY_UNITS + " units used today";
+    }
+
+    public interface OnApiTest {
+        void onResult(boolean works, String message);
+    }
+
+    /** Sends one request (1 unit) to see whether Google accepts the key. */
+    public void testApiKey(final OnApiTest onResult) {
+        mWorker.execute(() -> {
+            boolean works = false;
+            String message;
+
+            try {
+                works = !mApi.videos(Collections.singletonList("dQw4w9WgXcQ")).isEmpty();
+                message = works ? "The key works" : "Google answered, but with nothing. Try again later.";
+            } catch (Throwable e) {
+                String problem = mApi.problem();
+                message = problem != null ? problem : "Couldn't reach Google: " + e.getMessage();
+            }
+
+            final boolean result = works;
+            final String text = message;
+            mMain.post(() -> {
+                onResult.onResult(result, text);
+                if (result) {
+                    checkLineups(null); // what is queued gets the new checks straight away
+                }
+            });
+        });
     }
 
     private static boolean containsAny(String lowerCaseText, List<String> words) {
@@ -1806,6 +2102,75 @@ public class TvModeService {
 
         fillLow(null); // the guide redraws by itself every few seconds
         save();
+        checkLineups(onChanged);
+    }
+
+    /**
+     * With a Data API key: asks about every video that is on or coming up and hasn't been asked
+     * about, then takes out the ones that don't fit. Videos that were queued before the key was
+     * entered, or that a restart brought back from the saved lineups, get checked this way.
+     * About 50 units for 200 channels.
+     */
+    private void checkLineups(final Runnable onChanged) {
+        if (!mApi.ready()) {
+            return;
+        }
+
+        final List<String> ids = new ArrayList<>();
+
+        for (TvChannel channel : mChannels) {
+            for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+                String id = channel.lineup.get(i).videoId;
+                if (id != null && !mFacts.containsKey(id) && !channel.checked.contains(id)) {
+                    ids.add(id);
+                }
+            }
+        }
+
+        if (ids.isEmpty()) {
+            return;
+        }
+
+        mBackground.execute(() -> {
+            try {
+                Map<String, TvDataApi.Facts> answer = mApi.videos(ids);
+                mFacts.putAll(answer);
+                // Asked about and not in the answer: deleted or made private since it was queued.
+                for (String id : ids) {
+                    if (!answer.containsKey(id)) {
+                        mGone.add(id);
+                    }
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "Data API: no details for %s videos: %s", ids.size(), e.getMessage());
+                return;
+            }
+
+            mMain.post(() -> {
+                int before = 0;
+                int after = 0;
+
+                for (TvChannel channel : mChannels) {
+                    before += channel.lineup.size();
+                    purge(channel);
+                    after += channel.lineup.size();
+
+                    for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+                        keepFacts(channel, channel.lineup.get(i).videoId, 0);
+                    }
+                }
+
+                Log.d(TAG, "Data API: checked %s queued videos, %s left the lineups", ids.size(), before - after);
+
+                if (before != after) {
+                    fillLow(null);
+                    save();
+                    if (onChanged != null) {
+                        onChanged.run();
+                    }
+                }
+            });
+        });
     }
 
     private void fillLow(Runnable onDone) {
@@ -1823,7 +2188,9 @@ public class TvModeService {
         void onInfo(String videoId, String description);
     }
 
-    private static final int MAX_DESCRIPTIONS = 300;
+    /** With a Data API key every video in a lineup comes with its description, so there are many more to keep. */
+    private static final int MAX_DESCRIPTIONS = 1_500;
+    private static final int MAX_DESCRIPTION_CHARS = 5_000;
     /** Descriptions already fetched, by video id. Main thread only. */
     private final Map<String, String> mDescriptions = new java.util.LinkedHashMap<String, String>(64, 0.75f, true) {
         @Override
@@ -1915,13 +2282,13 @@ public class TvModeService {
 
             mMain.post(() -> {
                 (first ? mDescriptionsAskedFirst : mDescriptionsAsked).remove(id);
-                boolean known = mDescriptions.containsKey(id);
+                boolean arrived = mDescriptions.containsKey(id); // the other fetch of this video got here first
 
-                if (description != null && !known) {
+                if (description != null && !arrived) {
                     mDescriptionsFailed.remove(id);
                     mDescriptions.put(id, description);
                     checkDescription(video, description);
-                } else if (description == null && !known) {
+                } else if (description == null && !arrived) {
                     if (mDescriptionsAskedFirst.contains(id) || mDescriptionsAsked.contains(id)) {
                         return; // the other fetch of this video may still bring it
                     }
@@ -1955,8 +2322,11 @@ public class TvModeService {
 
         // The start of the description is about the video. Further down come links and boilerplate.
         String start = description.length() > 400 ? description.substring(0, 400) : description;
-        String language = TvLanguage.detect(start);
         String channelLanguage = channel.language();
+        // The uploader's own mark beats a guess from the text: match reports and the like read as
+        // another language when they are full of names.
+        TvDataApi.Facts facts = mFacts.get(video.videoId);
+        String language = facts != null && channelLanguage.equals(facts.language) ? null : TvLanguage.detect(start);
         boolean latinOnHindi = "en".equals(language) && !"en".equals(channelLanguage);
 
         // A film from India is often titled and described in English. Its description still names
@@ -2029,6 +2399,12 @@ public class TvModeService {
         String lower = title.toLowerCase(Locale.ROOT);
 
         if (containsAny(lower, channel.skipWords) || containsAny(lower, mGlobalSkipWords)) {
+            return true;
+        }
+
+        TvDataApi.Facts facts = mFacts.get(video.videoId);
+
+        if (mGone.contains(video.videoId) || (facts != null && !factsFit(channel, facts, false))) {
             return true;
         }
 
@@ -2146,6 +2522,9 @@ public class TvModeService {
                 mSkipsToBlock = Math.max(2, tuning.optInt("skipsToBlock", mSkipsToBlock));
                 mRecentEvery = tuning.optInt("recentEvery", mRecentEvery);
                 mMinViews = tuning.optLong("minViews", mMinViews);
+                mApiSearchesPerDay = Math.max(0, Math.min(90, tuning.optInt("apiSearchesPerDay", mApiSearchesPerDay)));
+                mApiSearchGapMs = Math.max(1, tuning.optInt("apiSearchGapHours", (int) (mApiSearchGapMs / 3_600_000L))) * 3_600_000L;
+                mChartGapMs = Math.max(10, tuning.optInt("chartGapMinutes", (int) (mChartGapMs / 60_000L))) * 60_000L;
                 mGlobalSkipWords.clear();
                 JSONArray words = tuning.optJSONArray("skipWords");
                 for (int i = 0; words != null && i < words.length(); i++) {
@@ -2287,6 +2666,13 @@ public class TvModeService {
 
             mConfigText = text;
             mShown = null;
+
+            int withApi = 0;
+            for (TvChannel channel : mChannels) {
+                withApi += channel.region.isEmpty() && channel.chart.isEmpty() ? 0 : 1;
+            }
+            Log.d(TAG, "Channel list applied: %s channels, %s with a Data API source, key %s", mChannels.size(), withApi,
+                    mApi.key().isEmpty() ? "not set" : mApi.ready() ? "in use" : "set, not usable now");
             return true;
         } catch (Throwable e) {
             Log.e(TAG, "Bad TV mode config: %s", e.getMessage());
@@ -2346,6 +2732,7 @@ public class TvModeService {
                 }
                 mFilterGenre = settings.optString("filterGenre", "");
                 mFilterLanguage = settings.optString("filterLanguage", "");
+                mApi.restore(settings.optString("apiKey", ""), settings.optString("apiDay", ""), settings.optInt("apiUsed", 0), settings.optInt("apiSearches", 0));
             }
 
             addAll(state.optJSONArray("watched"), mWatched);
@@ -2398,6 +2785,11 @@ public class TvModeService {
             settings.put("guideChannel", mGuideChannelId);
             settings.put("filterGenre", mFilterGenre);
             settings.put("filterLanguage", mFilterLanguage);
+            // The key stays on this TV. It is never part of the channel list, which is public.
+            settings.put("apiKey", mApi.key());
+            settings.put("apiUsed", mApi.used());
+            settings.put("apiSearches", mApi.searches());
+            settings.put("apiDay", mApi.day());
 
             // Copies of the lists, so the worker can turn them into text while the channels go on changing.
             final List<TvChannel> channels = new ArrayList<>();

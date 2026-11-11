@@ -69,6 +69,13 @@ public class TvChannel {
     public boolean noShorts = true;
     /** Leave out videos with fewer views than this. 0 = any. */
     public long minViews;
+    /**
+     * With a YouTube Data API key: also search as this country ("US"), which the app's own search
+     * can't do because YouTube goes by where the TV is. Empty = don't.
+     */
+    public String region = "";
+    /** With a YouTube Data API key: also take from this country's most popular chart ("IN"). Empty = don't. */
+    public String chart = "";
     /** YouTube channel ids of the creators, by name. Looked up once, then kept. */
     public final Map<String, String> creatorIds = new HashMap<>();
     /** How many times in a row each creator was skipped within the first seconds. */
@@ -96,6 +103,8 @@ public class TvChannel {
     public int termCursor;
     /** Live TV: clock time when the video on now started. 0 = not running yet. */
     public long liveStartMs;
+    /** Videos the Data API was asked about and that passed. Saved, so a restart doesn't ask again. */
+    public final java.util.Set<String> checked = new java.util.HashSet<>();
     /** Video.toString() doesn't keep the length, so it's kept here by video id. */
     public final Map<String, Long> durations = new HashMap<>();
 
@@ -112,6 +121,9 @@ public class TvChannel {
     /** The video that is playing and when it started, to tell a skip from watching. */
     public String startedId;
     public long startedMs;
+    /** When this channel last searched through the Data API and last read the chart. Both are rationed. */
+    public long lastApiSearchMs;
+    public long lastChartMs;
     /** Callers waiting for the search that is running now. */
     public final List<Runnable> waiters = new ArrayList<>();
 
@@ -179,6 +191,8 @@ public class TvChannel {
         o.put("genre", genre);
         o.put("noShorts", noShorts);
         o.put("minViews", minViews);
+        o.put("region", region);
+        o.put("chart", chart);
         o.put("creatorIds", new JSONObject(creatorIds));
         o.put("skips", new JSONObject(skips));
         o.put("skipWords", new JSONArray(skipWords));
@@ -207,6 +221,9 @@ public class TvChannel {
             item.put("a", video.author);
             Long duration = durations.get(video.videoId);
             item.put("d", duration != null ? duration : -1);
+            if (checked.contains(video.videoId)) {
+                item.put("k", 1);
+            }
             items.put(item);
         }
 
@@ -225,6 +242,9 @@ public class TvChannel {
             long duration = item.optLong("d", -1);
             if (duration > 0) {
                 durations.put(video.videoId, duration);
+            }
+            if (item.optInt("k", 0) == 1) {
+                checked.add(video.videoId);
             }
             out.add(video);
         }
@@ -300,6 +320,8 @@ public class TvChannel {
         c.genre = genre;
         c.noShorts = noShorts;
         c.minViews = minViews;
+        c.region = region;
+        c.chart = chart;
         c.creatorIds.putAll(creatorIds);
         c.skips.putAll(skips);
         c.skipWords.addAll(skipWords);
@@ -316,6 +338,7 @@ public class TvChannel {
         c.termCursor = termCursor;
         c.liveStartMs = liveStartMs;
         c.durations.putAll(durations);
+        c.checked.addAll(checked);
         return c;
     }
 
@@ -371,6 +394,8 @@ public class TvChannel {
         genre = o.optString("genre", "");
         noShorts = o.optBoolean("noShorts", true);
         minViews = o.optLong("minViews", 0);
+        region = o.optString("region", "");
+        chart = o.optString("chart", "");
         readList(o.optJSONArray("skipWords"), skipWords);
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);
