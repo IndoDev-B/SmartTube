@@ -884,8 +884,7 @@
       ],
       "kind": "Movies",
       "needWords": [
-        "south|telugu|tamil|kannada|malayalam",
-        "hindi|dubbed"
+        "dubbed"
       ]
     },
     {
