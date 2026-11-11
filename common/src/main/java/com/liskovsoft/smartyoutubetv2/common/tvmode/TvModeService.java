@@ -844,8 +844,13 @@ public class TvModeService {
     private static final int MAX_SAVED = 30;
     /** Less than this on screen is flicking past a channel, not starting a program. */
     private static final long RESUME_MIN_SEEN_MS = 60_000;
-    /** From here on a program is finished: what is left is the credits. */
-    private static final double RESUME_DONE_SHARE = 0.9;
+    /** A program is finished when this share of it is left, or this long, whichever is less: the rest is the credits. */
+    private static final double RESUME_LEFT_SHARE = 0.15;
+    private static final long RESUME_LEFT_MS = 10 * 60_000;
+
+    private static boolean isFinished(long positionMs, long durationMs) {
+        return durationMs - positionMs <= Math.min(RESUME_LEFT_SHARE * durationMs, RESUME_LEFT_MS);
+    }
     /** Newest first. Both belong to the account, like everything else that follows what was watched. */
     private final List<TvSaved> mResume = new ArrayList<>();
     private final List<TvSaved> mMyList = new ArrayList<>();
@@ -993,7 +998,7 @@ public class TvModeService {
             position = kept > 0 ? kept : mWatchingFromMs + seenMs;
         }
 
-        if (position >= RESUME_DONE_SHARE * durationMs) {
+        if (isFinished(position, durationMs)) {
             TvSaved left = findSaved(mResume, videoId);
             if (left != null) {
                 mResume.remove(left);
@@ -1120,7 +1125,7 @@ public class TvModeService {
 
         TvSaved left = findSaved(mResume, video.videoId);
 
-        if (positionMs >= RESUME_DONE_SHARE * durationMs) {
+        if (isFinished(positionMs, durationMs)) {
             if (left != null) {
                 mResume.remove(left);
                 savedChanged();

@@ -170,6 +170,14 @@ public class TvModeController extends BasePlayerController {
         Video current = getVideo();
         noteSaved(false);
 
+        // A channel's program, every few minutes: where it is goes to "Continue watching" while it
+        // plays, so it is there even when the app is closed straight from the player. Not every
+        // tick: each one writes the whole saved state.
+        if (isTvVideo(current) && getPlayer() != null && getPlayer().isPlaying() && ++mCheckpointTicks >= 3) {
+            mCheckpointTicks = 0;
+            getService().checkpoint();
+        }
+
         if (!isTvVideo(current) || !current.isLive || getPlayer() == null) {
             return;
         }
@@ -180,6 +188,8 @@ public class TvModeController extends BasePlayerController {
             getMainController().onNewVideo(next);
         }
     }
+
+    private int mCheckpointTicks;
 
     private static boolean isRandom(Video video) {
         return video != null && TvModeService.RANDOM.equals(video.tvChannelId);
