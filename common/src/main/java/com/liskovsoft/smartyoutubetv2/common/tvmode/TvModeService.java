@@ -2144,6 +2144,48 @@ public class TvModeService {
         return channel;
     }
 
+    /** True for a preset channel that was changed on this TV, which "Reset this channel" can undo. */
+    public boolean canReset(TvChannel channel) {
+        return channel.preset && channel.edited && presetOf(channel.id) != null;
+    }
+
+    /** One channel back to what the preset list says: every change made to it on this TV goes. */
+    public boolean resetToPreset(TvChannel channel, Runnable onDone) {
+        JSONObject preset = presetOf(channel.id);
+
+        if (preset == null) {
+            return false;
+        }
+
+        channel.name = preset.optString("name", channel.id);
+        channel.readSettings(preset);
+        channel.presetBase = preset.toString();
+        channel.skips.clear();
+        mShown = null;
+        onSearchChanged(channel, onDone); // rebuilds what is queued under the preset's rules
+        channel.edited = false;
+        save();
+        return true;
+    }
+
+    /** A channel as the preset list has it now, or null when the list doesn't have it. */
+    private JSONObject presetOf(String id) {
+        try {
+            JSONArray presets = mConfigText != null ? new JSONObject(mConfigText).optJSONArray("channels") : null;
+
+            for (int i = 0; presets != null && i < presets.length(); i++) {
+                JSONObject preset = presets.optJSONObject(i);
+                if (preset != null && id != null && id.equals(preset.optString("id", null))) {
+                    return preset;
+                }
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't read the preset list: %s", e.getMessage());
+        }
+
+        return null;
+    }
+
     /** Back to the preset list. Channels made on this TV are removed. */
     public void restorePresets() {
         mChannels.clear();
@@ -3745,7 +3787,16 @@ public class TvModeService {
                     mChannels.add(Math.min(i, mChannels.size()), channel);
                     presetsAdded++;
                 } else if (channel.edited) {
-                    // Edited here, so its search stays as it is. It still gets a genre and a
+                    // Edited here. What was changed on this TV stays, and everything else follows
+                    // the preset list: see TvChannel.followPreset.
+                    String beforeMerge = channel.searchKey();
+                    channel.followPreset(preset);
+                    if (!beforeMerge.equals(channel.searchKey())) {
+                        purge(channel);
+                        dropComingUp(channel);
+                    }
+
+                    // It still gets a genre and a
                     // language when it has none, or the guide's filters would never show it.
                     // The same for its program type, which channels saved before types existed don't have.
                     // Its genre then comes along: what "genre" meant changed with it.
@@ -3766,6 +3817,7 @@ public class TvModeService {
                 String before = channel.searchKey();
                 channel.name = preset.optString("name", id);
                 channel.readSettings(preset);
+                channel.presetBase = preset.toString(); // what an edit made from here on is told apart from
 
                 if (!before.equals(channel.searchKey())) {
                     purge(channel); // what the new rules would not have let in goes first

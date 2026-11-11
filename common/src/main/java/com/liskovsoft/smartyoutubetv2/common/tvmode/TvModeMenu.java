@@ -387,6 +387,14 @@ public class TvModeMenu {
 
         mDialog.appendSingleButton(UiOptionItem.from("Edit channel", option -> showEditor(channel)));
 
+        // Only for a preset that was changed here: one press back to what the preset list says.
+        if (mService.canReset(channel)) {
+            appendConfirm("Reset this channel", "Yes, undo my changes to " + channel.name, () -> {
+                mService.resetToPreset(channel, this::refreshGuide);
+                toast(channel.name + " is back to its preset");
+            });
+        }
+
         mDialog.appendSingleButton(UiOptionItem.from("Shuffle", option -> {
             mDialog.closeDialog();
             mService.shuffle(channel, this::refreshGuide);

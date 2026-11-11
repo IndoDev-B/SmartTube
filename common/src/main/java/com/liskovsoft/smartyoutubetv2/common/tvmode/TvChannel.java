@@ -333,6 +333,7 @@ public class TvChannel {
         o.put("pos", pos);
         o.put("termCursor", termCursor);
         o.put("liveStartMs", liveStartMs);
+        o.put("presetBase", presetBase);
         o.put("apiAt", lastApiSearchMs);
         o.put("chartAt", lastChartMs);
         o.put("apiTokens", new JSONObject(apiTokens));
@@ -503,6 +504,7 @@ public class TvChannel {
         c.pos = pos;
         c.termCursor = termCursor;
         c.liveStartMs = liveStartMs;
+        c.presetBase = presetBase;
         c.lastApiSearchMs = lastApiSearchMs;
         c.lastChartMs = lastChartMs;
         c.apiTokens.putAll(apiTokens);
@@ -523,6 +525,7 @@ public class TvChannel {
         c.edited = o.optBoolean("edited", false);
         c.termCursor = o.optInt("termCursor", 0);
         c.liveStartMs = o.optLong("liveStartMs", 0);
+        c.presetBase = o.isNull("presetBase") ? null : o.optString("presetBase", null);
         c.lastApiSearchMs = o.optLong("apiAt", 0);
         c.lastChartMs = o.optLong("chartAt", 0);
 
@@ -633,6 +636,119 @@ public class TvChannel {
 
             series.add(one);
         }
+    }
+
+    /**
+     * The preset this channel was last brought in line with, as it was in the preset list then.
+     * It is what tells a change made on this TV from one the preset list made: a setting that
+     * still equals this is untouched and follows the list, one that differs is the viewer's and stays.
+     */
+    public String presetBase;
+
+    /**
+     * Brings a channel that was edited on this TV in line with a newer preset, keeping the edits.
+     * Each setting the viewer left alone takes the preset's new value. In each list, what the
+     * viewer added stays added and what the viewer removed stays removed, on top of the new list.
+     * A rename, a mode or a blocked creator no longer cuts a channel off from later fixes.
+     */
+    public void followPreset(JSONObject preset) {
+        TvChannel was;
+        TvChannel now;
+
+        try {
+            if (presetBase == null) { // edited before this was kept: from here on its edits are known
+                presetBase = preset.toString();
+                return;
+            }
+
+            was = settingsOf(new JSONObject(presetBase));
+            now = settingsOf(preset);
+        } catch (JSONException e) {
+            presetBase = preset.toString();
+            return;
+        }
+
+        if (same(name, was.name)) name = now.name;
+        if (same(kind, was.kind)) kind = now.kind;
+        if (same(origin, was.origin)) origin = now.origin;
+        if (same(genre, was.genre)) genre = now.genre;
+        if (same(length, was.length)) length = now.length;
+        if (same(uploaded, was.uploaded)) uploaded = now.uploaded;
+        if (same(order, was.order)) order = now.order;
+        if (same(type, was.type)) type = now.type;
+        if (same(mode, was.mode)) mode = now.mode;
+        if (same(region, was.region)) region = now.region;
+        if (same(chart, was.chart)) chart = now.chart;
+        if (minMinutes == was.minMinutes) minMinutes = now.minMinutes;
+        if (playlists == was.playlists) playlists = now.playlists;
+        if (noShorts == was.noShorts) noShorts = now.noShorts;
+        if (minViews == was.minViews) minViews = now.minViews;
+        if (minSpeed == was.minSpeed) minSpeed = now.minSpeed;
+        if (yearsStrict == was.yearsStrict) yearsStrict = now.yearsStrict;
+        if (seriesRun == was.seriesRun) seriesRun = now.seriesRun;
+        if (seriesLoop == was.seriesLoop) seriesLoop = now.seriesLoop;
+        if (yearFrom == was.yearFrom && yearTo == was.yearTo) {
+            yearFrom = now.yearFrom;
+            yearTo = now.yearTo;
+        }
+
+        follow(terms, was.terms, now.terms);
+        follow(creators, was.creators, now.creators);
+        follow(features, was.features, now.features);
+        follow(skipWords, was.skipWords, now.skipWords);
+        follow(blocked, was.blocked, now.blocked);
+        follow(languages, was.languages, now.languages);
+        follow(needWords, was.needWords, now.needWords);
+        follow(skipCategories, was.skipCategories, now.skipCategories);
+
+        // Series the same way, by playlist. One the channel already plays keeps its place.
+        List<Series> merged = new ArrayList<>();
+        for (Series one : now.series) {
+            boolean removedHere = was.findSeries(one.playlistId) != null && findSeries(one.playlistId) == null;
+            if (!removedHere) {
+                merged.add(findSeries(one.playlistId) != null ? findSeries(one.playlistId) : one);
+            }
+        }
+        for (Series one : series) {
+            if (was.findSeries(one.playlistId) == null && !merged.contains(one)) {
+                merged.add(one);
+            }
+        }
+        series.clear();
+        series.addAll(merged);
+
+        presetBase = preset.toString();
+    }
+
+    private static TvChannel settingsOf(JSONObject o) {
+        TvChannel c = new TvChannel();
+        c.name = o.optString("name", o.optString("id", ""));
+        c.readSettings(o);
+        return c;
+    }
+
+    private static boolean same(String a, String b) {
+        return a == null ? b == null : a.equals(b);
+    }
+
+    /** mine becomes the new list, with what was added to the old one added and what was taken from it taken. */
+    private static void follow(List<String> mine, List<String> was, List<String> now) {
+        List<String> result = new ArrayList<>(now);
+
+        for (String old : was) {
+            if (!mine.contains(old)) {
+                result.remove(old);
+            }
+        }
+
+        for (String own : mine) {
+            if (!was.contains(own) && !result.contains(own)) {
+                result.add(own);
+            }
+        }
+
+        mine.clear();
+        mine.addAll(result);
     }
 
     private static void readList(JSONArray array, List<String> out) {
