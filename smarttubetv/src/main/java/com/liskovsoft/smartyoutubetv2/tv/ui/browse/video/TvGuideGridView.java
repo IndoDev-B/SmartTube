@@ -650,7 +650,13 @@ public class TvGuideGridView extends View {
         mOnNowFocused = mRow < 0 || (mRow < channels.size() && mProgram == channels.get(mRow).pos);
         invalidate();
         notifyFocus();
+        // Leaving a channel can put its program on "Continue watching", a moment after the focus
+        // has moved: drawn again then, the line shows it at once instead of at the next tick.
+        removeCallbacks(mRedraw);
+        postDelayed(mRedraw, 500);
     }
+
+    private final Runnable mRedraw = () -> invalidate();
 
     // ---------------- drawing ----------------
 
@@ -692,7 +698,7 @@ public class TvGuideGridView extends View {
                 x = Math.max(x, width - dp(45) - rightWidth);
             }
             String action = mButtons.get(i).tvChannelId;
-            boolean on = focused && mRow < 0 && mButton == i;
+            boolean on = focused && mRow < 0 && mShelf == null && mButton == i;
             // A filter that is on keeps a red tint, so it shows from anywhere in the guide.
             boolean active = (TvModeService.ACTION_FAVOURITES.equals(action) && mService.isFavOnly())
                     || (TvModeService.ACTION_GENRE.equals(action) && !mService.getFilterKind().isEmpty())
