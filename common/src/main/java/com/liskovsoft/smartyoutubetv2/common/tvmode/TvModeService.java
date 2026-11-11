@@ -726,6 +726,9 @@ public class TvModeService {
     private int mRewatchDaysDefault = 30;
     /** A video counts as watched once this much of it was seen. Flicking past a channel leaves no mark. */
     private static final double WATCHED_SHARE = 0.7;
+    /** On Live TV: this share of the program, or this long, whichever is less. */
+    private static final double LIVE_WATCHED_SHARE = 0.3;
+    private static final long LIVE_WATCHED_MS = 15 * 60_000;
 
     /** Watched, and too recently to come back on this channel. */
     private boolean isWatched(TvChannel channel, String videoId) {
@@ -797,10 +800,11 @@ public class TvModeService {
         }
 
         seenMs = Math.min(seenMs, Math.max(0, durationMs - mWatchingFromMs));
-        // Live TV runs on the clock: what counts is how much of the program was sat through.
+        // Live TV runs on the clock, and a program is usually joined part-way: sitting through
+        // 30% of it, or a quarter of an hour of a long one, is having watched it.
         // A channel that waits for its viewer counts from the start: carrying on where it was left
         // finishes the film, though no single sitting saw most of it.
-        boolean enough = isLive(channel) ? seenMs >= WATCHED_SHARE * durationMs
+        boolean enough = isLive(channel) ? seenMs >= Math.min(LIVE_WATCHED_SHARE * durationMs, LIVE_WATCHED_MS)
                 : mWatchingFromMs + seenMs >= WATCHED_SHARE * durationMs && seenMs >= Math.min(5 * 60_000, 0.2 * durationMs);
 
         if (enough) {
