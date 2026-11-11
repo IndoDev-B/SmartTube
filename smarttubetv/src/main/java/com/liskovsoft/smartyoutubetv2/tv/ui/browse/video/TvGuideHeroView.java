@@ -468,6 +468,8 @@ public class TvGuideHeroView extends FrameLayout {
         // Over the still picture, under the channel name and the clock.
         mPreviewBox.addView(mPreviewPlayer, 1, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         mPreviewPlayer.openVideo(copy);
+        // Watching here is watching: a program seen through in the preview is as watched as one seen full screen.
+        TvModeService.instance(getContext()).watching(channel, copy.videoId, copy.pendingPosMs);
     }
 
     /** The preview played a program to its end: a Free mode channel moves to its next one, and the preview follows. */
@@ -497,6 +499,7 @@ public class TvGuideHeroView extends FrameLayout {
             mPreviewPlayer.finish();
             mPreviewBox.removeView(mPreviewPlayer);
             mPreviewPlayer = null;
+            TvModeService.instance(getContext()).stopWatching();
         }
     }
 

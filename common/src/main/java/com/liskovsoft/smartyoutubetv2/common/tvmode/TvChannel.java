@@ -113,6 +113,13 @@ public class TvChannel {
      */
     public int yearFrom;
     public int yearTo;
+    /**
+     * With a Data API key: leave out videos that gather fewer views than this for each day since
+     * they were uploaded. What "viral" means, in a number. 0 = any.
+     */
+    public long minSpeed;
+    /** With a Data API key: leave out videos YouTube files under these category numbers. 20 is gaming. */
+    public final List<String> skipCategories = new ArrayList<>();
     /** Only titles that name a year inside the era are taken. For an era that titles usually state, like "1994". */
     public boolean yearsStrict;
     /**
@@ -169,6 +176,15 @@ public class TvChannel {
     /** When this channel last searched through the Data API and last read the chart. Both are rationed. */
     public long lastApiSearchMs;
     public long lastChartMs;
+    /**
+     * Where each Data API search continues: its next page, by search term and country. Saved,
+     * because a search that starts over returns what the channel already has and costs the same.
+     */
+    public final Map<String, String> apiTokens = new HashMap<>();
+    /** A Data API search that reached its last page rests until this time, by search term and country. */
+    public final Map<String, Long> apiRest = new HashMap<>();
+    /** When a video in the lineup was uploaded, by video id. For channels whose videos go stale. */
+    public final Map<String, Long> published = new HashMap<>();
     /** Callers waiting for the search that is running now. */
     public final List<Runnable> waiters = new ArrayList<>();
 
@@ -251,7 +267,8 @@ public class TvChannel {
     public String searchKey() {
         return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + features + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages
                 + "|" + type + "|" + minMinutes + "|" + playlists + (isSeries() ? "|series" + seriesIds() + seriesRun : "")
-                + (yearTo > 0 ? "|years" + yearFrom + "-" + yearTo + yearsStrict : "") + (needWords.isEmpty() ? "" : "|need" + needWords);
+                + (yearTo > 0 ? "|years" + yearFrom + "-" + yearTo + yearsStrict : "") + (needWords.isEmpty() ? "" : "|need" + needWords)
+                + (minSpeed > 0 ? "|speed" + minSpeed : "") + (skipCategories.isEmpty() ? "" : "|nocat" + skipCategories);
     }
 
     private String seriesIds() {
@@ -299,6 +316,8 @@ public class TvChannel {
         o.put("years", new JSONArray().put(yearFrom).put(yearTo));
         o.put("yearsStrict", yearsStrict);
         o.put("needWords", new JSONArray(needWords));
+        o.put("minSpeed", minSpeed);
+        o.put("skipCategories", new JSONArray(skipCategories));
         o.put("creatorIds", new JSONObject(creatorIds));
         o.put("skips", new JSONObject(skips));
         o.put("skipWords", new JSONArray(skipWords));
@@ -311,6 +330,10 @@ public class TvChannel {
         o.put("pos", pos);
         o.put("termCursor", termCursor);
         o.put("liveStartMs", liveStartMs);
+        o.put("apiAt", lastApiSearchMs);
+        o.put("chartAt", lastChartMs);
+        o.put("apiTokens", new JSONObject(apiTokens));
+        o.put("apiRest", new JSONObject(apiRest));
 
         o.put("lineup", videosToJson(lineup));
         o.put("missed", videosToJson(missed));
@@ -332,6 +355,9 @@ public class TvChannel {
             }
             if (episodes.containsKey(video.videoId)) {
                 item.put("e", episodes.get(video.videoId));
+            }
+            if (published.containsKey(video.videoId)) {
+                item.put("p", published.get(video.videoId));
             }
             items.put(item);
         }
@@ -357,6 +383,9 @@ public class TvChannel {
             }
             if (!item.isNull("e")) {
                 episodes.put(video.videoId, item.optString("e", ""));
+            }
+            if (item.optLong("p", 0) > 0) {
+                published.put(video.videoId, item.optLong("p", 0));
             }
             out.add(video);
         }
@@ -453,6 +482,8 @@ public class TvChannel {
         c.yearTo = yearTo;
         c.yearsStrict = yearsStrict;
         c.needWords.addAll(needWords);
+        c.minSpeed = minSpeed;
+        c.skipCategories.addAll(skipCategories);
         c.creatorIds.putAll(creatorIds);
         c.skips.putAll(skips);
         c.skipWords.addAll(skipWords);
@@ -468,6 +499,11 @@ public class TvChannel {
         c.pos = pos;
         c.termCursor = termCursor;
         c.liveStartMs = liveStartMs;
+        c.lastApiSearchMs = lastApiSearchMs;
+        c.lastChartMs = lastChartMs;
+        c.apiTokens.putAll(apiTokens);
+        c.apiRest.putAll(apiRest);
+        c.published.putAll(published);
         c.durations.putAll(durations);
         c.checked.addAll(checked);
         return c;
@@ -483,6 +519,20 @@ public class TvChannel {
         c.edited = o.optBoolean("edited", false);
         c.termCursor = o.optInt("termCursor", 0);
         c.liveStartMs = o.optLong("liveStartMs", 0);
+        c.lastApiSearchMs = o.optLong("apiAt", 0);
+        c.lastChartMs = o.optLong("chartAt", 0);
+
+        JSONObject tokens = o.optJSONObject("apiTokens");
+        for (java.util.Iterator<String> it = tokens != null ? tokens.keys() : null; it != null && it.hasNext();) {
+            String key = it.next();
+            c.apiTokens.put(key, tokens.optString(key, ""));
+        }
+
+        JSONObject rest = o.optJSONObject("apiRest");
+        for (java.util.Iterator<String> it = rest != null ? rest.keys() : null; it != null && it.hasNext();) {
+            String key = it.next();
+            c.apiRest.put(key, rest.optLong(key, 0));
+        }
 
         JSONObject ids = o.optJSONObject("creatorIds");
         if (ids != null) {
@@ -537,6 +587,8 @@ public class TvChannel {
         yearTo = years != null ? years.optInt(1, 0) : 0;
         yearsStrict = o.optBoolean("yearsStrict", false);
         readList(o.optJSONArray("needWords"), needWords);
+        minSpeed = o.optLong("minSpeed", 0);
+        readList(o.optJSONArray("skipCategories"), skipCategories);
         readList(o.optJSONArray("skipWords"), skipWords);
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);

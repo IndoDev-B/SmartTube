@@ -48,7 +48,21 @@ final class TvDataApi {
         /** The spoken language the uploader set, as a two or three letter code. Empty when not set or not speech. */
         String language = "";
         long durationMs;
+        /** When it was uploaded. 0 when unknown. */
+        long publishedMs;
+        /** YouTube's own category number: 10 music, 17 sports, 20 gaming, 25 news... 0 when unknown. */
+        int category;
         long views = -1;
+
+        /** Views for each day since the upload: how fast a video is spreading. -1 when it can't be told. */
+        long viewsPerDay() {
+            if (views < 0 || publishedMs <= 0) {
+                return -1;
+            }
+
+            double days = Math.max(0.25, (System.currentTimeMillis() - publishedMs) / 86_400_000.0);
+            return (long) (views / days);
+        }
         boolean ageRestricted;
         boolean live;
         boolean upcoming;
@@ -256,6 +270,18 @@ final class TvDataApi {
             int dash = language.indexOf('-');
             language = dash > 0 ? language.substring(0, dash) : language;
             facts.language = "zxx".equals(language) || "und".equals(language) ? "" : language; // zxx: no speech
+            facts.category = snippet.optInt("categoryId", 0);
+            String published = snippet.optString("publishedAt", "");
+            if (published.length() >= 19) {
+                try {
+                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+                    format.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    Date date = format.parse(published.substring(0, 19));
+                    facts.publishedMs = date != null ? date.getTime() : 0;
+                } catch (Throwable e) {
+                    facts.publishedMs = 0;
+                }
+            }
             String broadcast = snippet.optString("liveBroadcastContent", "none");
             facts.live = "live".equals(broadcast);
             facts.upcoming = "upcoming".equals(broadcast);

@@ -10,10 +10,29 @@
       "teaser"
     ],
     "recentEvery": 3,
-    "apiSearchesPerDay": 80,
+    "apiSearchesPerDay": 95,
     "apiSearchGapHours": 2,
     "chartGapMinutes": 120,
-    "minViews": 3000
+    "minViews": 3000,
+    "freshDays": {
+      "News": 2,
+      "Trending": 3,
+      "Sports": 7,
+      "Podcasts": 30
+    },
+    "rewatchDays": {
+      "default": 30,
+      "Songs": 2,
+      "Movies": 90,
+      "Shows": 30,
+      "Documentary": 60,
+      "Learning": 30,
+      "Kids": 7,
+      "Ambience": 1,
+      "News": -1,
+      "Trending": -1,
+      "Sports": -1
+    }
   },
   "channels": [
     {
@@ -28,7 +47,7 @@
         "news"
       ],
       "order": "trending",
-      "length": "medium",
+      "length": "any",
       "skipWords": [
         "song",
         "music video",
@@ -39,14 +58,26 @@
         "audio",
         "trailer",
         "teaser",
-        "hindi"
+        "hindi",
+        "roblox",
+        "gta",
+        "free fire",
+        "minecraft",
+        "theft auto",
+        "gameplay",
+        "gaming",
+        "pubg",
+        "bgmi"
       ],
       "genre": "Popular",
       "languages": [
         "en"
       ],
       "chart": "US",
-      "kind": "Trending"
+      "kind": "Trending",
+      "skipCategories": [
+        "20"
+      ]
     },
     {
       "id": "trending-hindi",
@@ -60,7 +91,7 @@
         "hindi roast"
       ],
       "order": "trending",
-      "length": "medium",
+      "length": "any",
       "skipWords": [
         "movie",
         "full movie",
@@ -71,14 +102,26 @@
         "audio",
         "trailer",
         "teaser",
-        "dubbed"
+        "dubbed",
+        "roblox",
+        "gta",
+        "free fire",
+        "minecraft",
+        "theft auto",
+        "gameplay",
+        "gaming",
+        "pubg",
+        "bgmi"
       ],
       "genre": "Popular",
       "languages": [
         "hi"
       ],
       "chart": "IN",
-      "kind": "Trending"
+      "kind": "Trending",
+      "skipCategories": [
+        "20"
+      ]
     },
     {
       "id": "viral-english",
@@ -95,13 +138,26 @@
         "music video",
         "lyric",
         "movie",
-        "hindi"
+        "hindi",
+        "roblox",
+        "gta",
+        "free fire",
+        "minecraft",
+        "theft auto",
+        "gameplay",
+        "gaming",
+        "pubg",
+        "bgmi"
       ],
       "genre": "Viral",
       "languages": [
         "en"
       ],
-      "kind": "Trending"
+      "kind": "Trending",
+      "skipCategories": [
+        "20"
+      ],
+      "minSpeed": 30000
     },
     {
       "id": "viral-hindi",
@@ -119,13 +175,26 @@
         "song",
         "lyrical",
         "jukebox",
-        "dubbed"
+        "dubbed",
+        "roblox",
+        "gta",
+        "free fire",
+        "minecraft",
+        "theft auto",
+        "gameplay",
+        "gaming",
+        "pubg",
+        "bgmi"
       ],
       "genre": "Viral",
       "languages": [
         "hi"
       ],
-      "kind": "Trending"
+      "kind": "Trending",
+      "skipCategories": [
+        "20"
+      ],
+      "minSpeed": 30000
     },
     {
       "id": "westerns",

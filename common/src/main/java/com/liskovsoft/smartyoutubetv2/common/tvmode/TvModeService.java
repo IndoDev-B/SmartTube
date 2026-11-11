@@ -204,10 +204,14 @@ public class TvModeService {
         ensureLoaded();
         refreshConfig();
 
+        switchAccount(); // whoever is signed in now sees their own channels, favourites and history
+
         if (!mLineupsChecked) { // once after a start: saved lineups come back without what the Data API said
             mLineupsChecked = true;
             checkLineups(null);
         }
+
+        refreshFresh();
 
         mSection = section;
         final int token = ++mGuideToken;
@@ -253,7 +257,7 @@ public class TvModeService {
 
     /** Fetches more videos for a channel that is running low. At most once a minute for each channel. */
     private void topUp(TvChannel channel) {
-        if (channel.ahead() < mMinAhead && !channel.loading && System.currentTimeMillis() - channel.lastFillMs > TOP_UP_PERIOD_MS) {
+        if (channel.ahead() < minAhead(channel) && !channel.loading && System.currentTimeMillis() - channel.lastFillMs > TOP_UP_PERIOD_MS) {
             fill(channel, null, false);
         }
     }
@@ -395,7 +399,7 @@ public class TvModeService {
         for (int i = index - 1; i > channel.pos; i--) {
             Video passed = channel.lineup.remove(i);
             channel.durations.remove(passed.videoId);
-            if (!mWatched.contains(passed.videoId) && !channel.missed.contains(passed)) {
+            if (!isFresh(channel) && !channel.isSeries() && !mWatched.contains(passed.videoId) && !channel.missed.contains(passed)) {
                 channel.missed.add(passed);
             }
             index--;
@@ -443,7 +447,7 @@ public class TvModeService {
             return null;
         }
 
-        remember(video.videoId);
+        // Starting a video doesn't make it watched: see watching(), below, once the channel is on it.
 
         // The player takes "next" from the video's row, which must be the channel's whole lineup.
         if (channel.group == null || !channel.group.contains(video) || video.getGroup() != channel.group) {
@@ -451,30 +455,11 @@ public class TvModeService {
             video.setGroup(channel.group);
         }
 
-        // Skipping a creator's videos within the first seconds, several times, blocks that creator here.
-        // Watching one longer forgives the earlier skips.
+        // Leaving a video early says nothing: it may be idle flicking through the channels. A
+        // creator is blocked only from the channel's menu, never by counting skips.
         String note = null;
         String toBlock = null;
         long now = System.currentTimeMillis();
-        Video previous = channel.onNow();
-
-        if (previous != null && previous.videoId != null && previous.videoId.equals(channel.startedId) && !isLive(channel)) {
-            String creator = creatorOf(previous.author);
-
-            if (creator != null && index == channel.pos + 1 && now - channel.startedMs < SKIP_WINDOW_MS) {
-                Integer before = channel.skips.get(creator);
-                int count = (before != null ? before : 0) + 1;
-                channel.skips.put(creator, count);
-
-                if (count >= mSkipsToBlock && !channel.blocked.contains(creator)) {
-                    channel.skips.remove(creator);
-                    toBlock = creator;
-                    note = creator + ": skipped " + count + " times, so it's blocked on " + channel.name + ". Unblock it in Edit channel.";
-                }
-            } else if (creator != null && now - channel.startedMs >= SKIP_WINDOW_MS) {
-                channel.skips.remove(creator);
-            }
-        }
 
         channel.startedId = video.videoId;
         channel.startedMs = now;
@@ -489,6 +474,8 @@ public class TvModeService {
         }
 
         channel.pos = index;
+        // From where it starts: part-way in on Live TV, where it was left on a channel that waits.
+        watching(channel, video.videoId, isLive(channel) ? liveOffsetMs(channel) : savedPositionMs(video.videoId));
 
         // Keep a short tail of what already played.
         int extra = channel.pos - MAX_PAST;
@@ -498,7 +485,7 @@ public class TvModeService {
             channel.pos--;
         }
 
-        if (channel.ahead() < mMinAhead) {
+        if (channel.ahead() < minAhead(channel)) {
             fill(channel, null);
         }
 
@@ -636,10 +623,189 @@ public class TvModeService {
 
         mWatched.remove(videoId);
         mWatched.add(videoId);
+        mWatchedAt.put(videoId, System.currentTimeMillis());
 
         if (mWatched.size() > MAX_WATCHED) {
             String oldest = mWatched.iterator().next();
             mWatched.remove(oldest);
+            mWatchedAt.remove(oldest);
+        }
+    }
+
+    // ---------------- channels whose videos go stale ----------------
+
+    /**
+     * For how many days a video stays showable, by program type: news and trending are old
+     * within days, where a film is as good next year. From the preset list's "freshDays".
+     * A type that isn't named keeps its videos for good.
+     */
+    private final Map<String, Integer> mFreshDays = new java.util.HashMap<>();
+    /** A fresh channel looks at its sources again this often while the app is open, even with a full lineup. */
+    private static final long FRESH_REFILL_MS = 3 * 60 * 60_000L;
+    private static final java.util.regex.Pattern AGO = java.util.regex.Pattern.compile(
+            "(\\d+)\\s+(second|minute|hour|day|week|month|year)s?\\s+ago", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private int freshDays(TvChannel channel) {
+        Integer days = mFreshDays.get(channel.kind.toLowerCase(Locale.ROOT));
+        return days != null ? days : 0;
+    }
+
+    private boolean isFresh(TvChannel channel) {
+        return freshDays(channel) > 0;
+    }
+
+    /** Uploaded longer ago than the channel shows. A video whose upload time isn't known is not too old. */
+    private boolean tooOld(TvChannel channel, long publishedMs) {
+        int days = freshDays(channel);
+        return days > 0 && publishedMs > 0 && System.currentTimeMillis() - publishedMs > days * 24L * 60 * 60_000;
+    }
+
+    /** "3 days ago" in a search result's second line, as a time. 0 when the line doesn't say. */
+    private static long publishedFrom(CharSequence text) {
+        if (text == null) {
+            return 0;
+        }
+
+        java.util.regex.Matcher matcher = AGO.matcher(text);
+
+        if (!matcher.find()) {
+            return 0;
+        }
+
+        long count = Long.parseLong(matcher.group(1));
+        String unit = matcher.group(2).toLowerCase(Locale.ROOT);
+        long unitMs = "second".equals(unit) ? 1_000L : "minute".equals(unit) ? 60_000L : "hour".equals(unit) ? 3_600_000L
+                : "day".equals(unit) ? 86_400_000L : "week".equals(unit) ? 7 * 86_400_000L : "month".equals(unit) ? 30 * 86_400_000L : 365 * 86_400_000L;
+
+        return System.currentTimeMillis() - count * unitMs;
+    }
+
+    /** How many videos a channel keeps ready. A fresh channel keeps fewer: what waits longest goes stale. */
+    private int minAhead(TvChannel channel) {
+        return isFresh(channel) ? Math.max(4, mMinAhead / 2) : mMinAhead;
+    }
+
+    /**
+     * Fresh channels, when the guide opens: what went past its shelf life while nobody looked
+     * goes, and a channel that hasn't looked at its sources for a while looks again, so today's
+     * videos are next instead of at the end of an old queue.
+     */
+    private void refreshFresh() {
+        long now = System.currentTimeMillis();
+
+        for (TvChannel channel : mChannels) {
+            if (!isFresh(channel) || channel.loading) {
+                continue;
+            }
+
+            int before = channel.lineup.size();
+            purge(channel);
+            boolean due = now - channel.lastFillMs > FRESH_REFILL_MS;
+
+            if (due) {
+                dropComingUp(channel);
+            }
+
+            if (due || channel.lineup.size() != before) {
+                channel.emptyFills = 0;
+                fill(channel, null, false);
+            }
+        }
+    }
+
+    // ---------------- what counts as watched ----------------
+
+    /** When each watched video was watched, by video id. A video without a time was watched before times were kept. */
+    private final Map<String, Long> mWatchedAt = new java.util.HashMap<>();
+    /**
+     * After how many days a watched video may be shown again, by program type. A song is wanted
+     * again within days, a film after months, and free films are not endless: sooner or later
+     * they have to repeat. -1 = never. From the preset list's "rewatchDays".
+     */
+    private final Map<String, Integer> mRewatchDays = new java.util.HashMap<>();
+    private int mRewatchDaysDefault = 30;
+    /** A video counts as watched once this much of it was seen. Flicking past a channel leaves no mark. */
+    private static final double WATCHED_SHARE = 0.7;
+
+    /** Watched, and too recently to come back on this channel. */
+    private boolean isWatched(TvChannel channel, String videoId) {
+        if (videoId == null || !mWatched.contains(videoId)) {
+            return false;
+        }
+
+        Integer days = mRewatchDays.get(channel.kind.toLowerCase(Locale.ROOT));
+        int rest = days != null ? days : mRewatchDaysDefault;
+        Long at = mWatchedAt.get(videoId);
+
+        return rest < 0 || at == null || System.currentTimeMillis() - at < rest * 24L * 60 * 60_000;
+    }
+
+    /** Where a video was left, from the app's own record of positions. 0 when it was never started. */
+    private long savedPositionMs(String videoId) {
+        try {
+            com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.State state =
+                    com.liskovsoft.smartyoutubetv2.common.app.models.playback.service.VideoStateService.instance(mContext).getByVideoId(videoId);
+            return state != null ? Math.max(0, state.positionMs) : 0;
+        } catch (Throwable e) {
+            return 0;
+        }
+    }
+
+    // What is being watched now, in the player or in the guide's preview: both are watching.
+    private TvChannel mWatchingChannel;
+    private String mWatchingId;
+    private long mWatchingSinceMs;
+    /** How far into the video it was when the watching began. */
+    private long mWatchingFromMs;
+
+    /**
+     * A video is on screen from now, starting this far in. Whatever was on before is settled:
+     * watched if enough of it was seen, otherwise it stays unwatched and can come round again.
+     */
+    public void watching(TvChannel channel, String videoId, long fromMs) {
+        if (channel != null && videoId != null && videoId.equals(mWatchingId) && channel == mWatchingChannel) {
+            return; // still the same video
+        }
+
+        stopWatching();
+
+        if (channel != null && videoId != null) {
+            mWatchingChannel = channel;
+            mWatchingId = videoId;
+            mWatchingSinceMs = System.currentTimeMillis();
+            mWatchingFromMs = Math.max(0, fromMs);
+        }
+    }
+
+    /** Nothing is on screen any more. */
+    public void stopWatching() {
+        TvChannel channel = mWatchingChannel;
+        String videoId = mWatchingId;
+        mWatchingChannel = null;
+        mWatchingId = null;
+
+        if (channel == null || videoId == null || !mChannels.contains(channel)) {
+            return;
+        }
+
+        Long known = channel.durations.get(videoId);
+        long durationMs = known != null && known > 0 ? known : 0;
+        long seenMs = System.currentTimeMillis() - mWatchingSinceMs;
+
+        if (durationMs <= 0 || seenMs <= 0) {
+            return; // a stream, or a length nobody knows: there is no share to speak of
+        }
+
+        seenMs = Math.min(seenMs, Math.max(0, durationMs - mWatchingFromMs));
+        // Live TV runs on the clock: what counts is how much of the program was sat through.
+        // A channel that waits for its viewer counts from the start: carrying on where it was left
+        // finishes the film, though no single sitting saw most of it.
+        boolean enough = isLive(channel) ? seenMs >= WATCHED_SHARE * durationMs
+                : mWatchingFromMs + seenMs >= WATCHED_SHARE * durationMs && seenMs >= Math.min(5 * 60_000, 0.2 * durationMs);
+
+        if (enough) {
+            remember(videoId);
+            save();
         }
     }
 
@@ -685,8 +851,10 @@ public class TvModeService {
             channel.liveStartMs += durationOf(channel, passed);
             channel.pos++;
 
-            // It ran, but nobody saw it: it may come back later. Only what was watched is gone for good.
-            if (!mWatched.contains(passed.videoId) && !channel.missed.contains(passed)) {
+            // It ran, but nobody saw it: it may come back later. Not on a channel whose videos go
+            // stale, where yesterday's is no better for having been missed, and not an episode,
+            // which its series keeps count of.
+            if (!isFresh(channel) && !channel.isSeries() && !mWatched.contains(passed.videoId) && !channel.missed.contains(passed)) {
                 channel.missed.add(passed);
                 if (channel.missed.size() > MAX_MISSED) {
                     channel.missed.remove(0);
@@ -1277,6 +1445,7 @@ public class TvModeService {
         }
 
         channel.episodes.remove(removed.videoId);
+        channel.published.remove(removed.videoId);
     }
 
     /** A Series channel's fill: reads the playlists that haven't been read, then deals out the next episodes. */
@@ -1441,7 +1610,7 @@ public class TvModeService {
             queued.add(channel.lineup.get(i).videoId);
         }
 
-        for (int guard = 0; guard < 400 && channel.ahead() < mMinAhead; guard++) {
+        for (int guard = 0; guard < 400 && channel.ahead() < minAhead(channel); guard++) {
             TvChannel.Series one = null;
             List<Video> episodes = null;
 
@@ -1474,7 +1643,7 @@ public class TvModeService {
 
             int dealt = 0;
 
-            while (dealt < run && one.next < episodes.size() && channel.ahead() < mMinAhead) {
+            while (dealt < run && one.next < episodes.size() && channel.ahead() < minAhead(channel)) {
                 Video source = episodes.get(one.next);
 
                 if (!queued.add(source.videoId)) {
@@ -1754,8 +1923,13 @@ public class TvModeService {
             Video removed = channel.lineup.remove(channel.lineup.size() - 1);
             boolean episode = channel.seriesOf(removed.videoId) != null;
             unqueue(channel, removed);
-            if (!episode) { // an episode isn't used up by a shuffle: its series continues from it
-                remember(removed.videoId);
+            // Nobody saw these, so a shuffle doesn't use them up: they go to the back and come
+            // round again later, mixed with new ones. An episode goes back to its series instead.
+            if (!episode && !isFresh(channel) && !mWatched.contains(removed.videoId) && !channel.missed.contains(removed)) {
+                channel.missed.add(removed);
+                if (channel.missed.size() > MAX_MISSED) {
+                    channel.missed.remove(0);
+                }
             }
         }
 
@@ -1813,7 +1987,7 @@ public class TvModeService {
         channel.group = null;
         save();
 
-        if (channel.ahead() < mMinAhead) {
+        if (channel.ahead() < minAhead(channel)) {
             fill(channel, null);
         }
     }
@@ -1958,8 +2132,22 @@ public class TvModeService {
         // channel that names a chart reads it. Those two are rationed, so they come and go.
         final int playlistTurns = channel.playlists ? channel.terms.size() : 0;
         final int ownTurns = channel.terms.size() + channel.creators.size() + playlistTurns;
-        final int apiTurns = !channel.region.isEmpty() && now - channel.lastApiSearchMs > apiSearchGapMs()
-                && mApi.canSearch(mApiSearchesPerDay) ? channel.terms.size() : 0;
+        // A Data API search is a term asked as one of the channel's countries ("US,GB,AU": they
+        // take turns). One that reached its last page rests: asking again would start over and
+        // return what the channel already has, for the same 100 units.
+        final List<String> apiSearches = new ArrayList<>(); // "term|country"
+        if (!channel.region.isEmpty() && now - channel.lastApiSearchMs > apiSearchGapMs() && mApi.canSearch(mApiSearchesPerDay)) {
+            for (String country : channel.region.split(",")) {
+                for (String oneTerm : channel.terms) {
+                    String key = oneTerm + "|" + country.trim();
+                    Long restUntil = channel.apiRest.get(key);
+                    if (!country.trim().isEmpty() && (restUntil == null || now > restUntil)) {
+                        apiSearches.add(key);
+                    }
+                }
+            }
+        }
+        final int apiTurns = apiSearches.size();
         final int chartTurns = !channel.chart.isEmpty() && now - channel.lastChartMs > mChartGapMs && mApi.ready() ? 1 : 0;
 
         if (ownTurns + apiTurns + chartTurns == 0) {
@@ -1982,10 +2170,13 @@ public class TvModeService {
         // channel that is rarely low on videos would otherwise almost never get to them.
         final boolean fromChart = chartTurns > 0;
         final boolean fromApi = !fromChart && apiTurns > 0;
-        final int turn = fromChart ? 0 : fromApi ? Math.abs(channel.fills) % channel.terms.size() : Math.abs(channel.termCursor++) % ownTurns;
+        final int turn = fromChart || fromApi ? 0 : Math.abs(channel.termCursor++) % ownTurns;
         final boolean fromPlaylist = !fromChart && !fromApi && turn >= channel.terms.size() + channel.creators.size();
         final boolean fromCreator = !fromChart && !fromApi && !fromPlaylist && turn >= channel.terms.size();
-        final String term = fromChart ? channel.chart : fromApi ? channel.terms.get(turn)
+        // The search that has gone least deep goes first, so terms and countries stay level.
+        final String apiSearch = fromApi ? apiSearches.get(Math.abs(channel.fills) % apiSearches.size()) : "";
+        final String apiToken = channel.apiTokens.get(apiSearch);
+        final String term = fromChart ? channel.chart : fromApi ? apiSearch.substring(0, apiSearch.lastIndexOf('|'))
                 : fromPlaylist ? channel.terms.get(turn - channel.terms.size() - channel.creators.size())
                 : fromCreator ? channel.creators.get(turn - channel.terms.size()) : channel.terms.get(turn);
         final String knownCreatorId = fromCreator ? channel.creatorIds.get(term) : null;
@@ -1995,7 +2186,9 @@ public class TvModeService {
         } else if (fromChart) {
             channel.lastChartMs = now;
         }
-        final String apiRegion = channel.region;
+        final String apiRegion = fromApi ? apiSearch.substring(apiSearch.lastIndexOf('|') + 1) : "";
+        /** What the search answered: {0} is its next page, or null at the last one. {1} is set when it answered at all. */
+        final String[] apiAnswer = {null, null};
         final String apiLanguage = channel.language();
         final String apiDuration = TvChannel.LENGTH_SHORT.equals(channel.length) ? "short" : TvChannel.LENGTH_MEDIUM.equals(channel.length) ? "medium"
                 : TvChannel.LENGTH_LONG.equals(channel.length) || channel.minMinutes >= 20 ? "long" : null;
@@ -2044,8 +2237,9 @@ public class TvModeService {
                     }
                     groups = null;
                 } else if (fromApi) {
-                    TvDataApi.Page page = mApi.search(term, apiRegion, apiLanguage, apiDuration, apiOrder, mApiPages.get(pageKey));
-                    turnPage(pageKey, page.next);
+                    TvDataApi.Page page = mApi.search(term, apiRegion, apiLanguage, apiDuration, apiOrder, apiToken);
+                    apiAnswer[0] = page.next;
+                    apiAnswer[1] = "yes";
                     // In the order the search returned them.
                     Map<String, TvDataApi.Facts> facts = mApi.videos(page.ids);
                     for (String id : page.ids) {
@@ -2116,6 +2310,15 @@ public class TvModeService {
 
                 // The channel was edited while the search ran. These results no longer apply.
                 if (mChannels.contains(channel) && searchKey.equals(channel.searchKey())) {
+                    if (fromApi && apiAnswer[1] != null) {
+                        if (apiAnswer[0] != null) {
+                            channel.apiTokens.put(apiSearch, apiAnswer[0]);
+                        } else { // the last page: three weeks from now it starts again, for what was uploaded since
+                            channel.apiTokens.remove(apiSearch);
+                            channel.apiRest.put(apiSearch, System.currentTimeMillis() + 21 * 24 * 60 * 60_000L);
+                        }
+                    }
+
                     int added = fromApi || fromChart ? appendFacts(channel, foundFacts, fromChart) : append(channel, found, fromCreator ? term : null);
                     Log.d(TAG, "%s: +%s videos from \"%s\"%s", channel.name, added, term,
                             recent ? " (this week)" : fromApi ? " (Data API, as " + apiRegion + ", of " + foundFacts.size() + ")"
@@ -2133,7 +2336,7 @@ public class TvModeService {
                     }
 
                     // One page is often not enough after filtering. Bounded so a dead search can't loop.
-                    if (channel.ahead() < mMinAhead && channel.emptyFills < channel.sources() * 3) {
+                    if (channel.ahead() < minAhead(channel) && channel.emptyFills < channel.sources() * 3) {
                         fill(channel, null, urgent);
                     }
                 }
@@ -2312,7 +2515,7 @@ public class TvModeService {
                 continue;
             }
 
-            if (!channel.exhausted && mWatched.contains(item.getVideoId())) {
+            if (!channel.exhausted && isWatched(channel, item.getVideoId())) {
                 continue;
             }
 
@@ -2325,6 +2528,18 @@ public class TvModeService {
             if (video.author == null && creator != null) {
                 video.author = creator;
             }
+            // When it was uploaded: exactly, from the Data API, or roughly, from "3 days ago" in the result.
+            TvDataApi.Facts known = mFacts.get(video.videoId);
+            long publishedMs = known != null && known.publishedMs > 0 ? known.publishedMs : publishedFrom(item.getSecondTitle());
+
+            if (tooOld(channel, publishedMs)) {
+                continue;
+            }
+
+            if (publishedMs > 0 && isFresh(channel)) {
+                channel.published.put(video.videoId, publishedMs);
+            }
+
             keepFacts(channel, video.videoId, video.getDurationMs());
             fresh.add(video);
         }
@@ -2337,9 +2552,12 @@ public class TvModeService {
      * fromChart: the chart is every language of a country at once, so only videos the uploader
      * marked with the channel's language are taken.
      */
+    private static final int CHART_PER_CATEGORY = 5;
+
     private int appendFacts(TvChannel channel, List<TvDataApi.Facts> found, boolean fromChart) {
         List<Video> fresh = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        Map<Integer, Integer> perCategory = new java.util.HashMap<>();
 
         for (Video video : channel.lineup) {
             seen.add(video.videoId);
@@ -2352,7 +2570,7 @@ public class TvModeService {
                 continue;
             }
 
-            if (!channel.exhausted && mWatched.contains(facts.id)) {
+            if (!channel.exhausted && isWatched(channel, facts.id)) {
                 continue;
             }
 
@@ -2366,6 +2584,20 @@ public class TvModeService {
             video.isLive = facts.live;
             video.secondTitle = facts.author;
             video.tvChannelId = channel.id;
+            // The chart is mostly one kind of video at a time. A few of each kind keeps the channel mixed.
+            if (fromChart) {
+                Integer taken = perCategory.get(facts.category);
+                if (taken != null && taken >= CHART_PER_CATEGORY) {
+                    seen.remove(facts.id);
+                    continue;
+                }
+                perCategory.put(facts.category, taken != null ? taken + 1 : 1);
+            }
+
+            if (facts.publishedMs > 0 && isFresh(channel)) {
+                channel.published.put(facts.id, facts.publishedMs);
+            }
+
             keepFacts(channel, facts.id, 0);
             fresh.add(video);
         }
@@ -2533,6 +2765,20 @@ public class TvModeService {
             return false;
         }
 
+        if (facts.category > 0 && channel.skipCategories.contains(String.valueOf(facts.category))) {
+            return false;
+        }
+
+        // "Viral" as a number: views for each day since the upload. A title that says viral proves nothing.
+        long speed = facts.viewsPerDay();
+        if (channel.minSpeed > 0 && speed >= 0 && speed < channel.minSpeed) {
+            return false;
+        }
+
+        if (tooOld(channel, facts.publishedMs)) {
+            return false;
+        }
+
         String channelLanguage = channel.language();
 
         if (channelLanguage.isEmpty()) {
@@ -2628,7 +2874,21 @@ public class TvModeService {
 
         String problem = mApi.problem();
 
-        return problem != null ? problem : "set";
+        return problem != null ? problem : mApi.used() + " of " + TvDataApi.DAILY_UNITS + " units used today, " + mApi.searches() + " searches";
+    }
+
+    /** A table of days by program type, from the preset list. Types are matched whatever their case. */
+    private static void readDays(JSONObject table, Map<String, Integer> out) {
+        if (table == null) {
+            return;
+        }
+
+        out.clear();
+
+        for (java.util.Iterator<String> it = table.keys(); it.hasNext();) {
+            String kind = it.next();
+            out.put(kind.toLowerCase(Locale.ROOT), table.optInt(kind, 0));
+        }
     }
 
     /**
@@ -2765,12 +3025,109 @@ public class TvModeService {
 
     // ---------------- preset list and tuning (bundled file, updated from the repo) ----------------
 
+    // ---------------- accounts ----------------
+    //
+    // Everything a person does is theirs: the channels they made or changed, favourites, what
+    // they watched, where each channel and each series is, the guide's filters. All of it lives
+    // in one saved file for each account, and one for nobody signed in. The preset list is the
+    // same for everybody, and so is what belongs to the TV: the Data API key and its day's count.
+
+    private static final String DEVICE_FILE = "tv_mode_device.json";
+    /** Whose state is loaded: a key for the signed-in account, "" for nobody. */
+    private String mAccount = "";
+    private boolean mDeviceLoaded;
+    /** The state saved before accounts were told apart went to an account already. */
+    private boolean mLegacyTaken;
+
+    private String accountKey() {
+        try {
+            com.liskovsoft.mediaserviceinterfaces.oauth.Account account =
+                    com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.instance().getSelectedAccount();
+            if (account != null && !account.isEmpty()) {
+                // Not the address itself: the key is part of a file name.
+                return "a" + Integer.toHexString((account.getEmail() + "|" + account.getName()).hashCode());
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't tell who is signed in: %s", e.getMessage());
+            return mAccount;
+        }
+
+        return "";
+    }
+
+    private File stateFile(String account) {
+        return new File(mContext.getFilesDir(), account.isEmpty() ? STATE_FILE : "tv_mode_state_" + account + ".json");
+    }
+
+    /** Another account was signed in since the state was loaded: this one is saved and put away, the other's is loaded. */
+    private void switchAccount() {
+        if (!mLoaded) {
+            return;
+        }
+
+        String now = accountKey();
+
+        if (now.equals(mAccount)) {
+            return;
+        }
+
+        stopWatching();
+        mMain.removeCallbacks(mSaveNow);
+        saveNow(); // to the file of the account that is leaving
+
+        for (TvChannel channel : mChannels) {
+            channel.group = null;
+        }
+        mChannels.clear();
+        mWatched.clear();
+        mWatchedAt.clear();
+        mDeletedPresets.clear();
+        mPages.clear();
+        mPlaylists.clear();
+        mShown = null;
+        mLastChannelId = null;
+        mGuideChannelId = null;
+        mFilterKind = "";
+        mFilterLanguage = "";
+        mFavOnly = false;
+        mConfigText = null;
+        mLineupsChecked = false;
+        mLoaded = false;
+        Log.d(TAG, "Account changed: TV mode now holds %s", now.isEmpty() ? "nobody's state" : "account " + now);
+        ensureLoaded();
+    }
+
+    private void loadDevice() {
+        if (mDeviceLoaded) {
+            return;
+        }
+
+        mDeviceLoaded = true;
+        String text = readFile(new File(mContext.getFilesDir(), DEVICE_FILE));
+
+        try {
+            if (text != null) {
+                JSONObject device = new JSONObject(text);
+                mApi.restore(device.optString("apiKey", ""), device.optString("apiDay", ""), device.optInt("apiUsed", 0), device.optInt("apiSearches", 0));
+                mLegacyTaken = device.optBoolean("legacyTaken", false);
+                mHasDevice = true;
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't read the TV's own settings: %s", e.getMessage());
+        }
+    }
+
+    /** False until the TV's own file exists: before that the key was kept in the state, and is taken from there once. */
+    private boolean mHasDevice;
+
     private void ensureLoaded() {
         if (mLoaded) {
             return;
         }
 
         mLoaded = true;
+        mAccount = accountKey();
+        loadDevice();
         loadState();
 
         String config = readFile(new File(mContext.getFilesDir(), CONFIG_CACHE_FILE));
@@ -2878,7 +3235,7 @@ public class TvModeService {
 
     private void fillLow(Runnable onDone) {
         for (TvChannel channel : mChannels) {
-            if (channel.ahead() < mMinAhead && !channel.loading) {
+            if (channel.ahead() < minAhead(channel) && !channel.loading) {
                 channel.emptyFills = 0;
                 fill(channel, onDone, false);
             }
@@ -3111,8 +3468,10 @@ public class TvModeService {
 
         TvDataApi.Facts facts = mFacts.get(video.videoId);
 
+        Long publishedMs = channel.published.get(video.videoId);
+
         if (mGone.contains(video.videoId) || (facts != null && !factsFit(channel, facts, false)) || outOfEra(channel, title)
-                || lacksNeeded(channel, title, facts)) {
+                || lacksNeeded(channel, title, facts) || (publishedMs != null && tooOld(channel, publishedMs))) {
             return true;
         }
 
@@ -3230,7 +3589,12 @@ public class TvModeService {
                 mSkipsToBlock = Math.max(2, tuning.optInt("skipsToBlock", mSkipsToBlock));
                 mRecentEvery = tuning.optInt("recentEvery", mRecentEvery);
                 mMinViews = tuning.optLong("minViews", mMinViews);
-                mApiSearchesPerDay = Math.max(0, Math.min(90, tuning.optInt("apiSearchesPerDay", mApiSearchesPerDay)));
+                mApiSearchesPerDay = Math.max(0, Math.min(99, tuning.optInt("apiSearchesPerDay", mApiSearchesPerDay)));
+                readDays(tuning.optJSONObject("freshDays"), mFreshDays);
+                readDays(tuning.optJSONObject("rewatchDays"), mRewatchDays);
+                if (mRewatchDays.containsKey("default")) {
+                    mRewatchDaysDefault = mRewatchDays.get("default");
+                }
                 mApiSearchGapMs = Math.max(1, tuning.optInt("apiSearchGapHours", (int) (mApiSearchGapMs / 3_600_000L))) * 3_600_000L;
                 mChartGapMs = Math.max(10, tuning.optInt("chartGapMinutes", (int) (mChartGapMs / 60_000L))) * 60_000L;
                 mGlobalSkipWords.clear();
@@ -3418,7 +3782,14 @@ public class TvModeService {
     // ---------------- saving ----------------
 
     private void loadState() {
-        String text = readFile(new File(mContext.getFilesDir(), STATE_FILE));
+        String text = readFile(stateFile(mAccount));
+
+        // The first account to open TV mode after accounts were told apart takes over what was
+        // saved until then, so nothing that was set up or watched is lost. Later accounts start clean.
+        if (text == null && !mAccount.isEmpty() && !mLegacyTaken) {
+            text = readFile(stateFile(""));
+            mLegacyTaken = true;
+        }
 
         if (text == null) {
             return;
@@ -3454,10 +3825,17 @@ public class TvModeService {
                 }
                 mFilterKind = settings.optString("filterKind", "");
                 mFilterLanguage = settings.optString("filterLanguage", "");
-                mApi.restore(settings.optString("apiKey", ""), settings.optString("apiDay", ""), settings.optInt("apiUsed", 0), settings.optInt("apiSearches", 0));
+                if (!mHasDevice && mApi.key().isEmpty()) { // saved by a build that kept the key with the state
+                    mApi.restore(settings.optString("apiKey", ""), settings.optString("apiDay", ""), settings.optInt("apiUsed", 0), settings.optInt("apiSearches", 0));
+                }
             }
 
             addAll(state.optJSONArray("watched"), mWatched);
+            JSONObject watchedAt = state.optJSONObject("watchedAt");
+            for (java.util.Iterator<String> it = watchedAt != null ? watchedAt.keys() : null; it != null && it.hasNext();) {
+                String id = it.next();
+                mWatchedAt.put(id, watchedAt.optLong(id, 0));
+            }
             addAll(state.optJSONArray("deletedPresets"), mDeletedPresets);
         } catch (Throwable e) {
             Log.e(TAG, "Can't read the saved TV mode state: %s", e.getMessage());
@@ -3493,6 +3871,10 @@ public class TvModeService {
     private void saveNow() {
         mSavePending = false;
 
+        if (!mLoaded) { // nothing is loaded: writing now would save an empty state over a real one
+            return;
+        }
+
         try {
             final JSONObject settings = new JSONObject();
             settings.put("defaultMode", mDefaultMode);
@@ -3508,11 +3890,16 @@ public class TvModeService {
             settings.put("filterGenre", ""); // kept so an older build finds the key; the guide filters by type now
             settings.put("filterKind", mFilterKind);
             settings.put("filterLanguage", mFilterLanguage);
-            // The key stays on this TV. It is never part of the channel list, which is public.
-            settings.put("apiKey", mApi.key());
-            settings.put("apiUsed", mApi.used());
-            settings.put("apiSearches", mApi.searches());
-            settings.put("apiDay", mApi.day());
+
+            // What belongs to the TV and not to an account. The key stays on this TV: it is never
+            // part of the channel list, which is public.
+            final JSONObject device = new JSONObject();
+            device.put("apiKey", mApi.key());
+            device.put("apiUsed", mApi.used());
+            device.put("apiSearches", mApi.searches());
+            device.put("apiDay", mApi.day());
+            device.put("legacyTaken", mLegacyTaken);
+            mHasDevice = true;
 
             // Copies of the lists, so the worker can turn them into text while the channels go on changing.
             final List<TvChannel> channels = new ArrayList<>();
@@ -3520,7 +3907,9 @@ public class TvModeService {
                 channels.add(channel.copyForSave());
             }
             final List<String> watched = new ArrayList<>(mWatched);
+            final JSONObject watchedAt = new JSONObject(mWatchedAt);
             final List<String> deletedPresets = new ArrayList<>(mDeletedPresets);
+            final File file = stateFile(mAccount); // named now: the account may be another by the time this is written
 
             mWorker.execute(() -> {
                 try {
@@ -3532,8 +3921,10 @@ public class TvModeService {
                     state.put("settings", settings);
                     state.put("channels", array);
                     state.put("watched", new JSONArray(watched));
+                    state.put("watchedAt", watchedAt);
                     state.put("deletedPresets", new JSONArray(deletedPresets));
-                    writeFile(new File(mContext.getFilesDir(), STATE_FILE), state.toString());
+                    writeFile(file, state.toString());
+                    writeFile(new File(mContext.getFilesDir(), DEVICE_FILE), device.toString());
                     writeLineups(channels);
                 } catch (Throwable e) {
                     Log.e(TAG, "Can't save the TV mode state: %s", e.getMessage());
