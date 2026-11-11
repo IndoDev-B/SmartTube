@@ -972,6 +972,225 @@
       "kind": "Movies"
     },
     {
+      "id": "nollywood-movies",
+      "name": "Nollywood Movies",
+      "kind": "Movies",
+      "genre": "Nollywood",
+      "terms": [
+        "nollywood full movie english",
+        "nigerian movie 2026 full movie",
+        "ghana movie full english"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "nollywood|nigerian|nigeria|ghana|ghallywood|african"
+      ],
+      "region": "NG",
+      "skipWords": [
+        "hindi",
+        "tamil",
+        "telugu",
+        "urdu",
+        "punjabi",
+        "bhojpuri"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "british-movies",
+      "name": "British Movies",
+      "kind": "Movies",
+      "genre": "British",
+      "terms": [
+        "british full movie",
+        "british comedy film full movie",
+        "british crime drama full movie"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "british|uk |england|bbc|london|scottish|irish"
+      ],
+      "region": "GB",
+      "skipWords": [
+        "hindi",
+        "tamil",
+        "telugu",
+        "urdu",
+        "punjabi",
+        "bhojpuri",
+        "dubbed"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "korean-movies-english",
+      "name": "Korean Movies in English",
+      "kind": "Movies",
+      "genre": "Korean",
+      "terms": [
+        "korean movie english dubbed full movie",
+        "korean action movie english dub full"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "korean|korea",
+        "english|eng dub|dubbed"
+      ],
+      "region": "US",
+      "skipWords": [
+        "hindi",
+        "tamil",
+        "telugu",
+        "urdu",
+        "punjabi",
+        "bhojpuri"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "chinese-movies-english",
+      "name": "Chinese Movies in English",
+      "kind": "Movies",
+      "genre": "Chinese",
+      "terms": [
+        "chinese action movie english dubbed full movie",
+        "kung fu full movie english dubbed",
+        "hong kong action movie english dub"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "chinese|china|kung fu|hong kong|martial",
+        "english|eng dub|dubbed"
+      ],
+      "region": "US",
+      "skipWords": [
+        "hindi",
+        "tamil",
+        "telugu",
+        "urdu",
+        "punjabi",
+        "bhojpuri"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "anime-movies-english",
+      "name": "Anime Movies in English",
+      "kind": "Movies",
+      "genre": "Anime",
+      "terms": [
+        "anime movie english dub full movie",
+        "japanese animated film english dubbed full"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "anime|japanese|japan",
+        "english|eng dub|dubbed"
+      ],
+      "region": "US",
+      "skipWords": [
+        "hindi",
+        "tamil",
+        "telugu",
+        "urdu",
+        "punjabi",
+        "bhojpuri"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "latin-movies-english",
+      "name": "Latin Movies in English",
+      "kind": "Movies",
+      "genre": "Latin",
+      "terms": [
+        "spanish movie english dubbed full movie",
+        "mexican movie english dubbed full",
+        "latin american film english dubbed"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "spanish|mexican|latin|colombian|argentin|brazil",
+        "english|eng dub|dubbed"
+      ],
+      "region": "US",
+      "skipWords": [
+        "hindi",
+        "tamil",
+        "telugu",
+        "urdu",
+        "punjabi",
+        "bhojpuri"
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "korean-movies-hindi",
+      "name": "Korean Movies in Hindi",
+      "kind": "Movies",
+      "genre": "Korean",
+      "terms": [
+        "korean movie hindi dubbed full movie",
+        "korean action movie in hindi"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "korean|korea",
+        "hindi|dubbed"
+      ],
+      "skipWords": [],
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "chinese-movies-hindi",
+      "name": "Chinese Movies in Hindi",
+      "kind": "Movies",
+      "genre": "Chinese",
+      "terms": [
+        "chinese movie hindi dubbed full movie",
+        "kung fu movie in hindi dubbed"
+      ],
+      "type": "movie",
+      "minMinutes": 60,
+      "playlists": true,
+      "needWords": [
+        "chinese|china|kung fu|hong kong",
+        "hindi|dubbed"
+      ],
+      "skipWords": [],
+      "languages": [
+        "hi"
+      ]
+    },
+    {
       "id": "mythology-serials",
       "name": "Mythology Serials",
       "kind": "Series",
@@ -1003,6 +1222,210 @@
       ],
       "languages": [
         "hi"
+      ]
+    },
+    {
+      "id": "turkish-dramas-hindi",
+      "name": "Turkish Dramas in Hindi",
+      "kind": "Series",
+      "genre": "Turkish",
+      "terms": [
+        "turkish drama hindi dubbed all episodes"
+      ],
+      "seriesRun": 2,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PLxdb5yj7DZXW4FFpwgsSIQ-hZdsAk97H1",
+          "title": "Twist of Fate",
+          "author": "Set Entertainment",
+          "count": 68
+        },
+        {
+          "id": "PLdvTifXeZnLONY_VaPLve3jKfcpVjlzeF",
+          "title": "Kuma",
+          "author": "KUMA - Turkish Drama",
+          "count": 51
+        },
+        {
+          "id": "PLyuiRTknz6Z8IW_Fj7hlWXYtfeZA_mzTt",
+          "title": "Dear Past",
+          "author": "Turkish Dramas Hindi",
+          "count": 24
+        }
+      ],
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "chinese-dramas-hindi",
+      "name": "Chinese Dramas in Hindi",
+      "kind": "Series",
+      "genre": "Chinese",
+      "terms": [
+        "chinese drama hindi dubbed all episodes"
+      ],
+      "seriesRun": 2,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PL9vX4w7rotK1NmDxDw5B9uHr8GpT54DXk",
+          "title": "Once We Get Married",
+          "author": "C-Drama Mahal",
+          "count": 25
+        },
+        {
+          "id": "PL9vX4w7rotK3q58YfHv_hV8Q_h-g7X8rX",
+          "title": "Sweet First Love",
+          "author": "C-Drama Mahal",
+          "count": 25
+        },
+        {
+          "id": "PLAEjAN9kKRDRhSSrzN-5gnvSZ7qPNMOgN",
+          "title": "Hello Old Friend",
+          "author": "C-Love Dubs",
+          "count": 24
+        }
+      ],
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "pakistani-dramas",
+      "name": "Pakistani Dramas",
+      "kind": "Series",
+      "genre": "Pakistani",
+      "terms": [
+        "pakistani drama all episodes"
+      ],
+      "seriesRun": 2,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PLOpavrrfC-HWwNM3HDjn7Zb0udsXCAzrm",
+          "title": "Radd",
+          "author": "Binge",
+          "count": 37
+        },
+        {
+          "id": "PLOpavrrfC-HV9UJFhFI2c53npaMBV9f8w",
+          "title": "Naqaab",
+          "author": "Binge",
+          "count": 62
+        },
+        {
+          "id": "PLOpavrrfC-HVBe7su-kScW0PiPWhxdR5x",
+          "title": "Ghair",
+          "author": "Binge",
+          "count": 36
+        }
+      ],
+      "languages": [
+        "hi"
+      ]
+    },
+    {
+      "id": "asian-dramas-english",
+      "name": "Asian Dramas in English",
+      "kind": "Series",
+      "genre": "Asian",
+      "terms": [
+        "korean drama english dubbed full episodes"
+      ],
+      "seriesRun": 2,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PLiL-CuIBxVwPgFEjZg31H1AiRimTfCt-a",
+          "title": "Go Ahead",
+          "author": "Huace Croton TV",
+          "count": 40
+        },
+        {
+          "id": "PLiL-CuIBxVwNAs_Sm_rQsy4J9TiuMA1Yt",
+          "title": "Flight to You",
+          "author": "Huace Croton TV",
+          "count": 39
+        },
+        {
+          "id": "PLOsWS9tKqJMfHR-XkL3yAYOtsWtTVOYPg",
+          "title": "The K2",
+          "author": "Diggin K-Contents",
+          "count": 16
+        }
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "telenovelas-english",
+      "name": "Telenovelas in English",
+      "kind": "Series",
+      "genre": "Latin",
+      "terms": [
+        "telenovela english dubbed full episodes"
+      ],
+      "seriesRun": 2,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PLkk4-3nDuqexkOI7M0-UgtpK4M7p1-FIF",
+          "title": "Dont Mess with an Angel",
+          "author": "Novelas Kingdom",
+          "count": 196
+        },
+        {
+          "id": "PLkk4-3nDuqeyeJL-CcQ3blUBgh0fjgSxe",
+          "title": "Fugitives",
+          "author": "Novelas Kingdom",
+          "count": 80
+        },
+        {
+          "id": "PLkk4-3nDuqewA55MkJOXsFc3p0PIecU9P",
+          "title": "Love Spell",
+          "author": "Novelas Kingdom",
+          "count": 90
+        }
+      ],
+      "languages": [
+        "en"
+      ]
+    },
+    {
+      "id": "filipino-dramas-english",
+      "name": "Filipino Dramas in English",
+      "kind": "Series",
+      "genre": "Filipino",
+      "terms": [
+        "filipino drama english dubbed full episodes"
+      ],
+      "seriesRun": 2,
+      "seriesLoop": true,
+      "series": [
+        {
+          "id": "PLPcB0_P-Zlj4udTNNz15aoMFhCcFH5Tq1",
+          "title": "Lobo",
+          "author": "ABS-CBN Entertainment",
+          "count": 60
+        },
+        {
+          "id": "PLeG-vQUcskAjXjDq3sykw8xu939CpjEMA",
+          "title": "Glamorosa",
+          "author": "Kapatid TV5",
+          "count": 40
+        },
+        {
+          "id": "PLeG-vQUcskAh2Sy22ckZAbvn_PUv5l-0d",
+          "title": "Valiente",
+          "author": "Kapatid TV5",
+          "count": 40
+        }
+      ],
+      "languages": [
+        "en"
       ]
     },
     {
@@ -3884,7 +4307,16 @@
     "War",
     "Webcams",
     "Western",
-    "World"
+    "World",
+    "Nollywood",
+    "British",
+    "Korean",
+    "Chinese",
+    "Latin",
+    "Turkish",
+    "Pakistani",
+    "Asian",
+    "Filipino"
   ],
   "foreignHints": {
     "en": [
