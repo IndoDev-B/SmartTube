@@ -264,7 +264,8 @@ public class TvModeMenu {
             mDialog.appendSingleButton(UiOptionItem.from("Program info", option -> mService.loadInfo(video, (videoId, description) -> {
                 String title = video.getTitle() != null ? video.getTitle() : "";
                 mDialog.appendLongTextCategory(title, UiOptionItem.from(
-                        description == null || description.isEmpty() ? "This program has no description." : description));
+                        description == null ? "Couldn't load the description. Try again in a moment."
+                                : description.isEmpty() ? "This program has no description." : description));
                 mDialog.showDialog(title);
             })));
         }

@@ -78,7 +78,13 @@ public class TvGuideHeroView extends FrameLayout {
 
         if (video != null && isAttachedToWindow()) {
             TvModeService.instance(getContext()).loadInfo(video, (videoId, description) -> {
-                if (videoId.equals(mAboutId)) {
+                if (!videoId.equals(mAboutId)) {
+                    return;
+                }
+
+                if (description == null) {
+                    mAboutId = null; // the fetch failed: the next look at this program asks again
+                } else {
                     mAbout.setText(shorten(description));
                 }
             });

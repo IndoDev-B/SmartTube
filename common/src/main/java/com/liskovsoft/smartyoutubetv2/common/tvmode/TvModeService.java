@@ -1833,6 +1833,15 @@ public class TvModeService {
     };
     private final Set<String> mDescriptionsAsked = new HashSet<>();
     private final ExecutorService mInfoWorker = Executors.newSingleThreadExecutor();
+    /** The same two for a program the viewer is looking at, which doesn't queue behind the background checks. */
+    private final Set<String> mDescriptionsAskedFirst = new HashSet<>();
+    private final ExecutorService mInfoFirstWorker = Executors.newSingleThreadExecutor();
+    /** Who is waiting for a description that is on its way, by video id. Main thread only. */
+    private final Map<String, List<OnInfo>> mDescriptionWaiters = new java.util.HashMap<>();
+    /** When a fetch last failed, by video id, so a video that can't be read isn't asked for over and over. */
+    private final Map<String, Long> mDescriptionsFailed = new java.util.HashMap<>();
+    private static final long INFO_RETRY_MS = 5_000;
+    private static final long INFO_BACKGROUND_RETRY_MS = 10 * 60_000;
 
     /** A program's description if it was fetched before, or null. */
     public String getInfo(String videoId) {
@@ -1862,18 +1871,41 @@ public class TvModeService {
             return;
         }
 
-        if (!mDescriptionsAsked.add(id)) {
+        // Asked for by the viewer: goes ahead of the background checks.
+        final boolean first = onInfo != null;
+        Long failedAt = mDescriptionsFailed.get(id);
+
+        if (failedAt != null && System.currentTimeMillis() - failedAt < (first ? INFO_RETRY_MS : INFO_BACKGROUND_RETRY_MS)) {
+            if (first) {
+                onInfo.onInfo(id, null);
+            }
+            return;
+        }
+
+        if (first) {
+            // Kept even when a fetch is on its way, or the answer would reach nobody.
+            List<OnInfo> waiters = mDescriptionWaiters.get(id);
+            if (waiters == null) {
+                waiters = new ArrayList<>();
+                mDescriptionWaiters.put(id, waiters);
+            }
+            waiters.add(onInfo);
+
+            if (!mDescriptionsAskedFirst.add(id)) {
+                return; // on its way
+            }
+        } else if (mDescriptionsAskedFirst.contains(id) || !mDescriptionsAsked.add(id)) {
             return; // on its way
         }
 
-        mInfoWorker.execute(() -> {
-            String text = "";
+        (first ? mInfoFirstWorker : mInfoWorker).execute(() -> {
+            String text = null; // null: the fetch failed, which is not the same as an empty description
 
             try {
                 com.liskovsoft.mediaserviceinterfaces.data.MediaItemMetadata metadata =
                         YouTubeServiceManager.instance().getMediaItemService().getMetadata(id);
-                if (metadata != null && metadata.getDescription() != null) {
-                    text = metadata.getDescription();
+                if (metadata != null) {
+                    text = metadata.getDescription() != null ? metadata.getDescription() : "";
                 }
             } catch (Throwable e) {
                 Log.e(TAG, "No description for %s: %s", id, e.getMessage());
@@ -1882,12 +1914,32 @@ public class TvModeService {
             final String description = text;
 
             mMain.post(() -> {
-                mDescriptionsAsked.remove(id);
-                mDescriptions.put(id, description);
-                checkDescription(video, description);
+                (first ? mDescriptionsAskedFirst : mDescriptionsAsked).remove(id);
+                boolean known = mDescriptions.containsKey(id);
 
-                if (onInfo != null) {
-                    onInfo.onInfo(id, description);
+                if (description != null && !known) {
+                    mDescriptionsFailed.remove(id);
+                    mDescriptions.put(id, description);
+                    checkDescription(video, description);
+                } else if (description == null && !known) {
+                    if (mDescriptionsAskedFirst.contains(id) || mDescriptionsAsked.contains(id)) {
+                        return; // the other fetch of this video may still bring it
+                    }
+
+                    // Not kept as an empty description: the next look at the program asks again.
+                    if (mDescriptionsFailed.size() > 500) {
+                        mDescriptionsFailed.clear();
+                    }
+                    mDescriptionsFailed.put(id, System.currentTimeMillis());
+                }
+
+                List<OnInfo> waiters = mDescriptionWaiters.remove(id);
+
+                if (waiters != null) {
+                    String answer = mDescriptions.get(id);
+                    for (OnInfo waiter : waiters) {
+                        waiter.onInfo(id, answer);
+                    }
                 }
             });
         });
