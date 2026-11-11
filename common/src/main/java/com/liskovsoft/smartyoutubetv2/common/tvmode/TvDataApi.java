@@ -53,6 +53,20 @@ final class TvDataApi {
         /** YouTube's own category number: 10 music, 17 sports, 20 gaming, 25 news... 0 when unknown. */
         int category;
         long views = -1;
+        /** Country codes between spaces, " US IN ". Null when the uploader set no such list. */
+        String blockedCountries;
+        String allowedCountries;
+
+        /** The uploader doesn't let it play in this country. An empty country is never blocked: nothing is known. */
+        boolean blockedIn(String country) {
+            if (country == null || country.isEmpty()) {
+                return false;
+            }
+
+            String code = " " + country + " ";
+            return (blockedCountries != null && blockedCountries.contains(code))
+                    || (allowedCountries != null && !allowedCountries.contains(code));
+        }
 
         /** Views for each day since the upload: how fast a video is spreading. -1 when it can't be told. */
         long viewsPerDay() {
@@ -309,6 +323,13 @@ final class TvDataApi {
             facts.durationMs = parseDuration(details.optString("duration", ""));
             JSONObject rating = details.optJSONObject("contentRating");
             facts.ageRestricted = rating != null && "ytAgeRestricted".equals(rating.optString("ytRating", ""));
+
+            // Where the uploader lets it play: a list of countries it is blocked in, or the only ones it is allowed in.
+            JSONObject region = details.optJSONObject("regionRestriction");
+            if (region != null) {
+                facts.blockedCountries = countries(region.optJSONArray("blocked"));
+                facts.allowedCountries = countries(region.optJSONArray("allowed"));
+            }
         }
 
         JSONObject statistics = item.optJSONObject("statistics");
@@ -322,6 +343,21 @@ final class TvDataApi {
         }
 
         return facts;
+    }
+
+    /** A list of country codes as " US IN ". Null when there is no list. */
+    private static String countries(org.json.JSONArray list) {
+        if (list == null) {
+            return null;
+        }
+
+        StringBuilder codes = new StringBuilder(" ");
+
+        for (int i = 0; i < list.length(); i++) {
+            codes.append(list.optString(i, "").toUpperCase(Locale.ROOT)).append(' ');
+        }
+
+        return codes.toString();
     }
 
     /** "PT1H2M3S" in milliseconds. 0 for a stream, which has no length. */

@@ -411,10 +411,46 @@ public class ErrorFixerController extends BasePlayerController implements OnLong
             YouTubeServiceManager.instance().invalidateCache();
             mVideoLoaderController.reloadVideo();
         } else {
+            // TV mode: every client was refused, which is YouTube saying no (blocked in this
+            // country, taken down), not a missing connection. Loading it again and again left
+            // the channel on a spinner for good, so after two tries the channel moves on.
+            Video video = getVideo();
+            long now = System.currentTimeMillis();
+
+            if (video != null && video.tvChannelId != null && video.videoId != null
+                    && Helpers.containsAny(message, "fromNullable result is null")) {
+                mTvFailures = video.videoId.equals(mTvFailedId) ? mTvFailures + 1 : 1;
+                mTvFailedId = video.videoId;
+
+                if (now - mTvSkipWindowMs > 60_000) {
+                    mTvSkipWindowMs = now;
+                    mTvSkips = 0;
+                }
+
+                // Three in a minute at most: with no connection at all every video fails, and
+                // skipping on would empty the channel.
+                if (mTvFailures >= 2 && mTvSkips < 3) {
+                    Video next = com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.instance(getContext()).skipUnplayable(video);
+
+                    if (next != null) {
+                        mTvSkips++;
+                        mTvFailures = 0;
+                        MessageHelpers.showMessage(getContext(), "That program can't be played here. Moving on");
+                        getMainController().onNewVideo(next);
+                        return;
+                    }
+                }
+            }
+
             Log.e(TAG, "Probably no internet connection");
             mVideoLoaderController.reloadVideo();
         }
     }
+
+    private String mTvFailedId;
+    private int mTvFailures;
+    private int mTvSkips;
+    private long mTvSkipWindowMs;
 
     /**
      * Bad idea. Faster source is different among devices

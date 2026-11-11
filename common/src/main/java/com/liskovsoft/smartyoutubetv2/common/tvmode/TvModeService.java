@@ -1164,6 +1164,55 @@ public class TvModeService {
         }
     }
 
+    /**
+     * YouTube refuses to play a channel's program here: blocked in this country, or taken down
+     * since it was queued. It leaves the lineup and the channel moves on. Returns what the channel
+     * has on then, ready to play. Null when it isn't a channel's program or there is nothing else.
+     */
+    public Video skipUnplayable(Video video) {
+        TvChannel channel = findChannel(video);
+        int index = channel != null ? channel.indexOf(video.videoId) : -1;
+
+        if (index == -1 || channel.lineup.size() < 2) {
+            return null;
+        }
+
+        Video removed = channel.lineup.remove(index);
+        channel.durations.remove(removed.videoId);
+
+        if (index < channel.pos) {
+            channel.pos--;
+        }
+        if (channel.pos >= channel.lineup.size()) {
+            channel.pos = channel.lineup.size() - 1;
+        }
+
+        channel.liveStartMs = System.currentTimeMillis();
+        channel.group = null;
+        Log.d(TAG, "%s: \"%s\" can't be played here: taken out", channel.name, removed.getTitle());
+
+        if (channel.ahead() < minAhead(channel)) {
+            fill(channel, null);
+        }
+
+        save();
+        return tune(channel);
+    }
+
+    /**
+     * The country this TV is in, as YouTube names it: "IN". Videos can be blocked by country, and
+     * a search made as the US finds plenty that aren't shown here.
+     */
+    static String homeCountry() {
+        String zone = java.util.TimeZone.getDefault().getID();
+
+        if ("Asia/Kolkata".equals(zone) || "Asia/Calcutta".equals(zone)) {
+            return "IN";
+        }
+
+        return Locale.getDefault().getCountry().toUpperCase(Locale.ROOT);
+    }
+
     /** A saved program ended: its channel, tuned to what it has on by now. The last channel when that one is gone. */
     public Video afterSaved() {
         for (TvChannel channel : mChannels) {
@@ -3440,6 +3489,11 @@ public class TvModeService {
         // Age-restricted videos need a signed-in adult account and stop a channel dead without one.
         // "YouTube Movies" is the store: titles to rent or buy.
         if (facts.ageRestricted || facts.upcoming || (facts.author != null && facts.author.startsWith("YouTube Movies"))) {
+            return false;
+        }
+
+        // Blocked in this country by its uploader: it would sit in the lineup and never play.
+        if (facts.blockedIn(homeCountry())) {
             return false;
         }
 
