@@ -59,9 +59,20 @@ public class TvModeMenu {
     public static boolean onClicked(Context context, Video item) {
         TvModeMenu menu = new TvModeMenu(context);
 
+        // "Continue watching" and "My list": the program plays by itself, from where it was left.
+        if (TvModeService.isShelf(item)) {
+            Video saved = menu.mService.playSaved(item);
+            if (saved != null) {
+                PlaybackPresenter.instance(context).openVideo(saved);
+            }
+            return true;
+        }
+
         if (TvModeService.isAction(item)) {
             if (TvModeService.ACTION_SETTINGS.equals(item.tvChannelId)) {
                 menu.showSettings();
+            } else if (TvModeService.ACTION_SEARCH.equals(item.tvChannelId)) {
+                menu.askSearch("");
             } else if (TvModeService.ACTION_SHUFFLE_ALL.equals(item.tvChannelId)) {
                 menu.mService.shuffleAll(menu::refreshGuide);
                 menu.toast("New lineups on every channel");
@@ -277,6 +288,11 @@ public class TvModeMenu {
 
     /** A card in the guide was long pressed. True = handled here. */
     public static boolean onLongClicked(Context context, Video item) {
+        if (TvModeService.isShelf(item)) {
+            new TvModeMenu(context).showSavedMenu(item);
+            return true;
+        }
+
         if (TvModeService.isAction(item)) {
             return true;
         }
@@ -388,6 +404,10 @@ public class TvModeMenu {
                                 : description.isEmpty() ? "This program has no description." : description));
                 mDialog.showDialog(title);
             })));
+
+            if (!video.isLive) { // a stream has nothing to come back to
+                appendMyList(video);
+            }
         }
 
         mDialog.appendSingleButton(UiOptionItem.from("Edit channel", option -> showEditor(channel)));
@@ -460,6 +480,121 @@ public class TvModeMenu {
         });
 
         mDialog.showDialog(mService.title(channel));
+    }
+
+    // ---------------- Continue watching, My list ----------------
+
+    private void appendMyList(Video video) {
+        boolean listed = mService.isInMyList(video.videoId);
+
+        mDialog.appendSingleButton(UiOptionItem.from(listed ? "Take off My list" : "Save for later", option -> {
+            mDialog.closeDialog();
+            toast(mService.toggleMyList(video) ? "Saved to My list, at the top of the guide" : "Taken off My list");
+            refreshGuide();
+        }));
+    }
+
+    /** Hold OK on a program of one of the two lines above the time grid. */
+    private void showSavedMenu(Video card) {
+        final String shelf = card.tvChannelId;
+        final boolean resume = TvModeService.SHELF_RESUME.equals(shelf);
+        final String name = resume ? "Continue watching" : "My list";
+        final String title = card.getTitle() != null ? card.getTitle() : "";
+
+        mDialog.appendSingleButton(UiOptionItem.from(resume ? "Carry on watching" : "Watch", option -> {
+            mDialog.closeDialog();
+            Video saved = mService.playSaved(card);
+            if (saved != null) {
+                PlaybackPresenter.instance(mContext).openVideo(saved);
+            }
+        }));
+
+        mDialog.appendSingleButton(UiOptionItem.from("Program info", option -> mService.loadInfo(card, (videoId, description) -> {
+            mDialog.appendLongTextCategory(title, UiOptionItem.from(
+                    description == null ? "Couldn't load the description. Try again in a moment."
+                            : description.isEmpty() ? "This program has no description." : description));
+            mDialog.showDialog(title);
+        })));
+
+        if (resume) {
+            appendMyList(card);
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("Remove from " + name, option -> {
+            mDialog.closeDialog();
+            mService.removeSaved(shelf, card.videoId);
+            refreshGuide();
+        }));
+
+        appendConfirm("Clear " + name, "Yes, remove every program from " + name, () -> {
+            mService.clearSaved(shelf);
+            toast(name + " cleared");
+            refreshGuide();
+        });
+
+        mDialog.showDialog(title);
+    }
+
+    // ---------------- search ----------------
+
+    /** At most this many lines in the list of matches: more than a remote wants to scroll through. */
+    private static final int MAX_FOUND = 80;
+
+    private void askSearch(String last) {
+        SimpleEditDialog.show(mContext, "Search channels and programs", last, value -> {
+            String query = value != null ? value.trim() : "";
+
+            if (!query.isEmpty()) {
+                // After the keyboard's own dialog has closed, so the list doesn't open under it.
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> showFound(query, mService.search(query)), 250);
+            }
+
+            return true;
+        });
+    }
+
+    private void showFound(String query, List<TvModeService.Found> found) {
+        if (found.isEmpty()) {
+            toast("Nothing on the channels matches \"" + query + "\"");
+            return;
+        }
+
+        int shown = 0;
+
+        for (TvModeService.Found one : found) {
+            if (shown++ >= MAX_FOUND) {
+                break;
+            }
+
+            final TvChannel channel = one.channel;
+            final Video video = one.video;
+            String where = "CH " + (mService.indexOf(channel) + 1) + "  " + channel.name;
+            String label;
+
+            if (video == null) {
+                label = where + "  ·  channel";
+            } else {
+                boolean live = mService.isLive(channel);
+                String when = one.index == channel.pos ? (live ? "On now" : "Up first")
+                        : live ? DateFormat.getTimeFormat(mContext).format(new Date(mService.liveStartOf(channel, one.index))) : "Coming up";
+                label = (video.getTitle() != null ? video.getTitle() : "") + "  ·  " + where + "  ·  " + when;
+            }
+
+            mDialog.appendSingleButton(UiOptionItem.from(label, option -> {
+                mDialog.closeDialog();
+                mService.showInGuide(channel, video);
+                refreshGuide();
+            }));
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("Search for something else", option -> {
+            mDialog.closeDialog();
+            askSearch(query);
+        }));
+
+        int more = found.size() - Math.min(found.size(), MAX_FOUND);
+        mDialog.showDialog(found.size() + (found.size() == 1 ? " match" : " matches") + " for \"" + query + "\""
+                + (more > 0 ? ", first " + MAX_FOUND + " shown" : ""));
     }
 
     // ---------------- channel editor ----------------

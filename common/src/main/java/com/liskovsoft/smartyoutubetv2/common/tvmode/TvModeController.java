@@ -141,6 +141,7 @@ public class TvModeController extends BasePlayerController {
     @Override
     public void onTickle() {
         Video current = getVideo();
+        noteSaved(false);
 
         if (!isTvVideo(current) || !current.isLive || getPlayer() == null) {
             return;
@@ -188,6 +189,34 @@ public class TvModeController extends BasePlayerController {
                 getMainController().onNewVideo(back);
             }
         }
+
+        // A program from "Continue watching" or "My list" ended: it is finished, and its channel carries on.
+        if (TvModeService.isShelf(current) && getPlayer() != null) {
+            long duration = getPlayer().getDurationMs();
+            getService().savedProgress(current, duration, duration, true);
+            Video back = getService().afterSaved();
+            if (back != null) {
+                getMainController().onNewVideo(back);
+            }
+        }
+    }
+
+    /** A saved program is in the player: where it is goes to "Continue watching". now = write it down at once. */
+    private void noteSaved(boolean now) {
+        Video current = getVideo();
+
+        if (TvModeService.isShelf(current) && getPlayer() != null && getPlayer().isEngineInitialized()) {
+            long position = getPlayer().getPositionMs();
+            if (position > 0) { // 0 is a player that hasn't started, or was already reset
+                getService().savedProgress(current, position, getPlayer().getDurationMs(), now);
+            }
+        }
+    }
+
+    @Override
+    public void onEngineReleased() {
+        noteSaved(true);
+        getService().checkpoint(); // a channel's program: where it was left, before the app can be closed
     }
 
     private boolean isTvVideo(Video video) {
@@ -381,6 +410,7 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onPause() {
+        noteSaved(true);
         liftSwitching(0); // started paused: nothing more to wait for
     }
 

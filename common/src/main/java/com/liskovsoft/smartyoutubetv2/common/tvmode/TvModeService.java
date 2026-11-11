@@ -57,6 +57,10 @@ public class TvModeService {
     public static final String ACTION_FAVOURITES = "@favourites";
     /** Marks a video played by the Random button. It belongs to no channel. */
     public static final String RANDOM = "@random";
+    public static final String ACTION_SEARCH = "@search";
+    /** The two lines above the time grid: programs left part-way, and programs put aside. Their cards carry these as channel id. */
+    public static final String SHELF_RESUME = "@resume";
+    public static final String SHELF_LIST = "@mylist";
     /** Marks a Live TV program played once, outside its channel's schedule. */
     public static final String ONCE = "@once";
     private String mOnceChannelId;
@@ -800,6 +804,7 @@ public class TvModeService {
         }
 
         seenMs = Math.min(seenMs, Math.max(0, durationMs - mWatchingFromMs));
+        noteLeft(channel, videoId, durationMs, seenMs);
         // Live TV runs on the clock, and a program is usually joined part-way: sitting through
         // 30% of it, or a quarter of an hour of a long one, is having watched it.
         // A channel that waits for its viewer counts from the start: carrying on where it was left
@@ -811,6 +816,509 @@ public class TvModeService {
             remember(videoId);
             save();
         }
+    }
+
+    /**
+     * The player closed. What was on stays "being watched", since the guide's preview carries on
+     * with it, but where it was left is noted now: the app may be closed next.
+     */
+    public void checkpoint() {
+        TvChannel channel = mWatchingChannel;
+        String videoId = mWatchingId;
+
+        if (channel == null || videoId == null || !mChannels.contains(channel)) {
+            return;
+        }
+
+        Long known = channel.durations.get(videoId);
+        long durationMs = known != null && known > 0 ? known : 0;
+        long seenMs = System.currentTimeMillis() - mWatchingSinceMs;
+
+        if (durationMs > 0 && seenMs > 0) {
+            noteLeft(channel, videoId, durationMs, Math.min(seenMs, Math.max(0, durationMs - mWatchingFromMs)));
+        }
+    }
+
+    // ---------------- Continue watching, My list ----------------
+
+    private static final int MAX_SAVED = 30;
+    /** Less than this on screen is flicking past a channel, not starting a program. */
+    private static final long RESUME_MIN_SEEN_MS = 60_000;
+    /** From here on a program is finished: what is left is the credits. */
+    private static final double RESUME_DONE_SHARE = 0.9;
+    /** Newest first. Both belong to the account, like everything else that follows what was watched. */
+    private final List<TvSaved> mResume = new ArrayList<>();
+    private final List<TvSaved> mMyList = new ArrayList<>();
+    /** The lists as cards for the guide. Built when asked for, thrown away when a list changes. */
+    private List<Video> mResumeCards;
+    private List<Video> mMyListCards;
+    /** The saved program in the player, and the channel to go back to when it ends. */
+    private String mSavedChannelId;
+    private long mSavedWrittenPosMs;
+
+    public static boolean isShelf(Video video) {
+        return video != null && (SHELF_RESUME.equals(video.tvChannelId) || SHELF_LIST.equals(video.tvChannelId));
+    }
+
+    /** A line above the time grid, as cards. Empty = the guide doesn't show the line. */
+    public List<Video> getShelf(String shelf) {
+        ensureLoaded();
+        boolean resume = SHELF_RESUME.equals(shelf);
+        List<Video> cards = resume ? mResumeCards : mMyListCards;
+
+        if (cards == null) {
+            cards = new ArrayList<>();
+
+            for (TvSaved saved : resume ? mResume : mMyList) {
+                Video card = new Video();
+                card.videoId = saved.videoId;
+                card.title = saved.title;
+                card.author = saved.author;
+                card.cardImageUrl = saved.image;
+                card.tvChannelId = shelf;
+                // How far in: of the list it is in, or of "Continue watching" for a program that is in both.
+                TvSaved left = resume ? saved : findSaved(mResume, saved.videoId);
+                card.percentWatched = left != null && left.durationMs > 0 ? 100f * left.positionMs / left.durationMs : 0;
+                cards.add(card);
+            }
+
+            if (resume) {
+                mResumeCards = cards;
+            } else {
+                mMyListCards = cards;
+            }
+        }
+
+        return cards;
+    }
+
+    private static TvSaved findSaved(List<TvSaved> list, String videoId) {
+        for (TvSaved saved : list) {
+            if (videoId != null && videoId.equals(saved.videoId)) {
+                return saved;
+            }
+        }
+
+        return null;
+    }
+
+    /** What a card of one of the two lines stands for. */
+    public TvSaved getSaved(Video card) {
+        return isShelf(card) ? findSaved(SHELF_RESUME.equals(card.tvChannelId) ? mResume : mMyList, card.videoId) : null;
+    }
+
+    /** The small line under a saved program's title: what is left of it, or how long it is, and its channel. */
+    public String savedNote(Video card) {
+        TvSaved saved = getSaved(card);
+
+        if (saved == null) {
+            return "";
+        }
+
+        String note = "";
+
+        if (SHELF_RESUME.equals(card.tvChannelId)) {
+            note = minutes(Math.max(0, saved.durationMs - saved.positionMs)) + " left";
+        } else if (saved.durationMs > 0) {
+            note = minutes(saved.durationMs);
+        }
+
+        return saved.channelName.isEmpty() ? note : note.isEmpty() ? saved.channelName : note + "  •  " + saved.channelName;
+    }
+
+    private static String minutes(long ms) {
+        long minutes = Math.max(1, Math.round(ms / 60_000.0));
+        return minutes >= 60 ? (minutes / 60) + " h " + (minutes % 60) + " min" : minutes + " min";
+    }
+
+    public boolean isInMyList(String videoId) {
+        ensureLoaded();
+        return findSaved(mMyList, videoId) != null;
+    }
+
+    /** Puts a program first in a list, replacing what the list had on it. */
+    private static TvSaved putSaved(List<TvSaved> list, Video video, TvChannel channel, long positionMs, long durationMs) {
+        TvSaved saved = findSaved(list, video.videoId);
+
+        if (saved != null) {
+            list.remove(saved);
+        } else {
+            saved = new TvSaved();
+        }
+
+        String creator = creatorOf(video.author);
+        saved.videoId = video.videoId;
+        saved.title = video.getTitle() != null ? video.getTitle() : "";
+        saved.author = creator != null ? creator : "";
+        saved.image = video.cardImageUrl;
+        if (channel != null) {
+            saved.channelId = channel.id;
+            saved.channelName = channel.name;
+        }
+        saved.durationMs = durationMs;
+        saved.positionMs = positionMs;
+        saved.atMs = System.currentTimeMillis();
+        list.add(0, saved);
+
+        while (list.size() > MAX_SAVED) {
+            list.remove(list.size() - 1);
+        }
+
+        return saved;
+    }
+
+    private void savedChanged() {
+        mResumeCards = null;
+        mMyListCards = null;
+        save();
+    }
+
+    /**
+     * A program left the screen. Seen for a minute or more and not finished: it goes on
+     * "Continue watching", on Live TV too, where the channel itself keeps no place. Finished: it
+     * comes off.
+     */
+    private void noteLeft(TvChannel channel, String videoId, long durationMs, long seenMs) {
+        long position;
+
+        if (isLive(channel)) {
+            // While the channel is still on the program its clock says where it is, and that
+            // follows a pause or a seek. Once the channel has moved on, what was seen is counted.
+            syncLive(channel);
+            Video onNow = channel.onNow();
+            position = onNow != null && videoId.equals(onNow.videoId)
+                    ? Math.max(0, System.currentTimeMillis() - channel.liveStartMs) : mWatchingFromMs + seenMs;
+        } else {
+            long kept = savedPositionMs(videoId);
+            position = kept > 0 ? kept : mWatchingFromMs + seenMs;
+        }
+
+        if (position >= RESUME_DONE_SHARE * durationMs) {
+            TvSaved left = findSaved(mResume, videoId);
+            if (left != null) {
+                mResume.remove(left);
+                savedChanged();
+            }
+            return;
+        }
+
+        int index = channel.indexOf(videoId);
+
+        if (seenMs < RESUME_MIN_SEEN_MS || position <= 0 || index == -1 || channel.lineup.get(index).isLive) {
+            return;
+        }
+
+        putSaved(mResume, channel.lineup.get(index), channel, position, durationMs);
+        savedChanged();
+    }
+
+    /** "Save for later" in a program's menu. True = added, false = it was there already and is taken off. */
+    public boolean toggleMyList(Video video) {
+        ensureLoaded();
+
+        if (video == null || video.videoId == null) {
+            return false;
+        }
+
+        TvSaved has = findSaved(mMyList, video.videoId);
+
+        if (has != null) {
+            mMyList.remove(has);
+            savedChanged();
+            return false;
+        }
+
+        TvSaved left = findSaved(mResume, video.videoId);
+        TvChannel channel = findChannel(video);
+
+        if (channel != null) {
+            Long known = channel.durations.get(video.videoId);
+            putSaved(mMyList, video, channel, 0, known != null ? known : 0);
+        } else if (left != null) { // from the "Continue watching" line: the card itself knows little
+            TvSaved copy = TvSaved.fromJson(jsonOf(left));
+            copy.positionMs = 0;
+            copy.atMs = System.currentTimeMillis();
+            mMyList.add(0, copy);
+        } else {
+            return false;
+        }
+
+        while (mMyList.size() > MAX_SAVED) {
+            mMyList.remove(mMyList.size() - 1);
+        }
+
+        savedChanged();
+        return true;
+    }
+
+    private static JSONObject jsonOf(TvSaved saved) {
+        try {
+            return saved.toJson();
+        } catch (Throwable e) {
+            return new JSONObject();
+        }
+    }
+
+    public void removeSaved(String shelf, String videoId) {
+        List<TvSaved> list = SHELF_RESUME.equals(shelf) ? mResume : mMyList;
+        TvSaved saved = findSaved(list, videoId);
+
+        if (saved != null) {
+            list.remove(saved);
+            savedChanged();
+        }
+    }
+
+    public void clearSaved(String shelf) {
+        (SHELF_RESUME.equals(shelf) ? mResume : mMyList).clear();
+        savedChanged();
+    }
+
+    /**
+     * A saved program, to play from where it was left without touching any channel: it is a copy
+     * that belongs to none, so a Live TV channel's schedule runs on as if nothing happened.
+     */
+    public Video playSaved(Video card) {
+        TvSaved saved = getSaved(card);
+
+        if (saved == null || saved.videoId == null) {
+            return null;
+        }
+
+        TvSaved left = findSaved(mResume, saved.videoId);
+        // The player's own record is to the second, when it has one. Ours is from when the program left the screen.
+        long kept = left != null ? savedPositionMs(saved.videoId) : 0;
+        long position = left == null ? 0 : kept > 0 && kept < 0.97 * left.durationMs ? kept : left.positionMs;
+        Video copy = new Video();
+        copy.videoId = saved.videoId;
+        copy.title = saved.title;
+        copy.author = saved.author;
+        copy.cardImageUrl = saved.image;
+        copy.pendingPosMs = Math.max(1, position);
+        copy.incognito = !mYtHistory;
+        copy.tvChannelId = card.tvChannelId;
+        mSavedChannelId = saved.channelId;
+        mSavedWrittenPosMs = copy.pendingPosMs;
+        return copy;
+    }
+
+    /**
+     * The player says how far a saved program is. Past a minute it is on "Continue watching",
+     * at its end it comes off. "My list" keeps it until it is taken off by hand.
+     */
+    public void savedProgress(Video video, long positionMs, long durationMs, boolean now) {
+        if (!isShelf(video) || video.videoId == null || durationMs <= 0 || positionMs < 0) {
+            return;
+        }
+
+        TvSaved left = findSaved(mResume, video.videoId);
+
+        if (positionMs >= RESUME_DONE_SHARE * durationMs) {
+            if (left != null) {
+                mResume.remove(left);
+                savedChanged();
+            }
+            return;
+        }
+
+        if (left == null) {
+            TvSaved from = findSaved(mMyList, video.videoId);
+
+            if (from == null || positionMs < RESUME_MIN_SEEN_MS) {
+                return;
+            }
+
+            left = TvSaved.fromJson(jsonOf(from));
+            mResume.add(0, left);
+            while (mResume.size() > MAX_SAVED) {
+                mResume.remove(mResume.size() - 1);
+            }
+        }
+
+        left.positionMs = positionMs;
+        left.durationMs = durationMs;
+        left.atMs = System.currentTimeMillis();
+        mResumeCards = null;
+        mMyListCards = null;
+
+        // Writing the whole state is heavy: on a pause or a stop, and otherwise every few minutes of film.
+        if (now || Math.abs(positionMs - mSavedWrittenPosMs) >= 3 * 60_000) {
+            mSavedWrittenPosMs = positionMs;
+            save();
+        }
+    }
+
+    /** A saved program ended: its channel, tuned to what it has on by now. The last channel when that one is gone. */
+    public Video afterSaved() {
+        for (TvChannel channel : mChannels) {
+            if (channel.id.equals(mSavedChannelId)) {
+                return tune(channel);
+            }
+        }
+
+        return tuneLastChannel();
+    }
+
+    // ---------------- search ----------------
+
+    /** One line of a guide search: a channel, or a program on a channel. */
+    public static class Found {
+        public TvChannel channel;
+        /** Null = the channel itself matched. */
+        public Video video;
+        public int index;
+    }
+
+    /**
+     * Looks through the channels' names and through what they have on and coming up. Every word
+     * must be there, in any order. Channels first, then programs on now, then the ones coming up.
+     */
+    public List<Found> search(String query) {
+        ensureLoaded();
+        List<Found> found = new ArrayList<>();
+        String text = query != null ? query.trim().toLowerCase(Locale.ROOT) : "";
+
+        if (text.isEmpty()) {
+            return found;
+        }
+
+        String[] words = text.split("\\s+");
+        List<Found> onNow = new ArrayList<>();
+        List<Found> later = new ArrayList<>();
+
+        for (TvChannel channel : mChannels) {
+            if (hasAll(channel.name + " " + channel.kind + " " + channel.genre, words)) {
+                Found one = new Found();
+                one.channel = channel;
+                one.index = -1;
+                found.add(one);
+            }
+
+            syncLive(channel);
+
+            for (int i = Math.max(0, channel.pos); i < channel.lineup.size() && later.size() < 200; i++) {
+                Video video = channel.lineup.get(i);
+
+                if (hasAll(video.getTitle() + " " + video.author, words)) {
+                    Found one = new Found();
+                    one.channel = channel;
+                    one.video = video;
+                    one.index = i;
+                    (i == channel.pos ? onNow : later).add(one);
+                }
+            }
+        }
+
+        found.addAll(onNow);
+        found.addAll(later);
+        return found;
+    }
+
+    private static boolean hasAll(String text, String[] words) {
+        String lower = text.toLowerCase(Locale.ROOT);
+
+        for (String word : words) {
+            if (!lower.contains(word)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Where the guide should put its focus the next time it draws. Set by a search, taken once. */
+    private String mGuideProgramId;
+    private boolean mGuideTargeted;
+
+    /** Sends the guide to a channel, and to one of its programs. A filter that hides the channel is set back to Any. */
+    public void showInGuide(TvChannel channel, Video video) {
+        if (mFavOnly && !channel.fav) {
+            mFavOnly = false;
+        }
+        if (!mFilterKind.isEmpty() && !mFilterKind.equalsIgnoreCase(channel.kind)) {
+            mFilterKind = "";
+        }
+        if (!mFilterLanguage.isEmpty() && !mFilterLanguage.equals(channel.language())) {
+            mFilterLanguage = "";
+        }
+
+        mGuideChannelId = channel.id;
+        mGuideProgramId = video != null ? video.videoId : null;
+        mGuideTargeted = true;
+        save();
+    }
+
+    /** The channel id and the program id (or null) a search picked. Null when there is nothing to go to. */
+    public String[] takeGuideTarget() {
+        if (!mGuideTargeted) {
+            return null;
+        }
+
+        mGuideTargeted = false;
+        String[] target = {mGuideChannelId, mGuideProgramId};
+        mGuideProgramId = null;
+        return target;
+    }
+
+    // ---------------- loading ahead ----------------
+
+    private final ExecutorService mPreload = Executors.newSingleThreadExecutor();
+    private volatile int mPreloadGeneration;
+
+    /**
+     * The guide's preview has settled on a channel: the video info of the channels around it is
+     * loaded, nearest first, so the preview starts sooner on the next Up or Down. On Live TV as
+     * well: the info is the video's list of streams, which is the same wherever it is joined.
+     */
+    public void preloadAround(TvChannel channel) {
+        // Not while videos go to YouTube history: loading video info renews the playback id that
+        // history updates are sent under.
+        if (channel == null || mYtHistory) {
+            return;
+        }
+
+        List<TvChannel> shown = getShownChannels();
+        int at = shown.indexOf(channel);
+        final List<String> ids = new ArrayList<>();
+
+        for (int step = 1; at != -1 && step <= 2; step++) {
+            for (int dir = 1; dir >= -1; dir -= 2) {
+                int index = at + dir * step;
+
+                if (index < 0 || index >= shown.size()) {
+                    continue;
+                }
+
+                TvChannel near = shown.get(index);
+                syncLive(near);
+                Video onNow = near.onNow();
+
+                if (onNow != null && onNow.videoId != null && !ids.contains(onNow.videoId)) {
+                    ids.add(onNow.videoId);
+                }
+            }
+        }
+
+        final int generation = ++mPreloadGeneration;
+
+        mPreload.execute(() -> {
+            for (String id : ids) {
+                if (generation != mPreloadGeneration) {
+                    return; // the focus moved on: that channel's neighbours are what matters now
+                }
+
+                try {
+                    YouTubeServiceManager.instance().getMediaItemService().getFormatInfo(id);
+                } catch (Throwable e) {
+                    Log.e(TAG, "Can't load ahead %s: %s", id, e.getMessage());
+                }
+            }
+        });
+    }
+
+    /** The preview stopped or moved: what isn't loaded yet is no longer wanted. */
+    public void cancelPreload() {
+        mPreloadGeneration++;
     }
 
     // ---------------- Live TV ----------------
@@ -3235,6 +3743,10 @@ public class TvModeService {
         mChannels.clear();
         mWatched.clear();
         mWatchedAt.clear();
+        mResume.clear();
+        mMyList.clear();
+        mResumeCards = null;
+        mMyListCards = null;
         mDeletedPresets.clear();
         mPages.clear();
         mPlaylists.clear();
@@ -4011,10 +4523,30 @@ public class TvModeService {
                 mWatchedAt.put(id, watchedAt.optLong(id, 0));
             }
             addAll(state.optJSONArray("deletedPresets"), mDeletedPresets);
+            readSaved(state.optJSONArray("resume"), mResume);
+            readSaved(state.optJSONArray("myList"), mMyList);
         } catch (Throwable e) {
             Log.e(TAG, "Can't read the saved TV mode state: %s", e.getMessage());
             mChannels.clear();
         }
+    }
+
+    private static void readSaved(JSONArray array, List<TvSaved> out) {
+        for (int i = 0; array != null && i < array.length(); i++) {
+            JSONObject one = array.optJSONObject(i);
+            TvSaved saved = one != null ? TvSaved.fromJson(one) : null;
+            if (saved != null && saved.videoId != null) {
+                out.add(saved);
+            }
+        }
+    }
+
+    private static JSONArray writeSaved(List<TvSaved> list) {
+        JSONArray array = new JSONArray();
+        for (TvSaved saved : list) {
+            array.put(jsonOf(saved));
+        }
+        return array;
     }
 
     private static void addAll(JSONArray array, Set<String> out) {
@@ -4083,6 +4615,8 @@ public class TvModeService {
             final List<String> watched = new ArrayList<>(mWatched);
             final JSONObject watchedAt = new JSONObject(mWatchedAt);
             final List<String> deletedPresets = new ArrayList<>(mDeletedPresets);
+            final JSONArray resume = writeSaved(mResume);
+            final JSONArray myList = writeSaved(mMyList);
             final File file = stateFile(mAccount); // named now: the account may be another by the time this is written
 
             mWorker.execute(() -> {
@@ -4097,6 +4631,8 @@ public class TvModeService {
                     state.put("watched", new JSONArray(watched));
                     state.put("watchedAt", watchedAt);
                     state.put("deletedPresets", new JSONArray(deletedPresets));
+                    state.put("resume", resume);
+                    state.put("myList", myList);
                     writeFile(file, state.toString());
                     writeFile(new File(mContext.getFilesDir(), DEVICE_FILE), device.toString());
                     writeLineups(channels);

@@ -257,6 +257,47 @@ public class TvGuideHeroView extends FrameLayout {
         TvModeService service = TvModeService.instance(context);
         mClock.setText(DateFormat.getTimeFormat(context).format(new Date()));
 
+        // A program of "Continue watching" or "My list": it belongs to no channel, so nothing plays in the picture box.
+        if (TvModeService.isShelf(video)) {
+            boolean started = video.percentWatched > 0;
+            String note = service.savedNote(video);
+            String by = video.author != null ? video.author : "";
+
+            mChannelChip.setText(TvModeService.SHELF_RESUME.equals(video.tvChannelId) ? "CONTINUE WATCHING" : "MY LIST");
+            mModeChip.setVisibility(GONE);
+            mTitle.setText(video.getTitle());
+            mBy.setMaxLines(1);
+            mBy.setText(by.isEmpty() ? note : note.isEmpty() ? by : note + "  •  " + by);
+            mProgressTrack.setVisibility(started ? VISIBLE : INVISIBLE);
+            if (started) {
+                android.view.ViewGroup.LayoutParams params = mProgress.getLayoutParams();
+                params.width = Math.round(dp(260) * Math.min(100, video.percentWatched) / 100f);
+                mProgress.setLayoutParams(params);
+            }
+            mOkKey.setVisibility(VISIBLE);
+            mOkLabel.setVisibility(VISIBLE);
+            mOkLabel.setText(started ? "Carry on watching" : "Watch");
+            mHoldKey.setVisibility(VISIBLE);
+            mHoldLabel.setVisibility(VISIBLE);
+            mHoldLabel.setText("Remove, clear, info");
+            mPreviewIcon.setVisibility(GONE);
+            mPreviewBug.setVisibility(GONE);
+            previewChannel(null);
+            about(video);
+
+            if (video.videoId != null && !video.videoId.equals(mShownId)) {
+                mShownId = video.videoId;
+
+                if (!(context instanceof Activity && ((Activity) context).isDestroyed())) {
+                    Glide.with(context)
+                            .load("https://i.ytimg.com/vi/" + video.videoId + "/maxresdefault.jpg")
+                            .error(Glide.with(context).load(video.cardImageUrl))
+                            .into(mPreview);
+                }
+            }
+            return;
+        }
+
         if (TvModeService.isAction(video)) {
             mShownId = video.tvChannelId;
             mChannelChip.setText("TV");
@@ -300,6 +341,7 @@ public class TvGuideHeroView extends FrameLayout {
         mTitle.setText(video.getTitle());
         mHoldKey.setVisibility(VISIBLE);
         mHoldLabel.setVisibility(VISIBLE);
+        mHoldLabel.setText("Channel options");
         mPreviewIcon.setVisibility(GONE);
         mPreviewBug.setText("CH " + number + "   " + channel.name);
         mPreviewBug.setVisibility(VISIBLE);
@@ -470,7 +512,17 @@ public class TvGuideHeroView extends FrameLayout {
         mPreviewPlayer.openVideo(copy);
         // Watching here is watching: a program seen through in the preview is as watched as one seen full screen.
         TvModeService.instance(getContext()).watching(channel, copy.videoId, copy.pendingPosMs);
+        // Once this one has had a few seconds to start: the channels above and below, for the next Up or Down.
+        removeCallbacks(mPreloadAround);
+        postDelayed(mPreloadAround, PRELOAD_DELAY_MS);
     }
+
+    private static final long PRELOAD_DELAY_MS = 4_000;
+    private final Runnable mPreloadAround = () -> {
+        if (mPreviewChannel != null && mPreviewPlayer != null && isAttachedToWindow()) {
+            TvModeService.instance(getContext()).preloadAround(mPreviewChannel);
+        }
+    };
 
     /** The preview played a program to its end: a Free mode channel moves to its next one, and the preview follows. */
     private void onPreviewEnded(TvChannel channel, EmbedPlayerView player) {
@@ -494,6 +546,8 @@ public class TvGuideHeroView extends FrameLayout {
 
     private void stopPreview() {
         removeCallbacks(mStartPreview);
+        removeCallbacks(mPreloadAround);
+        TvModeService.instance(getContext()).cancelPreload();
 
         if (mPreviewPlayer != null) {
             mPreviewPlayer.finish();
@@ -558,6 +612,8 @@ public class TvGuideHeroView extends FrameLayout {
             return "Show only the channels in one language.\nCH+ and CH- stay within them.";
         } else if (TvModeService.ACTION_FAVOURITES.equals(action)) {
             return "Show only your favourite channels.\nHold OK on a channel to make it one.";
+        } else if (TvModeService.ACTION_SEARCH.equals(action)) {
+            return "Find a channel by name, or a program by its title,\namong what every channel has on and coming up.";
         }
 
         return "Pick a ready-made topic, or type your own.";

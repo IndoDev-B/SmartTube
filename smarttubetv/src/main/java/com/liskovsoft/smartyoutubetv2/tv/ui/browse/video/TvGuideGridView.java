@@ -70,6 +70,13 @@ public class TvGuideGridView extends View {
     private final TextPaint mPillText = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final RectF mRect = new RectF();
     private final List<Video> mButtons = new ArrayList<>();
+    /** The lines between the buttons and the time grid, top to bottom. One with nothing on it isn't shown. */
+    private static final String[] SHELVES = {TvModeService.SHELF_RESUME, TvModeService.SHELF_LIST};
+    /** The line above the time grid the focus is on. Null = the focus is on the buttons, or on a channel. */
+    private String mShelf;
+    private int mShelfItem;
+    /** The first card on screen of each of those lines. */
+    private final java.util.Map<String, Integer> mShelfFirst = new java.util.HashMap<>();
     private Listener mListener;
     /** -1 = the buttons in the top line, otherwise the channel's place in the list. */
     private int mRow;
@@ -123,6 +130,7 @@ public class TvGuideGridView extends View {
         mButtons.add(button(TvModeService.ACTION_GENRE, R.drawable.icon_tv_mode));
         mButtons.add(button(TvModeService.ACTION_LANGUAGE, R.drawable.settings_language));
         mButtons.add(button(TvModeService.ACTION_FAVOURITES, R.drawable.icon_subscriptions));
+        mButtons.add(button(TvModeService.ACTION_SEARCH, R.drawable.action_search));
         mButtons.add(button(TvModeService.ACTION_NEW_CHANNEL, R.drawable.icon_playlist));
         mButtons.add(button(TvModeService.ACTION_SETTINGS, R.drawable.icon_settings));
         labelButtons();
@@ -143,8 +151,68 @@ public class TvGuideGridView extends View {
         mButtons.get(0).title = "Type: " + (kind.isEmpty() ? "Any" : kind);
         mButtons.get(1).title = "Language: " + (language.isEmpty() ? "Any" : com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(language));
         mButtons.get(2).title = "Favourites";
-        mButtons.get(3).title = getContext().getString(R.string.tv_mode_new_channel);
-        mButtons.get(4).title = getContext().getString(R.string.tv_mode_settings);
+        mButtons.get(3).title = "Search";
+        mButtons.get(4).title = getContext().getString(R.string.tv_mode_new_channel);
+        mButtons.get(5).title = getContext().getString(R.string.tv_mode_settings);
+    }
+
+    /** The lines above the time grid that have something on them. */
+    private List<String> shelves() {
+        List<String> shown = new ArrayList<>();
+
+        for (String shelf : SHELVES) {
+            if (!mService.getShelf(shelf).isEmpty()) {
+                shown.add(shelf);
+            }
+        }
+
+        return shown;
+    }
+
+    /** The lines are drawn in full only while the focus is on one of them: the guide has room for three channels. */
+    private boolean shelvesOpen() {
+        return mRow < 0 && mShelf != null;
+    }
+
+    /** Where the time grid starts: under the buttons, and under the lines above the grid when there are any. */
+    private float gridTop() {
+        int count = shelves().size();
+        return dp(36) + (count == 0 ? 0 : shelvesOpen() ? count * dp(44) + dp(2) : dp(17));
+    }
+
+    private static String shelfName(String shelf) {
+        return TvModeService.SHELF_RESUME.equals(shelf) ? "CONTINUE WATCHING" : "MY LIST";
+    }
+
+    /** A search picked a channel, or a program coming up on one: the focus goes there. */
+    private void focusTarget(String channelId, String videoId) {
+        List<TvChannel> channels = mService.getShownChannels();
+
+        for (int i = 0; channelId != null && i < channels.size(); i++) {
+            TvChannel channel = channels.get(i);
+
+            if (!channelId.equals(channel.id)) {
+                continue;
+            }
+
+            mRow = i;
+            mShelf = null;
+            mFocusedId = channelId;
+            mProgram = -1;
+            mFocusTimeMs = 0;
+            mOnNowFocused = true;
+            mReturnRow = -1;
+
+            int index = videoId != null ? channel.indexOf(videoId) : -1;
+
+            if (index > channel.pos) {
+                mProgram = index;
+                mOnNowFocused = false;
+                mFocusTimeMs = startOf(channel, index, System.currentTimeMillis());
+            }
+
+            return;
+        }
     }
 
     /** The focus is on a channel, not on the buttons in the top line. */
@@ -160,6 +228,7 @@ public class TvGuideGridView extends View {
             if (channelId.equals(channels.get(i).id)) {
                 if (mRow != i) {
                     mRow = i;
+                    mShelf = null;
                     mProgram = -1;
                     mFocusTimeMs = 0;
                     mOnNowFocused = true;
@@ -176,8 +245,13 @@ public class TvGuideGridView extends View {
 
     /** Channels or lineups changed. Keeps the focus on the same channel and program where it can. */
     public void reload() {
+        String[] target = mService.takeGuideTarget();
         List<TvChannel> channels = mService.getShownChannels();
         labelButtons();
+
+        if (target != null) {
+            focusTarget(target[0], target[1]);
+        }
 
         // The list under the focus changed (a filter, a move, a delete): stay on the same channel
         // when it is still shown, on the one that took its place otherwise.
@@ -241,6 +315,12 @@ public class TvGuideGridView extends View {
     /** The video the focus is on, for the part of the guide above the grid. */
     public Video getFocused() {
         if (mRow < 0) {
+            if (mShelf != null) {
+                List<Video> cards = mService.getShelf(mShelf);
+                if (mShelfItem >= 0 && mShelfItem < cards.size()) {
+                    return cards.get(mShelfItem);
+                }
+            }
             return mButtons.get(mButton);
         }
 
@@ -344,6 +424,19 @@ public class TvGuideGridView extends View {
             mRow = -1;
             mButton = Math.max(0, Math.min(mButton, mButtons.size() - 1));
             mScrollMs = 0;
+
+            if (mShelf != null) {
+                List<Video> cards = mService.getShelf(mShelf);
+
+                if (cards.isEmpty()) {
+                    // Its last program was removed: the other line, or the buttons when that one is empty too.
+                    List<String> left = shelves();
+                    mShelf = left.isEmpty() ? null : left.get(0);
+                    mShelfItem = 0;
+                } else {
+                    mShelfItem = Math.max(0, Math.min(mShelfItem, cards.size() - 1));
+                }
+            }
         } else {
             TvChannel channel = channels.get(mRow);
 
@@ -407,12 +500,35 @@ public class TvGuideGridView extends View {
                 if (mRow >= 0) {
                     mRow--;
                     mProgram = -1;
+                    if (mRow < 0) { // off the first channel: the lines above the grid, the lowest first
+                        List<String> lines = shelves();
+                        mShelf = lines.isEmpty() ? null : lines.get(lines.size() - 1);
+                        mShelfItem = 0;
+                    }
+                    moved();
+                } else if (mShelf != null) {
+                    List<String> lines = shelves();
+                    int at = lines.indexOf(mShelf);
+                    mShelf = at > 0 ? lines.get(at - 1) : null;
+                    mShelfItem = 0;
                     moved();
                 }
                 return true; // the top line is where Up stops
             case KeyEvent.KEYCODE_DPAD_DOWN:
+                if (mRow < 0) {
+                    // From the buttons through the lines above the grid, then on to the channels.
+                    List<String> lines = shelves();
+                    int at = mShelf != null ? lines.indexOf(mShelf) : -1;
+                    if (at + 1 < lines.size()) {
+                        mShelf = lines.get(at + 1);
+                        mShelfItem = 0;
+                        moved();
+                        return true;
+                    }
+                }
                 if (mRow < channels.size() - 1) {
                     if (mRow < 0) {
+                        mShelf = null;
                         mFocusTimeMs = now;
                         // After Back, Down goes back to the channel Back was pressed on.
                         mRow = mReturnRow > 0 && mReturnRow < channels.size() ? mReturnRow - 1 : -1;
@@ -429,12 +545,27 @@ public class TvGuideGridView extends View {
                     mBackTaken = true;
                     mReturnRow = mRow;
                     mRow = -1;
+                    mShelf = null;
                     mProgram = -1;
+                    moved();
+                    return true;
+                }
+                if (mShelf != null) { // from a line above the grid, Back goes to the buttons too
+                    mBackTaken = true;
+                    mShelf = null;
                     moved();
                     return true;
                 }
                 break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (mRow < 0 && mShelf != null) {
+                    if (mShelfItem == 0) {
+                        return false; // off the left edge: the side menu
+                    }
+                    mShelfItem--;
+                    moved();
+                    return true;
+                }
                 if (mRow < 0) {
                     if (mButton == 0) {
                         return false; // off the left edge: the side menu
@@ -452,7 +583,9 @@ public class TvGuideGridView extends View {
                 }
                 return false;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (mRow < 0) {
+                if (mRow < 0 && mShelf != null) {
+                    mShelfItem = Math.min(mService.getShelf(mShelf).size() - 1, mShelfItem + 1);
+                } else if (mRow < 0) {
                     mButton = Math.min(mButtons.size() - 1, mButton + 1);
                 } else if (mProgram >= 0 && mProgram < channels.get(mRow).lineup.size() - 1) {
                     mProgram++;
@@ -506,7 +639,7 @@ public class TvGuideGridView extends View {
     }
 
     private void longClick() {
-        if (mListener != null && mRow >= 0 && getFocused() != null) {
+        if (mListener != null && (mRow >= 0 || mShelf != null) && getFocused() != null) {
             mListener.onLongClicked(getFocused());
         }
     }
@@ -522,7 +655,7 @@ public class TvGuideGridView extends View {
     // ---------------- drawing ----------------
 
     private int visibleRows() {
-        int rowsHeight = getHeight() - dp(36 + 22);
+        int rowsHeight = getHeight() - (int) gridTop() - dp(22);
         return Math.max(1, rowsHeight / dp(44));
     }
 
@@ -574,15 +707,19 @@ public class TvGuideGridView extends View {
             x += pillWidths[i] + dp(9);
         }
 
+        // Continue watching and My list sit between the buttons and the time grid: no clock runs on them.
+        float gridTop = gridTop();
+        drawShelves(canvas, focused, width, left, timelineLeft);
+
         if (channels.isEmpty()) {
             mRuler.setTypeface(Typeface.DEFAULT);
             canvas.drawText(mService.getChannels().isEmpty() ? "Channels are loading" : "No channel matches the filters above. Set them to Any to see every channel.",
-                    left, dp(36 + 60), mRuler);
+                    left, gridTop + dp(60), mRuler);
             return;
         }
 
         // Ruler: the time now on the left, then a mark every half hour
-        float rulerBase = dp(36 + 15);
+        float rulerBase = gridTop + dp(15);
         mRuler.setTypeface(Typeface.DEFAULT_BOLD);
         canvas.drawText(time(now), left, rulerBase, mRuler);
         mRuler.setTypeface(Typeface.DEFAULT);
@@ -593,17 +730,17 @@ public class TvGuideGridView extends View {
         calendar.set(java.util.Calendar.MILLISECOND, 0);
         calendar.set(java.util.Calendar.MINUTE, calendar.get(java.util.Calendar.MINUTE) < 30 ? 0 : 30);
         canvas.save();
-        canvas.clipRect(timelineLeft, 0, width, getHeight());
+        canvas.clipRect(timelineLeft, gridTop, width, getHeight());
         for (long mark = calendar.getTimeInMillis(); (mark - viewStart) * pxPerMs < width; mark += halfHour) {
             float markX = timelineLeft + (mark - viewStart) * pxPerMs;
             mFill.setColor(0x33FFFFFF);
-            canvas.drawRect(markX, dp(36), markX + dp(1), getHeight(), mFill);
+            canvas.drawRect(markX, gridTop, markX + dp(1), getHeight(), mFill);
             canvas.drawText(time(mark), markX + dp(5), rulerBase, mRuler);
         }
         canvas.restore();
 
         // Channels
-        float rowTop = dp(36 + 22);
+        float rowTop = gridTop + dp(22);
         float rowHeight = dp(44);
         float cellHeight = dp(40);
         int visible = visibleRows() + 1; // the last one may be cut off, which shows there is more
@@ -704,7 +841,111 @@ public class TvGuideGridView extends View {
         float nowX = timelineLeft + (now - viewStart) * pxPerMs;
         if (nowX >= timelineLeft && nowX <= width) {
             mFill.setColor(RED);
-            canvas.drawRect(nowX - dp(1), dp(36), nowX + dp(1), getHeight(), mFill);
+            canvas.drawRect(nowX - dp(1), gridTop, nowX + dp(1), getHeight(), mFill);
+        }
+    }
+
+    /**
+     * The lines above the time grid. Closed, they are one thin line of names and counts. With the
+     * focus on one of them they open: a name cell like a channel's, then the programs as cards
+     * of one width, since no clock runs here.
+     */
+    private void drawShelves(Canvas canvas, boolean focused, int width, float left, float timelineLeft) {
+        List<String> lines = shelves();
+
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        if (!shelvesOpen()) {
+            float x = left;
+            mName.setColor(0xFF9E9E9E);
+
+            for (String shelf : lines) {
+                String text = shelfName(shelf) + "  " + mService.getShelf(shelf).size();
+                canvas.drawText(text, x, dp(36 + 11), mName);
+                x += mName.measureText(text) + dp(24);
+            }
+
+            return;
+        }
+
+        float cardWidth = dp(232);
+        float cellHeight = dp(40);
+        float thumbWidth = dp(64);
+        int fit = Math.max(1, (int) ((width - timelineLeft) / cardWidth));
+
+        for (int line = 0; line < lines.size(); line++) {
+            String shelf = lines.get(line);
+            List<Video> cards = mService.getShelf(shelf);
+            float top = dp(36) + line * dp(44);
+            boolean rowFocused = focused && shelf.equals(mShelf);
+
+            mRect.set(left, top, left + dp(150), top + cellHeight);
+            mFill.setColor(rowFocused ? RED : LINE);
+            canvas.drawRoundRect(mRect, dp(7), dp(7), mFill);
+            mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFFD6D6D6);
+            canvas.drawText(shelfName(shelf), left + dp(10), top + dp(18), mName);
+            mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFF9E9E9E);
+            canvas.drawText(cards.size() + (cards.size() == 1 ? " program" : " programs"), left + dp(10), top + dp(32), mName);
+
+            // The line scrolls just enough to keep the focused card on screen.
+            Integer kept = mShelfFirst.get(shelf);
+            int first = kept != null ? kept : 0;
+
+            if (shelf.equals(mShelf)) {
+                if (mShelfItem < first) {
+                    first = mShelfItem;
+                } else if (mShelfItem >= first + fit) {
+                    first = mShelfItem - fit + 1;
+                }
+            }
+
+            first = Math.max(0, Math.min(first, cards.size() - 1));
+            mShelfFirst.put(shelf, first);
+
+            canvas.save();
+            canvas.clipRect(timelineLeft, top, width, top + cellHeight);
+
+            for (int i = first; i < cards.size(); i++) {
+                Video card = cards.get(i);
+                float cellLeft = timelineLeft + (i - first) * cardWidth;
+                float cellRight = cellLeft + cardWidth - dp(3);
+
+                if (cellLeft > width) {
+                    break;
+                }
+
+                boolean on = rowFocused && i == mShelfItem;
+                mRect.set(cellLeft, top, cellRight, top + cellHeight);
+                mFill.setColor(on ? FOCUSED : LINE_NOW);
+                canvas.drawRoundRect(mRect, dp(7), dp(7), mFill);
+
+                float textLeft = cellLeft + dp(9);
+                android.graphics.Bitmap thumb = thumb(card);
+
+                if (thumb != null && !thumb.isRecycled()) {
+                    mRect.set(cellLeft + dp(2), top + dp(2), cellLeft + dp(2) + thumbWidth, top + cellHeight - dp(2));
+                    mThumbPaint.setAlpha(255);
+                    canvas.drawBitmap(thumb, null, mRect, mThumbPaint);
+                    textLeft = cellLeft + thumbWidth + dp(10);
+                }
+
+                float room = cellRight - textLeft - dp(8);
+                mTitle.setColor(on ? 0xFF111111 : 0xFFFFFFFF);
+                mTitle.setTypeface(Typeface.DEFAULT);
+                canvas.drawText(fit(card.getTitle() != null ? card.getTitle() : "", mTitle, room), textLeft, top + dp(17), mTitle);
+                mMeta.setColor(on ? 0xFF333333 : 0xFFBDBDBD);
+                canvas.drawText(fit(mService.savedNote(card), mMeta, room), textLeft, top + dp(32), mMeta);
+
+                if (card.percentWatched > 0) { // how far in, as a red edge along the bottom
+                    mFill.setColor(RED);
+                    canvas.drawRect(cellLeft, top + cellHeight - dp(2.5f),
+                            cellLeft + (cellRight - cellLeft) * Math.min(100f, card.percentWatched) / 100f, top + cellHeight, mFill);
+                }
+            }
+
+            canvas.restore();
         }
     }
 
@@ -766,6 +1007,9 @@ public class TvGuideGridView extends View {
             }
             mPath.close();
             canvas.drawPath(mPath, active ? mFill : mStroke);
+        } else if (TvModeService.ACTION_SEARCH.equals(action)) { // a magnifying glass
+            canvas.drawCircle(cx - r * 0.2f, cy - r * 0.2f, r * 0.62f, mStroke);
+            canvas.drawLine(cx + r * 0.28f, cy + r * 0.28f, cx + r, cy + r, mStroke);
         } else if (TvModeService.ACTION_NEW_CHANNEL.equals(action)) { // a plus
             float t = dp(1.25f);
             canvas.drawRect(cx - r, cy - t, cx + r, cy + t, mFill);
