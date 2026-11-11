@@ -1135,6 +1135,7 @@ public class TvModeService {
 
     /** The episodes of a playlist, in its order. Read once for a run of the app. */
     private final Map<String, List<Video>> mEpisodes = new ConcurrentHashMap<>();
+    private final Map<String, Long> mEpisodesFailed = new ConcurrentHashMap<>();
     /** A playlist is read to its end, in pages, up to this many. */
     private static final int MAX_EPISODE_PAGES = 60;
     private static final int SERIES_FOUND = 14;
@@ -1298,7 +1299,9 @@ public class TvModeService {
         final List<String[]> toRead = new ArrayList<>(); // playlist id, page key
 
         for (TvChannel.Series one : channel.series) {
-            if (!mEpisodes.containsKey(one.playlistId)) {
+            Long failedAt = mEpisodesFailed.get(one.playlistId);
+            // A playlist that couldn't be read is left alone for a while: the guide asks again every few seconds.
+            if (!mEpisodes.containsKey(one.playlistId) && (failedAt == null || channel.lastFillMs - failedAt > 5 * 60_000)) {
                 toRead.add(new String[] {one.playlistId, one.pageKey});
             }
         }
@@ -1309,6 +1312,9 @@ public class TvModeService {
                 Log.d(TAG, "%s: playlist %s has %s episodes", channel.name, playlist[0], episodes.size());
                 if (!episodes.isEmpty()) {
                     mEpisodes.put(playlist[0], episodes);
+                    mEpisodesFailed.remove(playlist[0]);
+                } else {
+                    mEpisodesFailed.put(playlist[0], System.currentTimeMillis());
                 }
             }
 
@@ -1344,7 +1350,21 @@ public class TvModeService {
 
         try {
             ContentService service = YouTubeServiceManager.instance().getContentService();
-            MediaGroup group = service.getGroup(pageKey != null ? pageKey : "VL" + playlistId);
+            // YouTube serves a playlist as a channel whose id is "VL" and the playlist's id. That
+            // works for an id from anywhere. The page key a search result carries is a second way in.
+            List<MediaGroup> groups = service.getChannelObserve("VL" + playlistId).blockingFirst();
+            MediaGroup group = null;
+
+            for (int g = 0; groups != null && g < groups.size(); g++) {
+                MediaGroup one = groups.get(g);
+                if (one != null && one.getMediaItems() != null && !one.getMediaItems().isEmpty() && (group == null || one.getNextPageKey() != null)) {
+                    group = one;
+                }
+            }
+
+            if (group == null && pageKey != null) {
+                group = service.getGroup(pageKey);
+            }
 
             for (int page = 0; group != null && page < MAX_EPISODE_PAGES; page++) {
                 List<MediaItem> items = group.getMediaItems();
@@ -2210,9 +2230,15 @@ public class TvModeService {
 
         if (!playlists.isEmpty()) {
             MediaItem playlist = playlists.get(Math.abs(index) % playlists.size());
-            MediaGroup videos = playlist.getReloadPageKey() != null ? service.getGroup(playlist) : service.getGroup("VL" + playlist.getPlaylistId());
+            MediaGroup videos = playlist.getReloadPageKey() != null ? service.getGroup(playlist) : null;
             if (videos != null) {
                 result.add(videos);
+            } else if (playlist.getPlaylistId() != null) {
+                // No page key, or it led nowhere: a playlist also opens as the channel "VL" + its id.
+                List<MediaGroup> groups = service.getChannelObserve("VL" + playlist.getPlaylistId()).blockingFirst();
+                if (groups != null) {
+                    result.addAll(groups);
+                }
             }
         }
 
