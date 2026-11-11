@@ -113,6 +113,14 @@ public class TvChannel {
      */
     public int yearFrom;
     public int yearTo;
+    /** Only titles that name a year inside the era are taken. For an era that titles usually state, like "1994". */
+    public boolean yearsStrict;
+    /**
+     * A video is taken only when its title names one of these words, or, with a Data API key,
+     * its tags or description do. For a channel whose subject a search alone doesn't hold to,
+     * like films dubbed from one industry.
+     */
+    public final List<String> needWords = new ArrayList<>();
     /** YouTube channel ids of the creators, by name. Looked up once, then kept. */
     public final Map<String, String> creatorIds = new HashMap<>();
     /** How many times in a row each creator was skipped within the first seconds. */
@@ -243,7 +251,7 @@ public class TvChannel {
     public String searchKey() {
         return terms + "|" + creators + "|" + length + "|" + uploaded + "|" + order + "|" + features + "|" + noShorts + "|" + skipWords + "|" + blocked + "|" + minViews + "|" + languages
                 + "|" + type + "|" + minMinutes + "|" + playlists + (isSeries() ? "|series" + seriesIds() + seriesRun : "")
-                + (yearTo > 0 ? "|years" + yearFrom + "-" + yearTo : "");
+                + (yearTo > 0 ? "|years" + yearFrom + "-" + yearTo + yearsStrict : "") + (needWords.isEmpty() ? "" : "|need" + needWords);
     }
 
     private String seriesIds() {
@@ -289,6 +297,8 @@ public class TvChannel {
         o.put("region", region);
         o.put("chart", chart);
         o.put("years", new JSONArray().put(yearFrom).put(yearTo));
+        o.put("yearsStrict", yearsStrict);
+        o.put("needWords", new JSONArray(needWords));
         o.put("creatorIds", new JSONObject(creatorIds));
         o.put("skips", new JSONObject(skips));
         o.put("skipWords", new JSONArray(skipWords));
@@ -441,6 +451,8 @@ public class TvChannel {
         c.chart = chart;
         c.yearFrom = yearFrom;
         c.yearTo = yearTo;
+        c.yearsStrict = yearsStrict;
+        c.needWords.addAll(needWords);
         c.creatorIds.putAll(creatorIds);
         c.skips.putAll(skips);
         c.skipWords.addAll(skipWords);
@@ -523,6 +535,8 @@ public class TvChannel {
         JSONArray years = o.optJSONArray("years");
         yearFrom = years != null ? years.optInt(0, 0) : 0;
         yearTo = years != null ? years.optInt(1, 0) : 0;
+        yearsStrict = o.optBoolean("yearsStrict", false);
+        readList(o.optJSONArray("needWords"), needWords);
         readList(o.optJSONArray("skipWords"), skipWords);
         readList(o.optJSONArray("blocked"), blocked);
         mode = o.optString("mode", MODE_DEFAULT);

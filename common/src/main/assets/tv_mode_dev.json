@@ -12,7 +12,8 @@
     "recentEvery": 3,
     "apiSearchesPerDay": 60,
     "apiSearchGapHours": 12,
-    "chartGapMinutes": 120
+    "chartGapMinutes": 120,
+    "minViews": 3000
   },
   "channels": [
     {
@@ -263,7 +264,8 @@
       "years": [
         1920,
         1979
-      ]
+      ],
+      "yearsStrict": true
     },
     {
       "id": "retro-80s-movies",
@@ -334,7 +336,8 @@
       "years": [
         1980,
         1989
-      ]
+      ],
+      "yearsStrict": true
     },
     {
       "id": "retro-90s-movies",
@@ -405,7 +408,8 @@
       "years": [
         1990,
         1999
-      ]
+      ],
+      "yearsStrict": true
     },
     {
       "id": "action-movies",
@@ -878,7 +882,14 @@
       "languages": [
         "hi"
       ],
-      "kind": "Movies"
+      "kind": "Movies",
+      "needWords": [
+        "south",
+        "telugu",
+        "tamil",
+        "kannada",
+        "malayalam"
+      ]
     },
     {
       "id": "hollywood-dubbed",
@@ -894,7 +905,10 @@
       "languages": [
         "hi"
       ],
-      "kind": "Movies"
+      "kind": "Movies",
+      "needWords": [
+        "hollywood"
+      ]
     },
     {
       "id": "hindi-family-movies",
@@ -1308,7 +1322,14 @@
         "hi"
       ],
       "kind": "Songs",
-      "minViews": 100000
+      "minViews": 100000,
+      "skipWords": [
+        "new song 20",
+        "trending hindi songs"
+      ],
+      "blocked": [
+        "Prakash Jojawar"
+      ]
     },
     {
       "id": "ghazals",

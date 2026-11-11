@@ -1183,11 +1183,30 @@ public class TvModeService {
 
     private static final java.util.regex.Pattern COUNT = java.util.regex.Pattern.compile("([\\d,]+)\\s*(?:episodes|videos|lessons|episode|video)");
 
+    /** A playlist's name without what uploaders pile on after it: the cast, "Full Episodes", the network. */
+    public static String seriesName(String title) {
+        if (title == null) {
+            return "";
+        }
+
+        int cut = title.length();
+
+        for (String separator : new String[] {" - ", " | ", " || ", " (", " : "}) {
+            int at = title.indexOf(separator);
+            if (at > 3 && at < cut) {
+                cut = at;
+            }
+        }
+
+        return title.substring(0, cut).trim();
+    }
+
     public void addSeries(TvChannel channel, TvChannel.Series one, Runnable onDone) {
         if (one == null || one.playlistId == null || channel.findSeries(one.playlistId) != null) {
             return;
         }
 
+        one.title = seriesName(one.title);
         one.next = 0;
         channel.series.add(one);
         channel.edited = true;
@@ -2329,7 +2348,7 @@ public class TvModeService {
         for (TvDataApi.Facts facts : found) {
             if (facts.id == null || facts.title == null || facts.upcoming
                     || !fits(channel, facts.title, facts.author, facts.live ? 0 : facts.durationMs, facts.live, false, facts.views)
-                    || !factsFit(channel, facts, fromChart) || !seen.add(facts.id)) {
+                    || !factsFit(channel, facts, fromChart) || lacksNeeded(channel, facts.title, facts) || !seen.add(facts.id)) {
                 continue;
             }
 
@@ -2432,7 +2451,7 @@ public class TvModeService {
         long views = facts != null && facts.views >= 0 ? facts.views : parseViews(item.getSecondTitle());
 
         return fits(channel, item.getTitle(), item.getAuthor(), durationMs, item.isLive(), item.isShorts(), views)
-                && (facts == null || factsFit(channel, facts, false));
+                && (facts == null || factsFit(channel, facts, false)) && !lacksNeeded(channel, item.getTitle(), facts);
     }
 
     /** The channel's own rules, on what both a search result and the Data API say about a video. views: -1 = unknown. */
@@ -2667,7 +2686,16 @@ public class TvModeService {
             named = true;
         }
 
-        return named;
+        return named || channel.yearsStrict;
+    }
+
+    /** True when the channel asks for certain words and neither the title nor what the Data API said has one. */
+    private boolean lacksNeeded(TvChannel channel, String title, TvDataApi.Facts facts) {
+        if (channel.needWords.isEmpty() || title == null) {
+            return false;
+        }
+
+        return !containsAny(title.toLowerCase(Locale.ROOT), channel.needWords) && (facts == null || !containsAny(facts.text, channel.needWords));
     }
 
     /**
@@ -3058,7 +3086,8 @@ public class TvModeService {
 
         TvDataApi.Facts facts = mFacts.get(video.videoId);
 
-        if (mGone.contains(video.videoId) || (facts != null && !factsFit(channel, facts, false)) || outOfEra(channel, title)) {
+        if (mGone.contains(video.videoId) || (facts != null && !factsFit(channel, facts, false)) || outOfEra(channel, title)
+                || lacksNeeded(channel, title, facts)) {
             return true;
         }
 

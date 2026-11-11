@@ -173,7 +173,7 @@ public class TvModeMenu {
         }
 
         for (TvChannel.Series one : found) {
-            String label = one.title + (one.author.isEmpty() ? "" : "  ·  " + one.author) + (one.count > 0 ? "  ·  " + one.count + " episodes" : "");
+            String label = TvModeService.seriesName(one.title) + (one.author.isEmpty() ? "" : "  ·  " + one.author) + (one.count > 0 ? "  ·  " + one.count + " episodes" : "");
             mDialog.appendSingleSwitch(UiOptionItem.from(label, option -> {
                 TvChannel.Series has = channel.findSeries(one.playlistId);
 
