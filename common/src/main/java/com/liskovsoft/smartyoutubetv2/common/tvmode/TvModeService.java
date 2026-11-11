@@ -2695,7 +2695,16 @@ public class TvModeService {
             return false;
         }
 
-        return !containsAny(title.toLowerCase(Locale.ROOT), channel.needWords) && (facts == null || !containsAny(facts.text, channel.needWords));
+        String text = title.toLowerCase(Locale.ROOT) + (facts != null ? "\n" + facts.text : "");
+
+        // Every entry must be there. An entry can offer choices with "|": "hindi|dubbed".
+        for (String need : channel.needWords) {
+            if (!containsAny(text, java.util.Arrays.asList(need.split("\\|")))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -3520,6 +3529,7 @@ public class TvModeService {
     }
 
     private long mLineupsWrittenMs;
+    private volatile boolean mLineupsLate;
 
     /**
      * What every channel has on and coming up, as plain text in the app's own folder on shared
@@ -3530,9 +3540,16 @@ public class TvModeService {
         long now = System.currentTimeMillis();
 
         if (now - mLineupsWrittenMs < 20_000) {
+            // Not now: channels save in bursts while they fill. But the last change of a burst
+            // must reach the file too, so one more save is asked for once the pause is over.
+            if (!mLineupsLate) {
+                mLineupsLate = true;
+                mMain.postDelayed(this::save, 21_000);
+            }
             return;
         }
 
+        mLineupsLate = false;
         mLineupsWrittenMs = now;
 
         try {

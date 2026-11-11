@@ -116,9 +116,9 @@ public class TvChannel {
     /** Only titles that name a year inside the era are taken. For an era that titles usually state, like "1994". */
     public boolean yearsStrict;
     /**
-     * A video is taken only when its title names one of these words, or, with a Data API key,
-     * its tags or description do. For a channel whose subject a search alone doesn't hold to,
-     * like films dubbed from one industry.
+     * A video is taken only when its title names every one of these, or, with a Data API key,
+     * its tags or description do. An entry can offer choices: "hindi|dubbed". For a channel
+     * whose subject a search alone doesn't hold to, like films dubbed from one industry.
      */
     public final List<String> needWords = new ArrayList<>();
     /** YouTube channel ids of the creators, by name. Looked up once, then kept. */
