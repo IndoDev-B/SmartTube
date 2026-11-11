@@ -848,6 +848,9 @@ public class TvModeService {
     private static final double RESUME_LEFT_SHARE = 0.15;
     private static final long RESUME_LEFT_MS = 10 * 60_000;
 
+    /** Shorter programs never go on "Continue watching": nobody carries on with half a song. */
+    private static final long RESUME_MIN_LENGTH_MS = 10 * 60_000;
+
     private static boolean isFinished(long positionMs, long durationMs) {
         return durationMs - positionMs <= Math.min(RESUME_LEFT_SHARE * durationMs, RESUME_LEFT_MS);
     }
@@ -1009,7 +1012,8 @@ public class TvModeService {
 
         int index = channel.indexOf(videoId);
 
-        if (seenMs < RESUME_MIN_SEEN_MS || position <= 0 || index == -1 || channel.lineup.get(index).isLive) {
+        if (seenMs < RESUME_MIN_SEEN_MS || durationMs < RESUME_MIN_LENGTH_MS || position <= 0 || index == -1
+                || channel.lineup.get(index).isLive) {
             return;
         }
 
@@ -1136,7 +1140,7 @@ public class TvModeService {
         if (left == null) {
             TvSaved from = findSaved(mMyList, video.videoId);
 
-            if (from == null || positionMs < RESUME_MIN_SEEN_MS) {
+            if (from == null || positionMs < RESUME_MIN_SEEN_MS || durationMs < RESUME_MIN_LENGTH_MS) {
                 return;
             }
 

@@ -282,8 +282,13 @@ public class TvModeController extends BasePlayerController {
                 // Keep the controls up with the cursor on Random, so OK again plays another one.
                 Utils.removeCallbacks(mKeepRandom);
                 Utils.postDelayed(mKeepRandom, 400);
-            } else if (overlay != null) {
+            } else if (overlay != null && !hasTopButtons(item)) {
                 overlay.dropTopButtons();
+            } else if (overlay != null && getPlayer() != null && getPlayer().isOverlayShown()) {
+                // A program from Continue watching or My list, started with the controls already up:
+                // dropping the buttons here left them missing until the controls came up again.
+                overlay.showTopButtons(true);
+                overlay.setMyListState(getService().isInMyList(item.videoId));
             }
             return;
         }
