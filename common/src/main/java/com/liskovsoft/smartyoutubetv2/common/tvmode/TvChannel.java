@@ -97,6 +97,8 @@ public class TvChannel {
     public boolean playlists;
     /** The group this channel is filed under in the guide's Genre filter. Empty = none. */
     public String genre = "";
+    /** Where the channel's programs are from, when it was built for a region: "Korean", "African". Empty = anywhere. */
+    public String origin = "";
     public boolean noShorts = true;
     /** Leave out videos with fewer views than this. 0 = any. */
     public long minViews;
@@ -284,6 +286,7 @@ public class TvChannel {
         o.put("id", id);
         o.put("name", name);
         o.put("kind", kind);
+        o.put("origin", origin);
         o.put("seriesRun", seriesRun);
         o.put("seriesLoop", seriesLoop);
         o.put("seriesTurn", seriesTurn);
@@ -450,6 +453,7 @@ public class TvChannel {
         c.id = id;
         c.name = name;
         c.kind = kind;
+        c.origin = origin;
         c.seriesRun = seriesRun;
         c.seriesLoop = seriesLoop;
         c.seriesTurn = seriesTurn;
@@ -561,6 +565,7 @@ public class TvChannel {
     /** Reads the search settings. Used for saved channels and for the preset list. */
     public void readSettings(JSONObject o) {
         kind = o.optString("kind", "");
+        origin = o.optString("origin", "");
         seriesRun = o.optInt("seriesRun", 1);
         seriesLoop = o.optBoolean("seriesLoop", true);
         seriesTurn = o.optInt("seriesTurn", seriesTurn);

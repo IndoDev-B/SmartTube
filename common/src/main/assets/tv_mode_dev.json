@@ -4421,5 +4421,98 @@
     "Gaming",
     "Ambience",
     "Live streams"
+  ],
+  "origins": [
+    {
+      "name": "Hollywood",
+      "countries": "US",
+      "word": "hollywood",
+      "need": "",
+      "languages": "en"
+    },
+    {
+      "name": "British",
+      "countries": "GB",
+      "word": "british",
+      "need": "british|uk |england|bbc|london|scottish|irish",
+      "languages": "en"
+    },
+    {
+      "name": "Bollywood",
+      "countries": "IN",
+      "word": "bollywood",
+      "need": "",
+      "languages": "hi"
+    },
+    {
+      "name": "South Indian",
+      "countries": "IN",
+      "word": "south indian",
+      "need": "south|telugu|tamil|kannada|malayalam",
+      "languages": "ta,te,kn,ml"
+    },
+    {
+      "name": "African",
+      "countries": "NG,GH,KE,ZA",
+      "word": "nollywood",
+      "need": "nollywood|nigerian|nigeria|ghana|ghallywood|african|kenya|south africa",
+      "languages": "en"
+    },
+    {
+      "name": "Latin",
+      "countries": "MX,BR,AR,CO",
+      "word": "latin",
+      "need": "spanish|mexican|latin|colombian|argentin|brazil|telenovela",
+      "languages": "es,pt"
+    },
+    {
+      "name": "Korean",
+      "countries": "KR,US",
+      "word": "korean",
+      "need": "korean|korea|kdrama|k-drama",
+      "languages": "ko"
+    },
+    {
+      "name": "Chinese",
+      "countries": "TW,HK,US",
+      "word": "chinese",
+      "need": "chinese|china|kung fu|hong kong|c-drama|cdrama",
+      "languages": "zh"
+    },
+    {
+      "name": "Japanese",
+      "countries": "JP,US",
+      "word": "japanese",
+      "need": "japanese|japan|anime",
+      "languages": "ja"
+    },
+    {
+      "name": "Turkish",
+      "countries": "TR",
+      "word": "turkish",
+      "need": "turkish|turkey",
+      "languages": "tr"
+    },
+    {
+      "name": "Pakistani",
+      "countries": "PK",
+      "word": "pakistani",
+      "need": "pakistani|pakistan",
+      "languages": "ar,hi"
+    },
+    {
+      "name": "European",
+      "countries": "FR,DE,IT,ES",
+      "word": "european",
+      "need": "french|german|italian|spanish|european|france|germany|italy|spain",
+      "languages": "fr,de,it,es"
+    },
+    {
+      "name": "Filipino",
+      "countries": "PH",
+      "word": "filipino",
+      "need": "filipino|pinoy|philippine|tagalog",
+      "languages": ""
+    }
   ]
 }

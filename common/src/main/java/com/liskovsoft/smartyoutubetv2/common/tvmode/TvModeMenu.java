@@ -773,21 +773,45 @@ public class TvModeMenu {
     private void pickLanguage(String kind, String genre) {
         mDialog.appendSingleButton(UiOptionItem.from("Any language", option -> {
             mDialog.closeDialog();
-            build(kind, genre, "");
+            pickOrigin(kind, genre, "");
         }));
 
         for (String[] language : TvLanguage.LANGUAGES) {
             mDialog.appendSingleButton(UiOptionItem.from(language[1], option -> {
                 mDialog.closeDialog();
-                build(kind, genre, language[0]);
+                pickOrigin(kind, genre, language[0]);
             }));
         }
 
         mDialog.showDialog("New " + genre + " " + kind + " channel: which language?");
     }
 
-    private void build(String kind, String genre, String language) {
-        TvChannel channel = mService.build(kind, genre, language, this::refreshGuide);
+    /** Where the programs are from. Apart from the language: Korean films in English, Hollywood in Hindi. */
+    private void pickOrigin(String kind, String genre, String language) {
+        List<String> origins = mService.getOrigins();
+
+        if (origins.isEmpty()) {
+            build(kind, genre, language, "");
+            return;
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("From anywhere", option -> {
+            mDialog.closeDialog();
+            build(kind, genre, language, "");
+        }));
+
+        for (String origin : origins) {
+            mDialog.appendSingleButton(UiOptionItem.from(origin, option -> {
+                mDialog.closeDialog();
+                build(kind, genre, language, origin);
+            }));
+        }
+
+        mDialog.showDialog("New " + genre + " " + kind + " channel: from where?");
+    }
+
+    private void build(String kind, String genre, String language, String origin) {
+        TvChannel channel = mService.build(kind, genre, language, origin, this::refreshGuide);
         toast("Channel " + mService.getChannels().size() + " added: " + channel.name);
 
         if (channel.isSeries()) { // a series channel plays the playlists that get ticked next

@@ -1282,14 +1282,35 @@ public class TvModeService {
      * New channel from a program type, a genre and a language. A Series channel starts without
      * videos: its playlists are picked next, with {@link #findSeries}.
      */
-    public TvChannel build(String kind, String genre, String language, Runnable onDone) {
+    public TvChannel build(String kind, String genre, String language, String origin, Runnable onDone) {
         TvChannel channel = new TvChannel();
         channel.id = "my-" + System.currentTimeMillis();
         channel.genre = genre != null ? genre : "";
         channel.languages.add(language == null || language.isEmpty() ? TvLanguage.ANY : language);
-        String languageName = channel.language().isEmpty() ? "" : TvLanguage.nameOf(channel.language()) + " ";
-        channel.name = (languageName + channel.genre + " " + kind).replaceAll("\\s+", " ").trim();
-        channel.terms.addAll(termsFor(kind, genre, channel.language()));
+        String languageName = channel.language().isEmpty() ? "" : TvLanguage.nameOf(channel.language());
+        String[] from = originRow(origin);
+
+        if (from == null) {
+            channel.name = (languageName + " " + channel.genre + " " + kind).replaceAll("\\s+", " ").trim();
+            channel.terms.addAll(termsFor(kind, genre, channel.language()));
+        } else {
+            // Where it is from is one thing and what is spoken another: Korean films in English,
+            // Nollywood in English, Hollywood in Hindi. The origin's word goes into the searches,
+            // its countries are the ones the Data API searches as, and a video has to name the
+            // origin somewhere. In a language that isn't the origin's own it is a dub, so it has
+            // to say that too.
+            channel.origin = from[0];
+            channel.name = (from[0] + " " + channel.genre + " " + kind + (languageName.isEmpty() ? "" : " in " + languageName)).replaceAll("\\s+", " ").trim();
+            channel.terms.addAll(termsFor(kind, (from[2] + " " + channel.genre).trim(), channel.language()));
+            channel.region = from[1];
+            if (!from[3].isEmpty()) {
+                channel.needWords.add(from[3]);
+            }
+            if (!languageName.isEmpty() && !java.util.Arrays.asList(from[4].split(",")).contains(channel.language())) {
+                channel.needWords.add(languageName.toLowerCase(Locale.ROOT) + "|dubbed|dub");
+            }
+        }
+
         applyKind(channel, kind);
         channel.edited = true;
         mChannels.add(channel);
@@ -1297,6 +1318,36 @@ public class TvModeService {
         save();
         fill(channel, onDone);
         return channel;
+    }
+
+    /**
+     * Where a channel's programs can be from, for New channel: a name, the countries the Data API
+     * searches as ("NG,GH,KE,ZA", taking turns), the word that goes into the searches, and the
+     * words one of which a video has to carry ("nollywood|nigerian|ghana"), and the languages
+     * its programs are made in ("en"): in any other language they are dubs. From the preset
+     * list's "origins", so a region can be added without a new build.
+     */
+    private final List<String[]> mOrigins = new ArrayList<>();
+
+    public List<String> getOrigins() {
+        ensureLoaded();
+        List<String> names = new ArrayList<>();
+
+        for (String[] origin : mOrigins) {
+            names.add(origin[0]);
+        }
+
+        return names;
+    }
+
+    private String[] originRow(String name) {
+        for (String[] origin : mOrigins) {
+            if (origin[0].equalsIgnoreCase(name)) {
+                return origin;
+            }
+        }
+
+        return null;
     }
 
     // ---------------- series: playlists played in order ----------------
@@ -3619,6 +3670,16 @@ public class TvModeService {
                         }
                     }
                     mForeignHints.put(code, list);
+                }
+            }
+
+            JSONArray origins = config.optJSONArray("origins");
+            mOrigins.clear();
+            for (int i = 0; origins != null && i < origins.length(); i++) {
+                JSONObject origin = origins.optJSONObject(i);
+                if (origin != null && !origin.optString("name", "").isEmpty()) {
+                    mOrigins.add(new String[] {origin.optString("name"), origin.optString("countries", ""),
+                            origin.optString("word", ""), origin.optString("need", ""), origin.optString("languages", "")});
                 }
             }
 
