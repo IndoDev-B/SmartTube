@@ -203,7 +203,7 @@ public class TvGuideHeroView extends FrameLayout {
         bar.addView(mProgress, new LayoutParams(0, LayoutParams.MATCH_PARENT));
 
         // What the program is about: the start of its description, once the focus has rested on it.
-        mAbout = text(13f, 0xFFB8B8B8, 5); // five lines: the program's numbers have the two below
+        mAbout = text(13f, 0xFFB8B8B8, 6);
         mAbout.setLineSpacing(dp(2), 1f);
         LinearLayout.LayoutParams aboutParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         aboutParams.topMargin = dp(9);
@@ -230,8 +230,7 @@ public class TvGuideHeroView extends FrameLayout {
         // views, likes, dislikes, when it was uploaded, subscribers.
         hint.setVisibility(GONE);
 
-        mStatsLine = text(13.5f, 0xFFD0D0D0, 2);
-        mStatsLine.setLineSpacing(dp(2), 1f);
+        mStatsLine = text(13.5f, 0xFFD0D0D0, 1);
         // As wide as the text above it: the preview picture starts right of that.
         LayoutParams statsParams = new LayoutParams(dp(350), LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
         statsParams.setMargins(dp(55), 0, 0, dp(12));

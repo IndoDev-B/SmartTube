@@ -3968,18 +3968,34 @@ public class TvModeService {
     private static String statsLine(String views, String likes, String dislikes, String published, String subscribers) {
         StringBuilder line = new StringBuilder();
 
-        for (String part : new String[] {
-                views,
-                likes != null && !likes.trim().isEmpty() ? likes.trim() + " 👍" : null,
-                dislikes != null && !dislikes.trim().isEmpty() ? dislikes.trim() + " 👎" : null,
-                published,
-                subscribers}) {
-            if (part != null && !part.trim().isEmpty()) {
-                line.append(line.length() > 0 ? "  •  " : "").append(part.trim());
+        // One short line: an icon and a bare number each. Eye = views, people = subscribers.
+        String[] icons = {"👁", "👍", "👎", "📅", "👥"};
+        String[] parts = {views, likes, dislikes, published, subscribers};
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = bare(parts[i]);
+            if (!part.isEmpty()) {
+                line.append(line.length() > 0 ? "    " : "").append(icons[i]).append(' ').append(part);
             }
         }
 
         return line.toString();
+    }
+
+    /** "6.7 lakh views" as "6.7L", "Published on 3 Nov 2026" as "3 Nov 2026": the icon in front says what it counts. */
+    private static String bare(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text.replaceAll("(?i)\\b(views?|subscribers?|published on|published|premiered on|premiered|streamed live on|streamed live|started streaming on|watching)\\b", "")
+                .replaceAll("(?i)\\s*\\blakh\\b", "L")
+                .replaceAll("(?i)\\s*\\bcrore\\b", "Cr")
+                .replaceAll("(?i)\\s*\\bthousand\\b", "K")
+                .replaceAll("(?i)\\s*\\bmillion\\b", "M")
+                .replaceAll("(?i)\\s*\\bbillion\\b", "B")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     /** A program's description if it was fetched before, or null. */
