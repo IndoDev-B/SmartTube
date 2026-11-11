@@ -856,7 +856,7 @@
       "id": "movies-explained",
       "name": "Movies Explained",
       "terms": [
-        "movie explained",
+        "movie explained in english",
         "film analysis",
         "behind the scenes film"
       ],
@@ -902,7 +902,7 @@
       "id": "short-films",
       "name": "Short Films",
       "terms": [
-        "award winning short film",
+        "english award winning short film",
         "animated short film",
         "sci fi short film"
       ],
@@ -948,9 +948,9 @@
       "id": "classic-hits",
       "name": "Classic Hits",
       "terms": [
-        "oldies 60s 70s hits",
-        "classic hits songs",
-        "golden oldies"
+        "english oldies 60s 70s hits",
+        "english 70s hits music video",
+        "english golden oldies"
       ],
       "length": "medium",
       "playlists": true,
@@ -963,8 +963,8 @@
       "id": "retro-80s-hits",
       "name": "Retro 80s Hits",
       "terms": [
-        "80s hits music video",
-        "80s songs"
+        "english 80s hits music video",
+        "english 80s songs"
       ],
       "length": "medium",
       "playlists": true,
@@ -977,8 +977,8 @@
       "id": "retro-90s-hits",
       "name": "Retro 90s Hits",
       "terms": [
-        "90s hits music video",
-        "90s songs"
+        "english 90s hits music video",
+        "english 90s songs"
       ],
       "length": "medium",
       "playlists": true,
@@ -991,8 +991,8 @@
       "id": "2000s-hits",
       "name": "2000s Hits",
       "terms": [
-        "2000s hits music video",
-        "2000s songs"
+        "english 2000s hits music video",
+        "english 2000s songs"
       ],
       "length": "medium",
       "playlists": true,
@@ -1036,7 +1036,7 @@
       "name": "Hip Hop",
       "terms": [
         "hip hop live",
-        "rap music video",
+        "english rap music video",
         "hip hop documentary"
       ],
       "length": "medium",
