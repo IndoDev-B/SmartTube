@@ -3952,6 +3952,36 @@ public class TvModeService {
     private static final long INFO_RETRY_MS = 5_000;
     private static final long INFO_BACKGROUND_RETRY_MS = 10 * 60_000;
 
+    /** A program's numbers as one line, by video id: views, likes, dislikes, when it was uploaded, subscribers. Main thread only. */
+    private final Map<String, String> mStats = new java.util.LinkedHashMap<String, String>(64, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+            return size() > MAX_DESCRIPTIONS;
+        }
+    };
+
+    /** A program's numbers if they were fetched, or null. They come with {@link #loadInfo}. */
+    public String getStats(String videoId) {
+        return videoId != null ? mStats.get(videoId) : null;
+    }
+
+    private static String statsLine(String views, String likes, String dislikes, String published, String subscribers) {
+        StringBuilder line = new StringBuilder();
+
+        for (String part : new String[] {
+                views,
+                likes != null && !likes.trim().isEmpty() ? likes.trim() + " 👍" : null,
+                dislikes != null && !dislikes.trim().isEmpty() ? dislikes.trim() + " 👎" : null,
+                published,
+                subscribers}) {
+            if (part != null && !part.trim().isEmpty()) {
+                line.append(line.length() > 0 ? "  •  " : "").append(part.trim());
+            }
+        }
+
+        return line.toString();
+    }
+
     /** A program's description if it was fetched before, or null. */
     public String getInfo(String videoId) {
         return videoId != null ? mDescriptions.get(videoId) : null;
@@ -3973,7 +4003,9 @@ public class TvModeService {
 
         String known = mDescriptions.get(id);
 
-        if (known != null) {
+        // A description that came with the Data API has no likes with it: for a program the viewer
+        // is looking at, the fetch still runs to bring its numbers.
+        if (known != null && (onInfo == null || mStats.containsKey(id))) {
             if (onInfo != null) {
                 onInfo.onInfo(id, known);
             }
@@ -4009,20 +4041,34 @@ public class TvModeService {
 
         (first ? mInfoFirstWorker : mInfoWorker).execute(() -> {
             String text = null; // null: the fetch failed, which is not the same as an empty description
+            String numbers = null;
+            String likes = null;
+            String views = null;
+            String published = null;
+            String subscribers = null;
 
             try {
                 com.liskovsoft.mediaserviceinterfaces.data.MediaItemMetadata metadata =
                         YouTubeServiceManager.instance().getMediaItemService().getMetadata(id);
                 if (metadata != null) {
                     text = metadata.getDescription() != null ? metadata.getDescription() : "";
+                    views = metadata.getViewCount();
+                    likes = metadata.getLikeCount();
+                    published = metadata.getPublishedDate();
+                    subscribers = metadata.getSubscriberCount();
+                    numbers = statsLine(views, likes, metadata.getDislikeCount(), published, subscribers);
                 }
             } catch (Throwable e) {
                 Log.e(TAG, "No description for %s: %s", id, e.getMessage());
             }
 
             final String description = text;
+            final String stats = numbers;
 
             mMain.post(() -> {
+                if (stats != null) {
+                    mStats.put(id, stats);
+                }
                 (first ? mDescriptionsAskedFirst : mDescriptionsAsked).remove(id);
                 boolean arrived = mDescriptions.containsKey(id); // the other fetch of this video got here first
 
@@ -4051,6 +4097,23 @@ public class TvModeService {
                     }
                 }
             });
+
+            // Dislikes aren't YouTube's to give any more: they come from the same outside count the
+            // player shows, in a request of their own. After the rest, so it holds nothing up. The
+            // guide reads the line again every few seconds and shows them when they are in.
+            if (first && stats != null) {
+                try {
+                    com.liskovsoft.mediaserviceinterfaces.data.DislikeData counts = YouTubeServiceManager.instance().getMediaItemService()
+                            .getDislikeDataObserve(id).timeout(4, java.util.concurrent.TimeUnit.SECONDS).blockingFirst();
+                    if (counts != null && counts.getDislikeCount() != null) {
+                        final String full = statsLine(views, counts.getLikeCount() != null ? counts.getLikeCount() : likes,
+                                counts.getDislikeCount(), published, subscribers);
+                        mMain.post(() -> mStats.put(id, full));
+                    }
+                } catch (Throwable e) {
+                    Log.e(TAG, "No dislike count for %s: %s", id, e.getMessage());
+                }
+            }
         });
     }
 

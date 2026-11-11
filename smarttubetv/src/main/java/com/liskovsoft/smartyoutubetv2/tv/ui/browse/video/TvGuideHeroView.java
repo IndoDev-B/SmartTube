@@ -67,6 +67,7 @@ public class TvGuideHeroView extends FrameLayout {
     private static final int PREVIEW_MAX_TRIES = 4;
     private final Runnable mStartPreview = this::startPreview;
     private TextView mAbout;
+    private TextView mStatsLine;
     /** The program the description line is for. */
     private String mAboutId;
     private Video mAboutVideo;
@@ -86,6 +87,7 @@ public class TvGuideHeroView extends FrameLayout {
                     mAboutId = null; // the fetch failed: the next look at this program asks again
                 } else {
                     mAbout.setText(shorten(description));
+                    showStats(videoId);
                 }
             });
         }
@@ -106,6 +108,16 @@ public class TvGuideHeroView extends FrameLayout {
         return text.length() > ABOUT_CHARS ? text.substring(0, ABOUT_CHARS) : text;
     }
 
+    /** The program's numbers along the bottom, when they are in. Empty until then, and for a button. */
+    private void showStats(String videoId) {
+        String stats = TvModeService.instance(getContext()).getStats(videoId);
+        String text = stats != null ? stats : "";
+
+        if (!text.contentEquals(mStatsLine.getText())) {
+            mStatsLine.setText(text);
+        }
+    }
+
     /** Shows the description of a program if it is known, and asks for it after a moment if not. */
     private void about(Video video) {
         String id = video != null ? video.videoId : null;
@@ -115,8 +127,12 @@ public class TvGuideHeroView extends FrameLayout {
             mAboutId = null;
             mAboutVideo = null;
             mAbout.setText("");
+            showStats(null);
             return;
         }
+
+        // Every time, not only when the program changes: the dislikes arrive a moment after the rest.
+        showStats(id);
 
         if (id.equals(mAboutId)) {
             return; // the same program as a moment ago: shown, or on its way
@@ -125,10 +141,11 @@ public class TvGuideHeroView extends FrameLayout {
         removeCallbacks(mLoadAbout);
         mAboutId = id;
         mAboutVideo = video;
-        String known = TvModeService.instance(getContext()).getInfo(id);
+        TvModeService service = TvModeService.instance(getContext());
+        String known = service.getInfo(id);
         mAbout.setText(shorten(known));
 
-        if (known == null) {
+        if (known == null || service.getStats(id) == null) {
             postDelayed(mLoadAbout, ABOUT_DELAY_MS);
         }
     }
@@ -186,7 +203,7 @@ public class TvGuideHeroView extends FrameLayout {
         bar.addView(mProgress, new LayoutParams(0, LayoutParams.MATCH_PARENT));
 
         // What the program is about: the start of its description, once the focus has rested on it.
-        mAbout = text(13f, 0xFFB8B8B8, 6);
+        mAbout = text(13f, 0xFFB8B8B8, 5); // five lines: the program's numbers have the two below
         mAbout.setLineSpacing(dp(2), 1f);
         LinearLayout.LayoutParams aboutParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         aboutParams.topMargin = dp(9);
@@ -209,6 +226,16 @@ public class TvGuideHeroView extends FrameLayout {
         mHoldLabel = text(14f, 0xFFEDEDED, 1);
         mHoldLabel.setText("Channel options");
         hint.addView(mHoldLabel, gap(7, 0));
+        // The viewer knows what OK does by now. The line goes to the program's numbers instead:
+        // views, likes, dislikes, when it was uploaded, subscribers.
+        hint.setVisibility(GONE);
+
+        mStatsLine = text(13.5f, 0xFFD0D0D0, 2);
+        mStatsLine.setLineSpacing(dp(2), 1f);
+        // As wide as the text above it: the preview picture starts right of that.
+        LayoutParams statsParams = new LayoutParams(dp(350), LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
+        statsParams.setMargins(dp(55), 0, 0, dp(12));
+        addView(mStatsLine, statsParams);
 
         // Right: preview picture
         FrameLayout preview = new FrameLayout(context);
