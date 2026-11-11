@@ -1200,49 +1200,23 @@
       ]
     },
     {
-      "id": "korean-movies-english",
-      "name": "Korean Movies in English",
-      "kind": "Movies",
-      "genre": "Korean",
-      "terms": [
-        "korean movie english dubbed full movie",
-        "korean action movie english dub full"
-      ],
-      "type": "movie",
-      "minMinutes": 60,
-      "playlists": true,
-      "needWords": [
-        "korean|korea",
-        "english|eng dub|dubbed"
-      ],
-      "region": "US",
-      "skipWords": [
-        "hindi",
-        "tamil",
-        "telugu",
-        "urdu",
-        "punjabi",
-        "bhojpuri"
-      ],
-      "languages": [
-        "en"
-      ]
-    },
-    {
       "id": "chinese-movies-english",
-      "name": "Chinese Movies in English",
+      "name": "World Movies in English",
       "kind": "Movies",
-      "genre": "Chinese",
+      "genre": "World",
       "terms": [
         "chinese action movie english dubbed full movie",
         "kung fu full movie english dubbed",
-        "hong kong action movie english dub"
+        "korean movie english dubbed full movie",
+        "spanish movie english dubbed full movie",
+        "hong kong action movie english dub",
+        "mexican movie english dubbed full"
       ],
       "type": "movie",
       "minMinutes": 60,
       "playlists": true,
       "needWords": [
-        "chinese|china|kung fu|hong kong|martial",
+        "chinese|china|kung fu|hong kong|martial|korean|korea|spanish|mexican|latin|colombian|argentin|brazil",
         "english|eng dub|dubbed"
       ],
       "region": "US",
@@ -1272,36 +1246,6 @@
       "playlists": true,
       "needWords": [
         "anime|japanese|japan",
-        "english|eng dub|dubbed"
-      ],
-      "region": "US",
-      "skipWords": [
-        "hindi",
-        "tamil",
-        "telugu",
-        "urdu",
-        "punjabi",
-        "bhojpuri"
-      ],
-      "languages": [
-        "en"
-      ]
-    },
-    {
-      "id": "latin-movies-english",
-      "name": "Latin Movies in English",
-      "kind": "Movies",
-      "genre": "Latin",
-      "terms": [
-        "spanish movie english dubbed full movie",
-        "mexican movie english dubbed full",
-        "latin american film english dubbed"
-      ],
-      "type": "movie",
-      "minMinutes": 60,
-      "playlists": true,
-      "needWords": [
-        "spanish|mexican|latin|colombian|argentin|brazil",
         "english|eng dub|dubbed"
       ],
       "region": "US",
@@ -2038,7 +1982,8 @@
       "terms": [
         "stand up comedy special",
         "stand up comedy clip",
-        "sketch comedy"
+        "sketch comedy",
+        "comedy skits"
       ],
       "genre": "Comedy",
       "languages": [
@@ -2057,22 +2002,6 @@
       "length": "long",
       "playlists": true,
       "genre": "Stand-up",
-      "languages": [
-        "en"
-      ],
-      "kind": "Shows",
-      "region": "US"
-    },
-    {
-      "id": "sketch-comedy",
-      "name": "Sketch Comedy",
-      "terms": [
-        "sketch comedy",
-        "comedy skits",
-        "improv comedy"
-      ],
-      "length": "medium",
-      "genre": "Comedy",
       "languages": [
         "en"
       ],
@@ -2490,23 +2419,9 @@
       "terms": [
         "wildlife nature documentary 4k",
         "bbc earth animals",
-        "ocean documentary"
-      ],
-      "length": "long",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ],
-      "kind": "Documentary",
-      "region": "US"
-    },
-    {
-      "id": "mountains",
-      "name": "Mountains",
-      "terms": [
+        "ocean documentary",
         "mountaineering documentary",
-        "everest documentary",
-        "alpine climb film"
+        "everest documentary"
       ],
       "length": "long",
       "genre": "Nature",
@@ -2539,9 +2454,10 @@
       "terms": [
         "animal documentary",
         "funny animals compilation",
-        "zoo keeper"
+        "zoo keeper",
+        "bird documentary",
+        "birdwatching 4k"
       ],
-      "length": "medium",
       "genre": "Nature",
       "languages": [
         "en"
@@ -2558,22 +2474,6 @@
         "puppy rescue"
       ],
       "length": "medium",
-      "genre": "Nature",
-      "languages": [
-        "en"
-      ],
-      "kind": "Documentary",
-      "region": "US"
-    },
-    {
-      "id": "birds",
-      "name": "Birds",
-      "terms": [
-        "bird documentary",
-        "birdwatching 4k",
-        "bird song nature"
-      ],
-      "length": "long",
       "genre": "Nature",
       "languages": [
         "en"
@@ -2646,30 +2546,16 @@
       "region": "US"
     },
     {
-      "id": "mathematics",
-      "name": "Mathematics",
+      "id": "physics",
+      "name": "Physics and Maths",
       "terms": [
+        "physics lecture",
+        "quantum mechanics explained",
+        "relativity explained",
         "math explained",
         "mathematics lecture",
         "number theory visual"
       ],
-      "length": "medium",
-      "genre": "Science",
-      "languages": [
-        "en"
-      ],
-      "kind": "Learning",
-      "region": "US"
-    },
-    {
-      "id": "physics",
-      "name": "Physics",
-      "terms": [
-        "physics lecture",
-        "quantum mechanics explained",
-        "relativity explained"
-      ],
-      "length": "long",
       "genre": "Science",
       "languages": [
         "en"
@@ -2679,29 +2565,15 @@
     },
     {
       "id": "biology",
-      "name": "Biology",
+      "name": "Biology and Medicine",
       "terms": [
         "biology documentary",
         "human body explained",
-        "evolution documentary"
-      ],
-      "length": "long",
-      "genre": "Science",
-      "languages": [
-        "en"
-      ],
-      "kind": "Learning",
-      "region": "US"
-    },
-    {
-      "id": "medicine",
-      "name": "Medicine",
-      "terms": [
+        "evolution documentary",
         "medical documentary",
         "surgery explained",
         "doctor explains"
       ],
-      "length": "medium",
       "genre": "Science",
       "languages": [
         "en"
@@ -2824,7 +2696,9 @@
       "terms": [
         "technology explained",
         "how it works engineering",
-        "tech documentary"
+        "tech documentary",
+        "gadget review",
+        "smartphone review"
       ],
       "length": "medium",
       "genre": "Tech",
@@ -2899,22 +2773,6 @@
       "region": "US"
     },
     {
-      "id": "gadgets",
-      "name": "Gadgets",
-      "terms": [
-        "gadget review",
-        "smartphone review",
-        "tech unboxing"
-      ],
-      "length": "medium",
-      "genre": "Tech",
-      "languages": [
-        "en"
-      ],
-      "kind": "Learning",
-      "region": "US"
-    },
-    {
       "id": "hindi-tech",
       "name": "Hindi Tech",
       "terms": [
@@ -2960,27 +2818,14 @@
     },
     {
       "id": "business",
-      "name": "Business",
+      "name": "Business and Economy",
       "terms": [
         "business documentary",
         "company story",
-        "entrepreneur interview"
-      ],
-      "length": "medium",
-      "genre": "Business",
-      "languages": [
-        "en"
-      ],
-      "kind": "News",
-      "region": "US"
-    },
-    {
-      "id": "economics",
-      "name": "Economics",
-      "terms": [
         "economics explained",
-        "economy documentary",
-        "how money works"
+        "how money works",
+        "startup story",
+        "founder interview"
       ],
       "length": "medium",
       "genre": "Business",
@@ -2997,22 +2842,6 @@
         "investing for beginners",
         "stock market explained",
         "personal finance"
-      ],
-      "length": "medium",
-      "genre": "Business",
-      "languages": [
-        "en"
-      ],
-      "kind": "News",
-      "region": "US"
-    },
-    {
-      "id": "startups",
-      "name": "Startups",
-      "terms": [
-        "startup story",
-        "founder interview",
-        "how i built this"
       ],
       "length": "medium",
       "genre": "Business",
@@ -3384,24 +3213,11 @@
       "terms": [
         "street food cooking",
         "chef cooking recipe",
-        "food documentary"
-      ],
-      "genre": "Food",
-      "languages": [
-        "en"
-      ],
-      "kind": "Lifestyle",
-      "region": "US"
-    },
-    {
-      "id": "baking",
-      "name": "Baking",
-      "terms": [
+        "food documentary",
         "baking recipe",
         "bread baking",
-        "cake decorating"
+        "bbq brisket"
       ],
-      "length": "medium",
       "genre": "Food",
       "languages": [
         "en"
@@ -3432,22 +3248,6 @@
         "indian recipe",
         "indian street food",
         "home style curry"
-      ],
-      "length": "medium",
-      "genre": "Food",
-      "languages": [
-        "en"
-      ],
-      "kind": "Lifestyle",
-      "region": "US"
-    },
-    {
-      "id": "barbecue",
-      "name": "Barbecue",
-      "terms": [
-        "bbq brisket",
-        "grilling recipe",
-        "smoked meat"
       ],
       "length": "medium",
       "genre": "Food",
@@ -3689,11 +3489,14 @@
     },
     {
       "id": "woodworking",
-      "name": "Woodworking",
+      "name": "Workshop",
       "terms": [
         "japanese joinery",
         "hand tool woodworking",
-        "woodworking project build"
+        "woodworking project build",
+        "blacksmith forging",
+        "knife making",
+        "welding project"
       ],
       "genre": "Home and DIY",
       "languages": [
@@ -3736,27 +3539,14 @@
     },
     {
       "id": "home-renovation",
-      "name": "Home Renovation",
+      "name": "Homes and Interiors",
       "terms": [
         "home renovation",
         "house flip before after",
-        "diy home improvement"
-      ],
-      "length": "medium",
-      "genre": "Home and DIY",
-      "languages": [
-        "en"
-      ],
-      "kind": "Lifestyle",
-      "region": "US"
-    },
-    {
-      "id": "interior-design",
-      "name": "Interior Design",
-      "terms": [
         "interior design ideas",
         "home tour",
-        "apartment makeover"
+        "tiny house tour",
+        "cabin build"
       ],
       "length": "medium",
       "genre": "Home and DIY",
@@ -3773,22 +3563,6 @@
         "architecture documentary",
         "modern house tour",
         "famous buildings explained"
-      ],
-      "length": "medium",
-      "genre": "Home and DIY",
-      "languages": [
-        "en"
-      ],
-      "kind": "Lifestyle",
-      "region": "US"
-    },
-    {
-      "id": "tiny-homes",
-      "name": "Tiny Homes",
-      "terms": [
-        "tiny house tour",
-        "van life tour",
-        "cabin build"
       ],
       "length": "medium",
       "genre": "Home and DIY",
@@ -3828,22 +3602,6 @@
         "*"
       ],
       "kind": "Lifestyle"
-    },
-    {
-      "id": "metalwork",
-      "name": "Metalwork",
-      "terms": [
-        "blacksmith forging",
-        "knife making",
-        "welding project"
-      ],
-      "length": "medium",
-      "genre": "Home and DIY",
-      "languages": [
-        "en"
-      ],
-      "kind": "Lifestyle",
-      "region": "US"
     },
     {
       "id": "kheti",
@@ -4228,22 +3986,6 @@
         "live"
       ],
       "genre": "Music",
-      "languages": [
-        "*"
-      ],
-      "kind": "Live streams"
-    },
-    {
-      "id": "lo-fi-radio",
-      "name": "Lo-fi Radio",
-      "terms": [
-        "lofi hip hop radio live",
-        "chill music live stream"
-      ],
-      "features": [
-        "live"
-      ],
-      "genre": "Lo-fi",
       "languages": [
         "*"
       ],
