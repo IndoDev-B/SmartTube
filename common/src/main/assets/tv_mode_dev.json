@@ -9,7 +9,10 @@
       "trailer",
       "teaser"
     ],
-    "recentEvery": 3
+    "recentEvery": 3,
+    "apiSearchesPerDay": 60,
+    "apiSearchGapHours": 12,
+    "chartGapMinutes": 120
   },
   "channels": [
     {
@@ -40,7 +43,8 @@
       "genre": "Trending",
       "languages": [
         "en"
-      ]
+      ],
+      "chart": "US"
     },
     {
       "id": "trending-hindi",
@@ -70,7 +74,8 @@
       "genre": "Trending",
       "languages": [
         "hi"
-      ]
+      ],
+      "chart": "IN"
     },
     {
       "id": "viral-english",
@@ -180,7 +185,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "classic-movies",
@@ -246,7 +252,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "retro-80s-movies",
@@ -311,7 +318,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "retro-90s-movies",
@@ -376,7 +384,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "action-movies",
@@ -441,7 +450,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "comedy-movies",
@@ -506,7 +516,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "sci-fi-movies",
@@ -571,7 +582,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "horror-movies",
@@ -636,7 +648,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "family-movies",
@@ -701,7 +714,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "bollywood-classics",
@@ -896,7 +910,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "short-films",
@@ -942,7 +957,8 @@
       "genre": "Movies",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "classic-hits",
@@ -957,7 +973,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "retro-80s-hits",
@@ -971,7 +988,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "retro-90s-hits",
@@ -985,7 +1003,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "2000s-hits",
@@ -999,7 +1018,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "pop-hits",
@@ -1014,7 +1034,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "rock",
@@ -1044,7 +1065,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "country",
@@ -1059,7 +1081,8 @@
       "genre": "Songs",
       "languages": [
         "en"
-      ]
+      ],
+      "region": "US"
     },
     {
       "id": "music-live",
