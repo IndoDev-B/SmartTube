@@ -2256,9 +2256,6 @@ public class TvModeService {
         save();
     }
 
-    /** The guide's Genre filter: only channels filed under this genre. Empty = any. Not a program type. */
-    private String mFilterGenre = "";
-
     public String getFilterGenre() {
         ensureLoaded();
         return mFilterGenre;
@@ -3228,16 +3225,6 @@ public class TvModeService {
         return one != null && number >= 0 ? "Ep " + (number + 1) + (one.count > 0 ? " of " + one.count : "") : null;
     }
 
-    public String getFilterGenre() {
-        ensureLoaded();
-        return mFilterGenre;
-    }
-
-    public void setFilterGenre(String genre) {
-        mFilterGenre = genre != null ? genre : "";
-        save();
-    }
-
     public String getFilterLanguage() {
         ensureLoaded();
         return mFilterLanguage;
@@ -3249,29 +3236,6 @@ public class TvModeService {
             mFilterGenre = ""; // no channel of that genre in this language
         }
         save();
-    }
-
-    /** The genres that have channels: first the ones the preset list names, in its order, then any others. */
-    public List<String> getGenres() {
-        ensureLoaded();
-        List<String> genres = new ArrayList<>();
-
-        for (String genre : mGenreOrder) {
-            for (TvChannel channel : mChannels) {
-                if (genre.equalsIgnoreCase(channel.genre)) {
-                    genres.add(genre);
-                    break;
-                }
-            }
-        }
-
-        for (TvChannel channel : mChannels) {
-            if (!channel.genre.isEmpty() && !containsIgnoreCase(genres, channel.genre)) {
-                genres.add(channel.genre);
-            }
-        }
-
-        return genres;
     }
 
     /** The language codes that have channels, in the order of TvLanguage's list. */
