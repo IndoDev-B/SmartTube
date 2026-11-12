@@ -115,8 +115,13 @@ public class TvGuideGridView extends View {
     private final Runnable mTick = new Runnable() {
         @Override
         public void run() {
-            followNow();
-            notifyFocus(); // the part above the grid shows progress too
+            // Only while the guide is what's on screen. Under the full screen player this tick
+            // wrote the guide's own row back as the channel to return to, every 5 seconds, over
+            // the channel the viewer had switched to with CH+ / CH-.
+            if (hasWindowFocus()) {
+                followNow();
+                notifyFocus(); // the part above the grid shows progress too
+            }
             invalidate(); // the programs slide under the now line
             postDelayed(this, TICK_MS);
         }
