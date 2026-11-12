@@ -230,6 +230,13 @@ public class VideoLoaderController extends BasePlayerController {
             return;
         }
 
+        // TV mode: a live stream that says it ended has usually only hiccuped. Moving on to the
+        // channel's next program cut streams off mid-way, so the same stream is loaded again.
+        if (com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeController.reloadsEndedStream(getVideo())) {
+            reloadVideo();
+            return;
+        }
+
         // Stop the playback if the user is browsing options or reading comments
         int playbackMode = getPlaybackMode();
         if (getAppDialogPresenter().isDialogShown() && !getAppDialogPresenter().isOverlay() && playbackMode != PlayerConstants.PLAYBACK_MODE_ONE) {

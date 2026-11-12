@@ -209,6 +209,34 @@ public class TvModeController extends BasePlayerController {
         }
     };
 
+    private static String sEndedStreamId;
+    private static int sEndedCount;
+    private static long sEndedFirstMs;
+
+    /**
+     * A TV mode live stream reported its end. Streams do that on a network hiccup or when the
+     * player falls behind the live edge, and the app then played the channel's next program.
+     * True = load the same stream again. After 3 ends within 5 minutes the stream has most
+     * likely really finished, and the channel moves on as before.
+     */
+    public static boolean reloadsEndedStream(Video video) {
+        if (video == null || !video.isLive || video.videoId == null || video.tvChannelId == null) {
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+
+        if (!video.videoId.equals(sEndedStreamId) || now - sEndedFirstMs > 5 * 60_000) {
+            sEndedStreamId = video.videoId;
+            sEndedCount = 0;
+            sEndedFirstMs = now;
+        }
+
+        boolean reload = ++sEndedCount <= 3;
+        com.liskovsoft.sharedutils.mylogger.Log.d("TvModeController", "Live stream %s reported its end (%s in a row): %s", video.videoId, sEndedCount, reload ? "loading it again" : "moving on");
+        return reload;
+    }
+
     @Override
     public void onPlayEnd() {
         // A random video ended: play another, the way the button would.
