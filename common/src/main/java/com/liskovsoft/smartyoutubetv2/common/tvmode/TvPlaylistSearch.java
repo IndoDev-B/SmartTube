@@ -25,6 +25,7 @@ final class TvPlaylistSearch {
     /** YouTube's search filter "Type: Playlist". */
     private static final String PLAYLISTS = "EgIQAw==";
     private static final int TIMEOUT_MS = 10_000;
+    private static final Pattern PICTURE = Pattern.compile("\"url\":\"(https:(?:\\\\?/){2}i\\d?\\.ytimg\\.com[^\"]+)\"");
     private static final Pattern COUNT = Pattern.compile("\"(?:text|content)\":\"([\\d,]+)\\s*(?:episodes|videos|lessons|episode|video)\"");
 
     private TvPlaylistSearch() {
@@ -94,7 +95,14 @@ final class TvPlaylistSearch {
                 one.author = firstPart(lockup);
             }
 
-            Matcher count = COUNT.matcher(tile.toString());
+            String text = tile.toString();
+            // The tile's picture. The text is JSON, where a "/" may be written "\/".
+            Matcher picture = PICTURE.matcher(text);
+            if (picture.find()) {
+                one.image = picture.group(1).replace("\\/", "/");
+            }
+
+            Matcher count = COUNT.matcher(text);
             if (count.find()) {
                 try {
                     one.count = Integer.parseInt(count.group(1).replace(",", ""));

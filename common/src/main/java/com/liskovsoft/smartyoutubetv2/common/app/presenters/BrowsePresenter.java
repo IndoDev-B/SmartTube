@@ -211,6 +211,8 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
 
         if (TvModeService.isEnabled(getContext())) {
             mSectionsMapping.put(TvModeService.SECTION_ID, new BrowseSection(TvModeService.SECTION_ID, getContext().getString(R.string.header_tv_mode), BrowseSection.TYPE_TV_GUIDE, R.drawable.icon_tv_mode, false));
+            // The saved channels are read on a worker now, so the guide opens without waiting for them.
+            TvModeService.instance(getContext()).preloadState();
         }
 
         if (getSidebarService().isSettingsSectionEnabled()) {

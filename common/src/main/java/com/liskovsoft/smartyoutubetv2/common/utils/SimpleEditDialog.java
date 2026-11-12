@@ -33,10 +33,22 @@ public class SimpleEditDialog {
     }
 
     public static void showPassword(Context context, String dialogTitle, String defaultValue, OnChange onChange, Runnable onDismiss) {
-        show(context, dialogTitle, dialogTitle, defaultValue, onChange, onDismiss, true);
+        show(context, dialogTitle, dialogTitle, defaultValue, onChange, onDismiss, true, false);
+    }
+
+    /**
+     * A box where the keyboard's Enter submits at once. The usual box treats it as "Next", which
+     * only moves to OK, so a search took two presses.
+     */
+    public static void showSubmitOnEnter(Context context, String dialogTitle, String defaultValue, OnChange onChange) {
+        show(context, dialogTitle, dialogTitle, defaultValue, onChange, null, false, true);
     }
 
     private static void show(Context context, String dialogTitle, String dialogHint, String defaultValue, OnChange onChange, Runnable onDismiss, boolean isPassword) {
+        show(context, dialogTitle, dialogHint, defaultValue, onChange, onDismiss, isPassword, false);
+    }
+
+    private static void show(Context context, String dialogTitle, String dialogHint, String defaultValue, OnChange onChange, Runnable onDismiss, boolean isPassword, boolean submitOnEnter) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context, R.style.AppDialog);
         LayoutInflater inflater = LayoutInflater.from(context);
         View contentView = inflater.inflate(R.layout.simple_edit_dialog, null);
@@ -68,7 +80,22 @@ public class SimpleEditDialog {
             configDialog.setOnDismissListener(dialog -> onDismiss.run());
         }
 
+        if (submitOnEnter) {
+            editField.setSingleLine(true);
+            editField.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        }
+
         editField.setOnEditorActionListener((v, actionId, event) -> {
+            if (submitOnEnter) {
+                // Any Enter: the keyboard's own key, a search key, or Enter on a remote or keyboard.
+                // A key event arrives twice, down and up: only the down press submits.
+                if (event != null && event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+                    return true;
+                }
+                configDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+                return true;
+            }
+
             switch (actionId) {
                 case EditorInfo.IME_ACTION_NEXT:
                     configDialog.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();

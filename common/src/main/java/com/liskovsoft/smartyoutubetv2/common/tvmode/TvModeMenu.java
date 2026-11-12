@@ -59,6 +59,12 @@ public class TvModeMenu {
     public static boolean onClicked(Context context, Video item) {
         TvModeMenu menu = new TvModeMenu(context);
 
+        // The results line: a channel or program goes to its place in the guide, a playlist opens.
+        if (TvModeService.isResult(item)) {
+            menu.openResult(item);
+            return true;
+        }
+
         // "Continue watching" and "My list": the program plays by itself, from where it was left.
         if (TvModeService.isShelf(item)) {
             Video saved = menu.mService.playSaved(item);
@@ -90,6 +96,19 @@ public class TvModeMenu {
         }
 
         TvChannel channel = menu.mService.findChannel(item);
+
+        // An episode the guide shows past a Series channel's queue: the series moves to it first.
+        if (channel != null && menu.mService.isUpcoming(channel, item)) {
+            menu.mService.goToUpcoming(channel, item, picked -> {
+                if (picked != null) {
+                    PlaybackPresenter.instance(context).openVideo(picked);
+                } else {
+                    menu.toast("That episode can't be found in the playlist any more");
+                }
+                menu.refreshGuide();
+            });
+            return true;
+        }
 
         if (channel == null || !menu.mService.isLive(channel)) {
             return false;
@@ -288,6 +307,11 @@ public class TvModeMenu {
 
     /** A card in the guide was long pressed. True = handled here. */
     public static boolean onLongClicked(Context context, Video item) {
+        if (TvModeService.isResult(item)) {
+            new TvModeMenu(context).showResultMenu(item);
+            return true;
+        }
+
         if (TvModeService.isShelf(item)) {
             new TvModeMenu(context).showSavedMenu(item);
             return true;
@@ -407,6 +431,11 @@ public class TvModeMenu {
 
             if (!video.isLive) { // a stream has nothing to come back to
                 appendMyList(video);
+
+                mDialog.appendSingleButton(UiOptionItem.from("Find playlists for this", option -> {
+                    mDialog.closeDialog();
+                    findPlaylists(video, channel);
+                }));
             }
         }
 
@@ -537,64 +566,95 @@ public class TvModeMenu {
 
     // ---------------- search ----------------
 
-    /** At most this many lines in the list of matches: more than a remote wants to scroll through. */
-    private static final int MAX_FOUND = 80;
-
+    /** The matches go on the results line above the channels, which opens with the focus on the first one. */
     private void askSearch(String last) {
-        SimpleEditDialog.show(mContext, "Search channels and programs", last, value -> {
+        SimpleEditDialog.showSubmitOnEnter(mContext, "Search channels and programs", last, value -> {
             String query = value != null ? value.trim() : "";
 
             if (!query.isEmpty()) {
-                // After the keyboard's own dialog has closed, so the list doesn't open under it.
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> showFound(query, mService.search(query)), 250);
+                int count = mService.searchToResults(query);
+
+                if (count == 0) {
+                    toast("Nothing on the channels matches \"" + query + "\"");
+                } else {
+                    refreshGuide();
+                }
             }
 
             return true;
         });
     }
 
-    private void showFound(String query, List<TvModeService.Found> found) {
-        if (found.isEmpty()) {
-            toast("Nothing on the channels matches \"" + query + "\"");
+    /** OK on a card of the results line. */
+    private void openResult(Video card) {
+        TvModeService.Found found = mService.resultFound(card);
+
+        if (found != null) {
+            mService.showInGuide(found.channel, found.video);
+            refreshGuide();
             return;
         }
 
-        int shown = 0;
+        TvModeService.PlaylistHit hit = mService.resultPlaylist(card);
 
-        for (TvModeService.Found one : found) {
-            if (shown++ >= MAX_FOUND) {
-                break;
-            }
+        if (hit != null) {
+            // SmartTube's own playlist screen. What plays from there is ordinary SmartTube, not TV.
+            Video playlist = new Video();
+            playlist.videoId = hit.videoId;
+            playlist.playlistId = hit.series.playlistId;
+            playlist.title = hit.series.title;
+            playlist.author = hit.series.author;
+            com.liskovsoft.smartyoutubetv2.common.app.presenters.ChannelUploadsPresenter.instance(mContext).openChannel(playlist);
+        }
+    }
 
-            final TvChannel channel = one.channel;
-            final Video video = one.video;
-            String where = "CH " + (mService.indexOf(channel) + 1) + "  " + channel.name;
-            String label;
+    /** Hold OK on a card of the results line. */
+    private void showResultMenu(Video card) {
+        String title = card.getTitle() != null ? card.getTitle() : "";
+        TvModeService.PlaylistHit hit = mService.resultPlaylist(card);
 
-            if (video == null) {
-                label = where + "  ·  channel";
-            } else {
-                boolean live = mService.isLive(channel);
-                String when = one.index == channel.pos ? (live ? "On now" : "Up first")
-                        : live ? DateFormat.getTimeFormat(mContext).format(new Date(mService.liveStartOf(channel, one.index))) : "Coming up";
-                label = (video.getTitle() != null ? video.getTitle() : "") + "  ·  " + where + "  ·  " + when;
-            }
-
-            mDialog.appendSingleButton(UiOptionItem.from(label, option -> {
+        if (hit != null) {
+            mDialog.appendSingleButton(UiOptionItem.from("Open the playlist", option -> {
                 mDialog.closeDialog();
-                mService.showInGuide(channel, video);
+                openResult(card);
+            }));
+            mDialog.appendSingleButton(UiOptionItem.from("Make a Series channel from episode " + hit.episode, option -> {
+                mDialog.closeDialog();
+                TvChannel made = mService.createSeriesChannel(hit, this::refreshGuide);
+                toast("New channel " + (mService.indexOf(made) + 1) + ": " + made.name);
                 refreshGuide();
+            }));
+        } else {
+            mDialog.appendSingleButton(UiOptionItem.from("Go to it in the guide", option -> {
+                mDialog.closeDialog();
+                openResult(card);
             }));
         }
 
-        mDialog.appendSingleButton(UiOptionItem.from("Search for something else", option -> {
+        mDialog.appendSingleButton(UiOptionItem.from("Remove from results", option -> {
             mDialog.closeDialog();
-            askSearch(query);
+            mService.removeResult(card);
+            refreshGuide();
         }));
 
-        int more = found.size() - Math.min(found.size(), MAX_FOUND);
-        mDialog.showDialog(found.size() + (found.size() == 1 ? " match" : " matches") + " for \"" + query + "\""
-                + (more > 0 ? ", first " + MAX_FOUND + " shown" : ""));
+        mDialog.appendSingleButton(UiOptionItem.from("Clear results", option -> {
+            mDialog.closeDialog();
+            mService.clearResults();
+            refreshGuide();
+        }));
+
+        mDialog.showDialog(title);
+    }
+
+    /** "Find playlists for this": the results line opens at once and fills as each playlist is checked. */
+    private void findPlaylists(Video video, TvChannel channel) {
+        mService.findPlaylists(video, channel, this::refreshGuide, count -> {
+            if (count == 0) {
+                toast("No playlist found with this program. Lists longer than about 100 episodes can't be checked to the end.");
+            }
+        });
+        toast("Looking for playlists with this program");
+        refreshGuide();
     }
 
     // ---------------- channel editor ----------------

@@ -66,6 +66,16 @@ public class TvChannel {
         public int next;
         /** Play the playlist from its other end: for one that lists its newest episode first. */
         public boolean flip;
+        /**
+         * The episode {@link #next} pointed at when it was last dealt, by video id, and that number.
+         * An uploader who adds or removes an episode shifts every number after it, so when the
+         * playlist is read again the bookmark finds its episode by id. Only while next is still
+         * nextAt: a "go to episode" or a shuffle since then moved the bookmark on purpose.
+         */
+        public String nextId;
+        public int nextAt = -1;
+        /** The playlist's picture, from the search that found it. Not saved. */
+        public String image;
     }
 
     public String id;
@@ -302,6 +312,10 @@ public class TvChannel {
             item.put("count", one.count);
             item.put("next", one.next);
             item.put("flip", one.flip);
+            if (one.nextId != null) {
+                item.put("nextId", one.nextId);
+                item.put("nextAt", one.nextAt);
+            }
             seriesArray.put(item);
         }
         o.put("series", seriesArray);
@@ -470,6 +484,8 @@ public class TvChannel {
             copy.count = one.count;
             copy.next = one.next;
             copy.flip = one.flip;
+            copy.nextId = one.nextId;
+            copy.nextAt = one.nextAt;
             c.series.add(copy);
         }
         c.episodes.putAll(episodes);
@@ -631,10 +647,14 @@ public class TvChannel {
             one.count = item.optInt("count", 0);
             one.next = item.optInt("next", 0);
             one.flip = item.optBoolean("flip", false);
+            one.nextId = item.isNull("nextId") ? null : item.optString("nextId", null);
+            one.nextAt = item.optInt("nextAt", -1);
 
             for (Series known : before) {
                 if (playlistId.equals(known.playlistId) && !item.has("next")) {
                     one.next = known.next;
+                    one.nextId = known.nextId;
+                    one.nextAt = known.nextAt;
                     one.flip = known.flip;
                     one.count = Math.max(one.count, known.count);
                 }

@@ -216,6 +216,7 @@ public class TvModeService {
         }
 
         refreshFresh();
+        refreshSeries();
 
         mSection = section;
         final int token = ++mGuideToken;
@@ -871,6 +872,11 @@ public class TvModeService {
     /** A line above the time grid, as cards. Empty = the guide doesn't show the line. */
     public List<Video> getShelf(String shelf) {
         ensureLoaded();
+
+        if (SHELF_RESULTS.equals(shelf)) {
+            return mResults;
+        }
+
         boolean resume = SHELF_RESUME.equals(shelf);
         List<Video> cards = resume ? mResumeCards : mMyListCards;
 
@@ -1323,6 +1329,517 @@ public class TvModeService {
         String[] target = {mGuideChannelId, mGuideProgramId};
         mGuideProgramId = null;
         return target;
+    }
+
+    // ---------------- the results line: a search, or playlists that hold a program ----------------
+
+    /** The line above the time grid that holds what was last looked for. Closest to the channels. */
+    public static final String SHELF_RESULTS = "@results";
+    private static final int MAX_RESULTS = 80;
+    /** Playlists checked for the program, at most. */
+    private static final int FINDER_CANDIDATES = 12;
+    /** Pages of a playlist read to find the program in it. Long daily soaps go further than this. */
+    private static final int FINDER_PAGES = 3;
+
+    /** A playlist that holds the program the finder was asked about. */
+    public static class PlaylistHit {
+        public TvChannel.Series series;
+        /** The program's place in it, from 1. */
+        public int episode;
+        /** The program the finder was asked about: what the playlist viewer opens on. */
+        public String videoId;
+        /** The program's own uploader made the list. */
+        public boolean uploader;
+    }
+
+    /** Cards of the results line, and what each stands for: a Found, or a PlaylistHit. Not saved. */
+    private final List<Video> mResults = new ArrayList<>();
+    private final Map<Video, Object> mResultTargets = new java.util.IdentityHashMap<>();
+    private String mResultsName = "";
+    private boolean mResultsLoading;
+    /** Changes with each search, so a finder still running for an older one drops what it finds. */
+    private int mResultsToken;
+    /** The line the guide opens the next time it reloads. Set by a search, taken once. */
+    private String mShelfTarget;
+
+    public static boolean isResult(Video video) {
+        return video != null && SHELF_RESULTS.equals(video.tvChannelId);
+    }
+
+    /** The results line's name on its tab: the search, or the series looked for. */
+    public String getResultsName() {
+        return mResultsName;
+    }
+
+    /** The finder is still checking playlists: the line shows even before its first card. */
+    public boolean isResultsLoading() {
+        return mResultsLoading;
+    }
+
+    public String takeShelfTarget() {
+        String shelf = mShelfTarget;
+        mShelfTarget = null;
+        return shelf;
+    }
+
+    public void clearResults() {
+        mResultsToken++;
+        mResults.clear();
+        mResultTargets.clear();
+        mResultsName = "";
+        mResultsLoading = false;
+    }
+
+    public void removeResult(Video card) {
+        mResults.remove(card);
+        mResultTargets.remove(card);
+    }
+
+    /** What a result card stands for in a channel: the program itself, or what the channel has on. Null for a playlist. */
+    public Video resultTarget(Video card) {
+        Object target = mResultTargets.get(card);
+
+        if (!(target instanceof Found)) {
+            return null;
+        }
+
+        Found found = (Found) target;
+        return found.video != null ? found.video : found.channel.onNow();
+    }
+
+    public Found resultFound(Video card) {
+        Object target = mResultTargets.get(card);
+        return target instanceof Found ? (Found) target : null;
+    }
+
+    public PlaylistHit resultPlaylist(Video card) {
+        Object target = mResultTargets.get(card);
+        return target instanceof PlaylistHit ? (PlaylistHit) target : null;
+    }
+
+    /** A result card that stands for a whole channel, not one of its programs. */
+    public boolean isChannelResult(Video card) {
+        Found found = resultFound(card);
+        return found != null && found.video == null;
+    }
+
+    /** The small line under a result's title. */
+    public String resultNote(Video card) {
+        Object target = mResultTargets.get(card);
+
+        if (target instanceof PlaylistHit) {
+            PlaylistHit hit = (PlaylistHit) target;
+            String count = hit.series.count > 0 ? hit.series.count + " episodes" : "";
+            String place = "this is episode " + hit.episode;
+            return count.isEmpty() ? place : count + "  •  " + place;
+        }
+
+        if (!(target instanceof Found)) {
+            return "";
+        }
+
+        Found found = (Found) target;
+        TvChannel channel = found.channel;
+        String number = "CH " + (indexOf(channel) + 1);
+
+        if (found.video == null) {
+            String kind = channel.kind.isEmpty() ? "Channel" : channel.kind;
+            return number + "  •  " + kind;
+        }
+
+        int index = channel.indexOf(found.video.videoId);
+        boolean live = isLive(channel);
+        String when = index == channel.pos ? (live ? "On now" : "Up first")
+                : index < 0 || index < channel.pos ? "Played"
+                : live ? android.text.format.DateFormat.getTimeFormat(mContext).format(new java.util.Date(liveStartOf(channel, index))) : "Coming up";
+        return number + "  •  " + when;
+    }
+
+    /** A search of the guide fills the results line: channels, then what's on now, then what's coming up. Returns how many matched. */
+    public int searchToResults(String query) {
+        List<Found> found = search(query);
+
+        if (found.isEmpty()) {
+            return 0;
+        }
+
+        clearResults();
+        mResultsName = "\"" + query.trim() + "\"";
+
+        for (Found one : found) {
+            if (mResults.size() >= MAX_RESULTS) {
+                break;
+            }
+
+            Video card = new Video();
+            card.tvChannelId = SHELF_RESULTS;
+
+            if (one.video == null) {
+                Video onNow = one.channel.onNow();
+                card.videoId = "tvch:" + one.channel.id;
+                card.title = one.channel.name;
+                card.author = onNow != null ? onNow.getTitle() : "";
+                card.cardImageUrl = onNow != null ? onNow.cardImageUrl : null;
+            } else {
+                card.videoId = one.video.videoId;
+                card.title = one.video.getTitle();
+                card.author = one.video.author;
+                card.cardImageUrl = one.video.cardImageUrl;
+                card.percentWatched = one.video.percentWatched;
+            }
+
+            mResults.add(card);
+            mResultTargets.put(card, one);
+        }
+
+        mShelfTarget = SHELF_RESULTS;
+        return found.size();
+    }
+
+    /**
+     * Looks for playlists that hold a program: ones its description links to, then a search for
+     * playlists by the show's name. Each is opened and kept only when the program is really in
+     * it, and, for a search result, when it carries the show's name. Needs no API key.<br/>
+     * onChanged runs on the main thread each time the line changed; onDone once, with how many were found.
+     */
+    public void findPlaylists(final Video program, final TvChannel channel, final Runnable onChanged, final OnCount onDone) {
+        clearResults();
+        final int token = mResultsToken;
+        final String show = showName(program, channel);
+        final String language = languageWord(program.getTitle());
+        final String query = show + (language.isEmpty() || show.toLowerCase(Locale.ROOT).contains(language) ? "" : " " + language);
+        final String description = getInfo(program.videoId);
+        final String author = program.author != null ? program.author.trim() : "";
+
+        mResultsName = "PLAYLISTS: " + show;
+        mResultsLoading = true;
+        mShelfTarget = SHELF_RESULTS;
+
+        mFinder.execute(() -> {
+            List<TvChannel.Series> candidates = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+
+            // 1. Playlists the description links to: the uploader put them there, so no name check.
+            java.util.regex.Matcher link = PLAYLIST_LINK.matcher(description != null ? description : "");
+            while (link.find() && candidates.size() < 4) {
+                if (seen.add(link.group(1))) {
+                    TvChannel.Series one = new TvChannel.Series();
+                    one.playlistId = link.group(1);
+                    one.pageKey = "linked"; // marks it as linked, below
+                    candidates.add(one);
+                }
+            }
+
+            // 2. A search for playlists by the show's name.
+            try {
+                for (TvChannel.Series one : TvPlaylistSearch.find(query)) {
+                    if (candidates.size() >= FINDER_CANDIDATES + 4) {
+                        break;
+                    }
+                    if (one.playlistId != null && seen.add(one.playlistId)) {
+                        candidates.add(one);
+                    }
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "Playlist finder: search for \"%s\" failed: %s", query, e.getMessage());
+            }
+
+            Log.d(TAG, "Playlist finder: \"%s\" for %s, %s playlists to check", query, program.videoId, candidates.size());
+            final int[] found = {0};
+
+            for (TvChannel.Series one : candidates) {
+                if (token != mResultsToken) {
+                    return; // another search took the line
+                }
+
+                boolean linked = "linked".equals(one.pageKey);
+                one.pageKey = null;
+
+                if (!linked && !related(one.title, show)) {
+                    continue;
+                }
+
+                final PlaylistHit hit = checkPlaylist(one, program.videoId);
+
+                if (hit == null) {
+                    continue;
+                }
+
+                hit.uploader = !author.isEmpty() && author.equalsIgnoreCase(hit.series.author != null ? hit.series.author.trim() : "");
+                found[0]++;
+                Log.d(TAG, "Playlist finder: %s \"%s\" by %s holds it as episode %s", hit.series.playlistId, hit.series.title, hit.series.author, hit.episode);
+
+                mMain.post(() -> {
+                    if (token == mResultsToken) {
+                        addPlaylistResult(hit);
+                        onChanged.run();
+                    }
+                });
+            }
+
+            mMain.post(() -> {
+                if (token == mResultsToken) {
+                    mResultsLoading = false;
+                    if (mResults.isEmpty()) {
+                        clearResults();
+                    }
+                    onChanged.run();
+                    onDone.onCount(found[0]);
+                }
+            });
+        });
+    }
+
+    public interface OnCount {
+        void onCount(int count);
+    }
+
+    private final ExecutorService mFinder = Executors.newSingleThreadExecutor();
+    private static final java.util.regex.Pattern PLAYLIST_LINK = java.util.regex.Pattern.compile("[?&]list=((?:PL|OL|UU)[\\w-]{8,})");
+
+    /** Uploader's lists first, then the longest. Main thread. */
+    private void addPlaylistResult(PlaylistHit hit) {
+        Video card = new Video();
+        card.tvChannelId = SHELF_RESULTS;
+        card.videoId = "pl:" + hit.series.playlistId;
+        card.title = hit.series.title;
+        card.author = hit.series.author;
+        card.cardImageUrl = hit.series.image;
+
+        int at = 0;
+        while (at < mResults.size()) {
+            PlaylistHit other = resultPlaylist(mResults.get(at));
+            boolean before = other != null && (other.uploader && !hit.uploader
+                    || other.uploader == hit.uploader && other.series.count >= hit.series.count);
+            if (!before) {
+                break;
+            }
+            at++;
+        }
+
+        mResults.add(at, card);
+        mResultTargets.put(card, hit);
+    }
+
+    /** Opens a playlist's first pages and looks for the program in them. Null when it isn't there. Worker thread. */
+    private PlaylistHit checkPlaylist(TvChannel.Series one, String videoId) {
+        try {
+            ContentService service = YouTubeServiceManager.instance().getContentService();
+            List<MediaGroup> groups = service.getChannelObserve("VL" + one.playlistId).blockingFirst();
+            MediaGroup group = null;
+
+            for (int g = 0; groups != null && g < groups.size(); g++) {
+                MediaGroup candidate = groups.get(g);
+                if (candidate != null && candidate.getMediaItems() != null && !candidate.getMediaItems().isEmpty()
+                        && (group == null || candidate.getNextPageKey() != null)) {
+                    group = candidate;
+                }
+            }
+
+            int place = 0;
+            String firstId = null;
+
+            for (int page = 0; group != null && page < FINDER_PAGES; page++) {
+                List<MediaItem> items = group.getMediaItems();
+
+                for (int i = 0; items != null && i < items.size(); i++) {
+                    MediaItem item = items.get(i);
+                    if (item == null || item.getVideoId() == null) {
+                        continue;
+                    }
+
+                    place++;
+                    if (firstId == null) {
+                        firstId = item.getVideoId();
+                    }
+
+                    if (videoId.equals(item.getVideoId())) {
+                        if (one.title == null || one.title.isEmpty()) {
+                            one.title = group.getTitle() != null ? group.getTitle() : "Playlist";
+                        }
+                        if ((one.author == null || one.author.isEmpty()) && item.getAuthor() != null) {
+                            one.author = item.getAuthor();
+                        }
+                        if (one.image == null && firstId != null) {
+                            one.image = "https://i.ytimg.com/vi/" + firstId + "/mqdefault.jpg";
+                        }
+
+                        PlaylistHit hit = new PlaylistHit();
+                        hit.series = one;
+                        hit.episode = place;
+                        hit.videoId = videoId;
+                        return hit;
+                    }
+                }
+
+                if (group.getNextPageKey() == null) {
+                    break;
+                }
+
+                group = service.continueGroup(group);
+            }
+        } catch (Throwable e) {
+            Log.e(TAG, "Playlist finder: can't open %s: %s", one.playlistId, e.getMessage());
+        }
+
+        return null;
+    }
+
+    /** A search result counts only when its name carries the show's: at least half of the show's longer words. */
+    private static boolean related(String playlistTitle, String show) {
+        String title = playlistTitle != null ? playlistTitle.toLowerCase(Locale.ROOT) : "";
+        int words = 0;
+        int there = 0;
+
+        for (String word : show.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")) {
+            if (word.length() >= 4) {
+                words++;
+                if (title.contains(word)) {
+                    there++;
+                }
+            }
+        }
+
+        return words == 0 ? title.contains(show.toLowerCase(Locale.ROOT)) : there * 2 >= words;
+    }
+
+    private static final java.util.regex.Pattern EPISODE_MARK = java.util.regex.Pattern.compile(
+            "(?i)\\b(?:full\\s+)?(?:episode|episod|epi|ep|part|qist)\\s*[.#:-]?\\s*\\d+|(?:एपिसोड|भाग)\\s*\\d*");
+    private static final String[] TITLE_JUNK = {
+            "(?i)\\b(?:full|last|final|new|latest|complete|all)\\s+episodes?\\b",
+            "(?i)\\b(?:hindi|urdu|english|tamil|telugu|bangla|punjabi)\\s+(?:dubbed|dub|version|audio)\\b",
+            "(?i)\\bseason\\s*\\d+\\b", "(?i)\\bs\\d+\\s*e\\d+\\b",
+            "(?i)\\b(?:hd|4k|1080p|720p|official|promo|teaser|full|drama|serial|series|new|dubbed|episodes?|precap)\\b",
+            "\\b\\d{1,2}(?:st|nd|rd|th)?\\s+[A-Za-z]{3,9},?\\s+\\d{4}\\b", "\\b\\d+\\b", "[\\\\/]+"};
+
+    private static String cleanPart(String part) {
+        String text = part;
+        for (String junk : TITLE_JUNK) {
+            text = text.replaceAll(junk, " ");
+        }
+        return text.replaceAll("\\s+", " ").replaceAll("^[\\s.,!?-]+|[\\s.,!?-]+$", "").trim();
+    }
+
+    private static List<String> titleParts(String title) {
+        List<String> parts = new ArrayList<>();
+        for (String part : (title != null ? title : "").split("\\s*[|｜•–—:\\[\\]()#]+\\s*|\\s+-\\s+")) {
+            if (!part.trim().isEmpty()) {
+                parts.add(part.trim());
+            }
+        }
+        return parts;
+    }
+
+    /**
+     * The show's name from a program's title. Uploaders lay titles out in many ways ("Twist of Fate
+     * | Episode 12 | Set Entertainment", "Ranbir warns Sanju | Kumkum Bhagya | Full Ep 1506 | Zee
+     * TV"), so: the part of the title that other episodes by the same uploader on this channel
+     * share, when there are some; otherwise the part next to the episode number; never the uploader.
+     * On a Series channel, the series' own name.
+     */
+    String showName(Video program, TvChannel channel) {
+        TvChannel.Series series = channel != null ? channel.seriesOf(program.videoId) : null;
+        if (series != null && !series.title.isEmpty()) {
+            return seriesName(series.title);
+        }
+
+        String author = program.author != null ? program.author.trim() : "";
+        List<String> parts = titleParts(program.getTitle());
+
+        // What stays the same across episodes is the name; the scene and the number change.
+        if (channel != null) {
+            Map<String, Integer> shared = new HashMap<>();
+            for (Video other : channel.lineup) {
+                if (other == program || other.videoId == null || other.videoId.equals(program.videoId)
+                        || other.author == null || !other.author.trim().equalsIgnoreCase(author)) {
+                    continue;
+                }
+                for (String part : titleParts(other.getTitle())) {
+                    String clean = cleanPart(part).toLowerCase(Locale.ROOT);
+                    if (!clean.isEmpty()) {
+                        shared.put(clean, shared.containsKey(clean) ? shared.get(clean) + 1 : 1);
+                    }
+                }
+            }
+
+            for (String part : parts) {
+                String clean = cleanPart(part);
+                if (usable(clean, author) && shared.containsKey(clean.toLowerCase(Locale.ROOT))) {
+                    return clean;
+                }
+            }
+        }
+
+        int marked = -1;
+        for (int i = 0; i < parts.size(); i++) {
+            if (EPISODE_MARK.matcher(parts.get(i)).find()) {
+                marked = i;
+                break;
+            }
+        }
+
+        List<Integer> order = new ArrayList<>();
+        if (marked >= 0) {
+            order.add(marked);
+            order.add(marked - 1);
+            order.add(marked + 1);
+        }
+        for (int i = 0; i < parts.size(); i++) {
+            order.add(i);
+        }
+
+        for (int i : order) {
+            if (i < 0 || i >= parts.size()) {
+                continue;
+            }
+            String part = parts.get(i);
+            // A part that is only "Episode 12" splits into nothing at all.
+            String[] split = EPISODE_MARK.split(part);
+            String before = cleanPart(split.length > 0 ? split[0] : "");
+            if (usable(before, author)) {
+                return before;
+            }
+            String clean = cleanPart(part);
+            if (usable(clean, author)) {
+                return clean;
+            }
+        }
+
+        String all = cleanPart(program.getTitle() != null ? program.getTitle() : "");
+        return all.isEmpty() ? (program.getTitle() != null ? program.getTitle() : "") : all;
+    }
+
+    private static boolean usable(String part, String author) {
+        return part.length() >= 3 && !part.equalsIgnoreCase(author)
+                && !part.matches("(?i)^(?:zee|star|sony|colors|set|ary|hum|geo)?\\s*(?:tv|plus|entertainment|bharat|channel|digital|official)$");
+    }
+
+    private static String languageWord(String title) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?i)\\b(hindi|urdu|english|tamil|telugu)\\b").matcher(title != null ? title : "");
+        return matcher.find() ? matcher.group(1).toLowerCase(Locale.ROOT) : "";
+    }
+
+    /** A playlist the finder found becomes a Series channel of its own, starting at the program. */
+    public TvChannel createSeriesChannel(PlaylistHit hit, Runnable onDone) {
+        TvChannel channel = new TvChannel();
+        channel.id = "my-" + System.currentTimeMillis();
+        channel.name = seriesName(hit.series.title);
+        channel.kind = TvChannel.KIND_SERIES;
+        channel.edited = true;
+
+        TvChannel.Series one = new TvChannel.Series();
+        one.playlistId = hit.series.playlistId;
+        one.title = seriesName(hit.series.title);
+        one.author = hit.series.author != null ? hit.series.author : "";
+        one.count = hit.series.count;
+        one.next = Math.max(0, hit.episode - 1);
+        channel.series.add(one);
+
+        mChannels.add(channel);
+        mShown = null;
+        save();
+        fill(channel, onDone);
+        return channel;
     }
 
     // ---------------- loading ahead ----------------
@@ -1932,6 +2449,38 @@ public class TvModeService {
     /** The episodes of a playlist, in its order. Read once for a run of the app. */
     private final Map<String, List<Video>> mEpisodes = new ConcurrentHashMap<>();
     private final Map<String, Long> mEpisodesFailed = new ConcurrentHashMap<>();
+    /** When each playlist was last read. A running show gains episodes, so a list older than this is read again. */
+    private final Map<String, Long> mEpisodesReadAt = new ConcurrentHashMap<>();
+    private static final long SERIES_REREAD_MS = 4 * 60 * 60_000L;
+
+    private boolean needsReading(String playlistId, long now) {
+        Long readAt = mEpisodesReadAt.get(playlistId);
+        return !mEpisodes.containsKey(playlistId) || readAt == null || now - readAt > SERIES_REREAD_MS;
+    }
+
+    /**
+     * Series channels whose playlists were read a while ago read them again, without waiting for
+     * their queue to run low: on a Free channel that only happens as episodes are watched.
+     */
+    private void refreshSeries() {
+        long now = System.currentTimeMillis();
+
+        for (TvChannel channel : mChannels) {
+            if (!channel.isSeries() || channel.loading) {
+                continue;
+            }
+
+            for (TvChannel.Series one : channel.series) {
+                Long failedAt = mEpisodesFailed.get(one.playlistId);
+                if (mEpisodes.containsKey(one.playlistId) && needsReading(one.playlistId, now)
+                        && (failedAt == null || now - failedAt > 5 * 60_000)) {
+                    fillSeries(channel, null, false);
+                    break;
+                }
+            }
+        }
+    }
+
     /** A playlist is read to its end, in pages, up to this many. */
     private static final int MAX_EPISODE_PAGES = 60;
     private static final int SERIES_FOUND = 14;
@@ -2099,7 +2648,7 @@ public class TvModeService {
         for (TvChannel.Series one : channel.series) {
             Long failedAt = mEpisodesFailed.get(one.playlistId);
             // A playlist that couldn't be read is left alone for a while: the guide asks again every few seconds.
-            if (!mEpisodes.containsKey(one.playlistId) && (failedAt == null || channel.lastFillMs - failedAt > 5 * 60_000)) {
+            if (needsReading(one.playlistId, channel.lastFillMs) && (failedAt == null || channel.lastFillMs - failedAt > 5 * 60_000)) {
                 toRead.add(new String[] {one.playlistId, one.pageKey});
             }
         }
@@ -2110,8 +2659,10 @@ public class TvModeService {
                 Log.d(TAG, "%s: playlist %s has %s episodes", channel.name, playlist[0], episodes.size());
                 if (!episodes.isEmpty()) {
                     mEpisodes.put(playlist[0], episodes);
+                    mEpisodesReadAt.put(playlist[0], System.currentTimeMillis());
+                    mEpisodesVersion++;
                     mEpisodesFailed.remove(playlist[0]);
-                } else {
+                } else { // an old list, when there is one, stays in use
                     mEpisodesFailed.put(playlist[0], System.currentTimeMillis());
                 }
             }
@@ -2295,6 +2846,13 @@ public class TvModeService {
             queued.add(channel.lineup.get(i).videoId);
         }
 
+        for (TvChannel.Series one : channel.series) {
+            List<Video> its = mEpisodes.get(one.playlistId);
+            if (its != null && !its.isEmpty()) {
+                syncBookmark(one, its);
+            }
+        }
+
         for (int guard = 0; guard < 400 && channel.ahead() < minAhead(channel); guard++) {
             TvChannel.Series one = null;
             List<Video> episodes = null;
@@ -2371,7 +2929,193 @@ public class TvModeService {
         }
 
         channel.seriesTurn = turn;
+
+        for (TvChannel.Series one : channel.series) {
+            List<Video> its = mEpisodes.get(one.playlistId);
+            if (its != null && !its.isEmpty()) {
+                markBookmark(one, its);
+            }
+        }
+
         return added;
+    }
+
+    /** The episode at a place in a series, counting from its first episode whichever way the playlist runs. */
+    private static Video episodeAt(TvChannel.Series one, List<Video> episodes, int place) {
+        return episodes.get(one.flip ? episodes.size() - 1 - place : place);
+    }
+
+    /** The playlist was read again and may have shifted: the bookmark goes back to its own episode. */
+    private static void syncBookmark(TvChannel.Series one, List<Video> episodes) {
+        if (one.nextId == null || one.next != one.nextAt) {
+            return; // nothing recorded, or the bookmark was moved on purpose since
+        }
+
+        for (int place = 0; place < episodes.size(); place++) {
+            if (one.nextId.equals(episodeAt(one, episodes, place).videoId)) {
+                if (place != one.next) {
+                    Log.d(TAG, "%s: the playlist shifted, the next episode is now number %s, was %s", one.title, place + 1, one.next + 1);
+                    one.next = place;
+                }
+                break;
+            }
+        }
+
+        one.nextAt = one.next;
+    }
+
+    /** Records which episode the bookmark is on, by id, for {@link #syncBookmark}. */
+    private static void markBookmark(TvChannel.Series one, List<Video> episodes) {
+        one.nextAt = one.next;
+        one.nextId = one.next >= 0 && one.next < episodes.size() ? episodeAt(one, episodes, one.next).videoId : null;
+    }
+
+    /** How many episodes past the queue a Free Series channel shows in the guide. */
+    private static final int MAX_UPCOMING = 400;
+
+    /**
+     * The episodes a Series channel would deal after what is queued, in the same order and
+     * rotation dealEpisodes() uses, without dealing them. The playlists are already in memory,
+     * so the guide can show the rest of a series without any of it being saved. Each is a copy
+     * that belongs to the channel, with its episode number as the badge.
+     */
+    public List<Video> upcomingEpisodes(TvChannel channel) {
+        int count = channel.series.size();
+
+        if (!channel.isSeries() || count == 0) {
+            return Collections.emptyList();
+        }
+
+        // The guide asks on every frame: built again only when the channel or a playlist changed.
+        StringBuilder key = new StringBuilder();
+        key.append(mEpisodesVersion).append('|').append(channel.pos).append('|').append(channel.lineup.size())
+                .append('|').append(channel.seriesTurn).append('|').append(channel.seriesRun);
+        if (!channel.lineup.isEmpty()) {
+            key.append('|').append(channel.lineup.get(channel.lineup.size() - 1).videoId);
+        }
+        for (TvChannel.Series one : channel.series) {
+            key.append('|').append(one.playlistId).append(':').append(one.next).append(one.flip ? 'f' : 'n');
+        }
+
+        Object[] cached = mUpcoming.get(channel.id);
+        if (cached != null && key.toString().equals(cached[0])) {
+            @SuppressWarnings("unchecked")
+            List<Video> list = (List<Video>) cached[1];
+            return list;
+        }
+
+        List<Video> upcoming = buildUpcoming(channel, count);
+        mUpcoming.put(channel.id, new Object[] {key.toString(), upcoming});
+        return upcoming;
+    }
+
+    private final Map<String, Object[]> mUpcoming = new HashMap<>();
+    /** Goes up each time a playlist is read, so what was built from the old list is built again. */
+    private volatile int mEpisodesVersion;
+
+    private List<Video> buildUpcoming(TvChannel channel, int count) {
+        List<Video> upcoming = new ArrayList<>();
+
+        int[] next = new int[count];
+        for (int i = 0; i < count; i++) {
+            next[i] = channel.series.get(i).next;
+        }
+
+        Set<String> queued = new HashSet<>();
+        for (int i = Math.max(0, channel.pos); i < channel.lineup.size(); i++) {
+            queued.add(channel.lineup.get(i).videoId);
+        }
+
+        int turn = Math.abs(channel.seriesTurn) % count;
+        int run = channel.seriesRun <= 0 ? Integer.MAX_VALUE : channel.seriesRun;
+
+        for (int guard = 0; guard < 2_000 && upcoming.size() < MAX_UPCOMING; guard++) {
+            int picked = -1;
+            List<Video> episodes = null;
+
+            for (int i = 0; i < count; i++) {
+                int at = (turn + i) % count;
+                List<Video> its = mEpisodes.get(channel.series.get(at).playlistId);
+                // No looping here: going round again would only repeat what is shown already.
+                if (its != null && next[at] < its.size()) {
+                    picked = at;
+                    episodes = its;
+                    break;
+                }
+            }
+
+            if (picked < 0) {
+                break;
+            }
+
+            TvChannel.Series one = channel.series.get(picked);
+            turn = picked;
+            int dealt = 0;
+
+            while (dealt < run && next[picked] < episodes.size() && upcoming.size() < MAX_UPCOMING) {
+                Video source = episodeAt(one, episodes, next[picked]);
+                next[picked]++;
+
+                if (queued.contains(source.videoId)) {
+                    continue; // already in the lineup
+                }
+
+                Video video = Video.from(source);
+                video.playlistId = null;
+                video.playlistParams = null;
+                video.playlistIndex = -1;
+                video.author = source.author != null ? source.author : one.author;
+                video.tvChannelId = channel.id;
+                video.badge = "Ep " + next[picked];
+                upcoming.add(video);
+                dealt++;
+            }
+
+            if (run != Integer.MAX_VALUE || next[picked] >= episodes.size()) {
+                turn = (turn + 1) % count;
+            }
+        }
+
+        return upcoming;
+    }
+
+    /**
+     * A Free Series channel: an episode past the queue was picked in the guide. The series moves
+     * to it and has the next turn, what is queued after what's on now is dealt again from there,
+     * and onReady gets the episode as it now stands in the lineup, ready to play.
+     */
+    public void goToUpcoming(TvChannel channel, Video picked, OnPicked onReady) {
+        for (int s = 0; s < channel.series.size(); s++) {
+            TvChannel.Series one = channel.series.get(s);
+            List<Video> episodes = mEpisodes.get(one.playlistId);
+
+            for (int place = 0; episodes != null && place < episodes.size(); place++) {
+                if (picked.videoId != null && picked.videoId.equals(episodeAt(one, episodes, place).videoId)) {
+                    requeue(channel);
+                    one.next = place;
+                    channel.seriesTurn = s;
+                    channel.edited = true;
+                    save();
+                    fill(channel, () -> {
+                        int index = channel.indexOf(picked.videoId);
+                        onReady.onPicked(index >= 0 ? channel.lineup.get(index) : null);
+                    });
+                    return;
+                }
+            }
+        }
+
+        onReady.onPicked(null);
+    }
+
+    public interface OnPicked {
+        void onPicked(Video video);
+    }
+
+    /** True for an episode the guide shows past a Series channel's queue: it isn't in the lineup yet. */
+    public boolean isUpcoming(TvChannel channel, Video video) {
+        return channel != null && video != null && channel.isSeries() && video.videoId != null && channel.indexOf(video.videoId) == -1
+                && video.badge != null && video.badge.startsWith("Ep ");
     }
 
     /** The episode of a series that is on or comes next on the channel, counted from 1. */
@@ -3817,6 +4561,7 @@ public class TvModeService {
         mMyList.clear();
         mResumeCards = null;
         mMyListCards = null;
+        clearResults();
         mDeletedPresets.clear();
         mPages.clear();
         mPlaylists.clear();
@@ -3864,9 +4609,35 @@ public class TvModeService {
         mLoaded = true;
         mAccount = accountKey();
         loadDevice();
-        loadState();
 
-        String config = readFile(new File(mContext.getFilesDir(), CONFIG_CACHE_FILE));
+        // Read ahead on a worker while the app started: wait for it to finish rather than read twice.
+        java.util.concurrent.CountDownLatch preloading = mStatePreloading;
+        boolean preloaded = false;
+
+        if (preloading != null) {
+            try {
+                preloading.await(20, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            preloaded = preloading.getCount() == 0;
+        }
+
+        JSONObject state = preloaded && mAccount.equals(mPreloadedAccount) ? mPreloadedState : null;
+        List<TvChannel> channels = state != null ? mPreloadedChannels : null;
+
+        if (state != null && channels != null) {
+            Log.d(TAG, "Saved state read ahead: %s channels", channels.size());
+            applyState(state, channels);
+        } else {
+            loadState();
+        }
+
+        String config = preloaded ? mPreloadedConfig : readFile(new File(mContext.getFilesDir(), CONFIG_CACHE_FILE));
+        mStatePreloading = null;
+        mPreloadedState = null;
+        mPreloadedChannels = null;
+        mPreloadedConfig = null;
 
         if (config == null || !applyConfig(config)) {
             try {
@@ -4632,14 +5403,77 @@ public class TvModeService {
 
         try {
             JSONObject state = new JSONObject(text);
-            JSONArray channels = state.optJSONArray("channels");
+            applyState(state, readChannels(state));
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't read the saved TV mode state: %s", e.getMessage());
+            mChannels.clear();
+        }
+    }
 
-            for (int i = 0; channels != null && i < channels.length(); i++) {
-                TvChannel channel = TvChannel.fromJson(channels.getJSONObject(i));
-                if (channel.id != null) {
-                    mChannels.add(channel);
-                }
+    private static List<TvChannel> readChannels(JSONObject state) throws org.json.JSONException {
+        List<TvChannel> list = new ArrayList<>();
+        JSONArray channels = state.optJSONArray("channels");
+
+        for (int i = 0; channels != null && i < channels.length(); i++) {
+            TvChannel channel = TvChannel.fromJson(channels.getJSONObject(i));
+            if (channel.id != null) {
+                list.add(channel);
             }
+        }
+
+        return list;
+    }
+
+    // The saved state read on a worker while the app starts, for ensureLoaded() to take.
+    private volatile java.util.concurrent.CountDownLatch mStatePreloading;
+    private volatile String mPreloadedAccount;
+    private volatile JSONObject mPreloadedState;
+    private volatile List<TvChannel> mPreloadedChannels;
+    private volatile String mPreloadedConfig;
+
+    /**
+     * Reads the saved state on a worker as the app starts, so opening the guide doesn't wait for
+     * it. With 200 channels the reading took seconds, and on the main thread that once made
+     * Android close the app. Only reads and parses: nothing here touches the service's lists,
+     * which stay the main thread's. Main thread.
+     */
+    public void preloadState() {
+        if (mLoaded || mStatePreloading != null) {
+            return;
+        }
+
+        final String account = accountKey();
+        final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        mPreloadedAccount = account;
+        mStatePreloading = latch;
+
+        new Thread(() -> {
+            long start = System.currentTimeMillis();
+
+            try {
+                String text = readFile(stateFile(account));
+
+                if (text != null) {
+                    JSONObject state = new JSONObject(text);
+                    mPreloadedChannels = readChannels(state);
+                    mPreloadedState = state;
+                }
+
+                mPreloadedConfig = readFile(new File(mContext.getFilesDir(), CONFIG_CACHE_FILE));
+            } catch (Throwable e) {
+                Log.e(TAG, "Can't read the saved state ahead: %s", e.getMessage());
+                mPreloadedState = null;
+                mPreloadedChannels = null;
+            } finally {
+                Log.d(TAG, "Saved state read ahead in %s ms", System.currentTimeMillis() - start);
+                latch.countDown();
+            }
+        }, "tv-mode-preload").start();
+    }
+
+    private void applyState(JSONObject state, List<TvChannel> channels) {
+        try {
+            mChannels.addAll(channels);
 
             JSONObject settings = state.optJSONObject("settings");
             if (settings != null) {

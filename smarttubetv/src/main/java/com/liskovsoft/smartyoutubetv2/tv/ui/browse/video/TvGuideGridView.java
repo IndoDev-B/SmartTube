@@ -70,13 +70,28 @@ public class TvGuideGridView extends View {
     private final TextPaint mPillText = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final RectF mRect = new RectF();
     private final List<Video> mButtons = new ArrayList<>();
-    /** The lines between the buttons and the time grid, top to bottom. One with nothing on it isn't shown. */
-    private static final String[] SHELVES = {TvModeService.SHELF_RESUME, TvModeService.SHELF_LIST};
+    /**
+     * The lines between the buttons and the time grid, top to bottom. One with nothing on it isn't
+     * shown. The results of a search sit lowest, closest to the channels: the first Up from
+     * channel 1 lands there, which is the way back after picking a result.
+     */
+    private static final String[] SHELVES = {TvModeService.SHELF_RESUME, TvModeService.SHELF_LIST, TvModeService.SHELF_RESULTS};
     /** The line above the time grid the focus is on. Null = the focus is on the buttons, or on a channel. */
     private String mShelf;
     private int mShelfItem;
     /** The first card on screen of each of those lines. */
     private final java.util.Map<String, Integer> mShelfFirst = new java.util.HashMap<>();
+    /** The card the focus was on in each of those lines, to come back to it. */
+    private final java.util.Map<String, Integer> mShelfItems = new java.util.HashMap<>();
+    /** Free mode lines and the lines above the grid: every program the same width, since no clock runs on them. */
+    private static final float CARD_DP = 232;
+    /**
+     * Where each Free line is scrolled, by channel id, as the first card on screen counted from
+     * what's on now. Free lines scroll on their own: moving along one leaves the others alone.
+     */
+    private final java.util.Map<String, Integer> mFreeOffset = new java.util.HashMap<>();
+    /** The program the focus was on in each Free line, by channel id, to come back to it. */
+    private final java.util.Map<String, String> mFreeFocus = new java.util.HashMap<>();
     private Listener mListener;
     /** -1 = the buttons in the top line, otherwise the channel's place in the list. */
     private int mRow;
@@ -161,12 +176,82 @@ public class TvGuideGridView extends View {
         List<String> shown = new ArrayList<>();
 
         for (String shelf : SHELVES) {
-            if (!mService.getShelf(shelf).isEmpty()) {
+            // The results line shows while the playlist finder is still looking, before its first card.
+            if (!mService.getShelf(shelf).isEmpty() || (TvModeService.SHELF_RESULTS.equals(shelf) && mService.isResultsLoading())) {
                 shown.add(shelf);
             }
         }
 
         return shown;
+    }
+
+    /** The card to land on when the focus comes into a line: the one it was on last time. */
+    private int rememberedItem(String shelf) {
+        Integer item = shelf != null ? mShelfItems.get(shelf) : null;
+        return item != null ? item : 0;
+    }
+
+    // ---------------- Free mode lines ----------------
+
+    private boolean isFree(TvChannel channel) {
+        return !mService.isLive(channel);
+    }
+
+    /** A Free Series line goes on past its queue with the rest of the series, read from the playlist already in memory. */
+    private List<Video> upcoming(TvChannel channel) {
+        return isFree(channel) ? mService.upcomingEpisodes(channel) : java.util.Collections.<Video>emptyList();
+    }
+
+    /** How many programs a line has to move through: its lineup, and on a Free Series line the rest of the series. */
+    private int programCount(TvChannel channel) {
+        return channel.lineup.size() + upcoming(channel).size();
+    }
+
+    private Video programOf(TvChannel channel, int index) {
+        if (index < 0) {
+            return null;
+        }
+        if (index < channel.lineup.size()) {
+            return channel.lineup.get(index);
+        }
+        List<Video> more = upcoming(channel);
+        int at = index - channel.lineup.size();
+        return at < more.size() ? more.get(at) : null;
+    }
+
+    private int cardsThatFit() {
+        return Math.max(1, (int) ((getWidth() - timelineLeft()) / dp(CARD_DP)));
+    }
+
+    /** The first card on screen of a Free line. */
+    private int freeFirst(TvChannel channel) {
+        Integer offset = mFreeOffset.get(channel.id);
+        int first = Math.max(0, channel.pos) + (offset != null ? offset : 0);
+        return Math.max(firstProgram(channel), Math.min(first, Math.max(0, programCount(channel) - 1)));
+    }
+
+    /** Scrolls a Free line just enough for the focused card to be on screen. */
+    private void scrollFreeToFocus(TvChannel channel) {
+        if (mProgram < 0) {
+            return;
+        }
+
+        int first = freeFirst(channel);
+        int fit = cardsThatFit();
+
+        if (mProgram < first) {
+            first = mProgram;
+        } else if (mProgram >= first + fit) {
+            first = mProgram - fit + 1;
+        }
+
+        mFreeOffset.put(channel.id, first - Math.max(0, channel.pos));
+    }
+
+    /** Holding Left or Right speeds up: one card at a time at first, then three, then ten. */
+    private static int stepFor(KeyEvent event) {
+        int repeats = event.getRepeatCount();
+        return repeats > 24 ? 10 : repeats > 8 ? 3 : 1;
     }
 
     /** The lines are drawn in full only while the focus is on one of them: the guide has room for three channels. */
@@ -180,7 +265,11 @@ public class TvGuideGridView extends View {
         return dp(36) + (count == 0 ? 0 : shelvesOpen() ? count * dp(44) + dp(2) : dp(24));
     }
 
-    private static String shelfName(String shelf) {
+    private String shelfName(String shelf) {
+        if (TvModeService.SHELF_RESULTS.equals(shelf)) {
+            String name = mService.getResultsName();
+            return name.isEmpty() ? "RESULTS" : name.toUpperCase();
+        }
         return TvModeService.SHELF_RESUME.equals(shelf) ? "CONTINUE WATCHING" : "MY LIST";
     }
 
@@ -208,7 +297,8 @@ public class TvGuideGridView extends View {
             if (index > channel.pos) {
                 mProgram = index;
                 mOnNowFocused = false;
-                mFocusTimeMs = startOf(channel, index, System.currentTimeMillis());
+                // A Free line has no clock: the focus goes to the card, and the line scrolls to it.
+                mFocusTimeMs = isFree(channel) ? 0 : startOf(channel, index, System.currentTimeMillis());
             }
 
             return;
@@ -253,6 +343,19 @@ public class TvGuideGridView extends View {
             focusTarget(target[0], target[1]);
         }
 
+        // A search just filled the results line: it opens with the focus on its first card.
+        String shelfTarget = mService.takeShelfTarget();
+        if (shelfTarget != null && shelves().contains(shelfTarget)) {
+            if (mRow >= 0) {
+                mReturnRow = mRow; // Down goes back to the channel the viewer was on
+            }
+            mRow = -1;
+            mShelf = shelfTarget;
+            mShelfItem = 0;
+            mShelfItems.put(shelfTarget, 0);
+            mShelfFirst.put(shelfTarget, 0);
+        }
+
         // The list under the focus changed (a filter, a move, a delete): stay on the same channel
         // when it is still shown, on the one that took its place otherwise.
         if (mRow >= 0 && mFocusedId != null) {
@@ -287,7 +390,7 @@ public class TvGuideGridView extends View {
 
         if (mRow >= 0) {
             TvChannel channel = channels.get(mRow);
-            if (mProgram < firstProgram(channel) || mProgram >= channel.lineup.size()) {
+            if (mProgram < firstProgram(channel) || mProgram >= programCount(channel)) {
                 mProgram = -1; // it's gone: back to what the channel has on
             }
         }
@@ -320,6 +423,9 @@ public class TvGuideGridView extends View {
                 if (mShelfItem >= 0 && mShelfItem < cards.size()) {
                     return cards.get(mShelfItem);
                 }
+                if (cards.isEmpty()) {
+                    return null; // the results line while the finder is still looking
+                }
             }
             return mButtons.get(mButton);
         }
@@ -331,7 +437,8 @@ public class TvGuideGridView extends View {
         }
 
         TvChannel channel = channels.get(mRow);
-        return mProgram >= 0 && mProgram < channel.lineup.size() ? channel.lineup.get(mProgram) : channel.onNow();
+        Video program = programOf(channel, mProgram);
+        return program != null ? program : channel.onNow();
     }
 
     @Override
@@ -428,7 +535,9 @@ public class TvGuideGridView extends View {
             if (mShelf != null) {
                 List<Video> cards = mService.getShelf(mShelf);
 
-                if (cards.isEmpty()) {
+                if (cards.isEmpty() && shelves().contains(mShelf)) {
+                    mShelfItem = 0; // the results line, still looking: the focus waits on it
+                } else if (cards.isEmpty()) {
                     // Its last program was removed: the other line, or the buttons when that one is empty too.
                     List<String> left = shelves();
                     mShelf = left.isEmpty() ? null : left.get(0);
@@ -442,6 +551,20 @@ public class TvGuideGridView extends View {
 
             if (channel.lineup.isEmpty()) {
                 mProgram = -1;
+            } else if (mProgram < 0 && isFree(channel)) {
+                // A Free line has no clock to line up with: back to the card it was on, or to what's on.
+                String last = mFreeFocus.get(channel.id);
+                int index = last != null ? channel.indexOf(last) : -1;
+                if (index < 0 && last != null) { // one of the episodes past the queue
+                    List<Video> more = upcoming(channel);
+                    for (int i = 0; i < more.size(); i++) {
+                        if (last.equals(more.get(i).videoId)) {
+                            index = channel.lineup.size() + i;
+                            break;
+                        }
+                    }
+                }
+                mProgram = index > channel.pos ? index : Math.max(0, channel.pos);
             } else if (mProgram < 0) {
                 // Just arrived on this channel: whatever it has on at the time the focus was at.
                 // Only a time still ahead counts. One that has passed since it was set, by the
@@ -453,7 +576,11 @@ public class TvGuideGridView extends View {
                 mProgram = programAt(channel, mFocusTimeMs > 0 ? mFocusTimeMs : now, now);
             }
 
-            scrollToFocus(channel, now);
+            if (isFree(channel)) {
+                scrollFreeToFocus(channel); // the time line, and the other lines, stay where they are
+            } else {
+                scrollToFocus(channel, now);
+            }
         }
 
         int visible = visibleRows();
@@ -509,14 +636,14 @@ public class TvGuideGridView extends View {
                     if (mRow < 0) { // off the first channel: the lines above the grid, the lowest first
                         List<String> lines = shelves();
                         mShelf = lines.isEmpty() ? null : lines.get(lines.size() - 1);
-                        mShelfItem = 0;
+                        mShelfItem = rememberedItem(mShelf);
                     }
                     moved();
                 } else if (mShelf != null) {
                     List<String> lines = shelves();
                     int at = lines.indexOf(mShelf);
                     mShelf = at > 0 ? lines.get(at - 1) : null;
-                    mShelfItem = 0;
+                    mShelfItem = rememberedItem(mShelf);
                     moved();
                 }
                 return true; // the top line is where Up stops
@@ -527,7 +654,7 @@ public class TvGuideGridView extends View {
                     int at = mShelf != null ? lines.indexOf(mShelf) : -1;
                     if (at + 1 < lines.size()) {
                         mShelf = lines.get(at + 1);
-                        mShelfItem = 0;
+                        mShelfItem = rememberedItem(mShelf);
                         moved();
                         return true;
                     }
@@ -568,7 +695,7 @@ public class TvGuideGridView extends View {
                     if (mShelfItem == 0) {
                         return false; // off the left edge: the side menu
                     }
-                    mShelfItem--;
+                    mShelfItem = Math.max(0, mShelfItem - stepFor(event));
                     moved();
                     return true;
                 }
@@ -581,21 +708,24 @@ public class TvGuideGridView extends View {
                     return true;
                 }
                 if (mProgram > firstProgram(channels.get(mRow))) {
-                    mProgram--;
+                    TvChannel channel = channels.get(mRow);
+                    mProgram = Math.max(firstProgram(channel), mProgram - stepFor(event));
                     // Back on what's on now: Up/Down follow now again, not this program's start.
-                    mFocusTimeMs = mProgram == channels.get(mRow).pos ? 0 : startOf(channels.get(mRow), mProgram, now);
+                    // A Free line has no clock, so moving along it never sets a time for the others.
+                    mFocusTimeMs = mProgram == channel.pos || isFree(channel) ? 0 : startOf(channel, mProgram, now);
                     moved();
                     return true;
                 }
                 return false;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 if (mRow < 0 && mShelf != null) {
-                    mShelfItem = Math.min(mService.getShelf(mShelf).size() - 1, mShelfItem + 1);
+                    mShelfItem = Math.max(0, Math.min(mService.getShelf(mShelf).size() - 1, mShelfItem + stepFor(event)));
                 } else if (mRow < 0) {
                     mButton = Math.min(mButtons.size() - 1, mButton + 1);
-                } else if (mProgram >= 0 && mProgram < channels.get(mRow).lineup.size() - 1) {
-                    mProgram++;
-                    mFocusTimeMs = mProgram == channels.get(mRow).pos ? 0 : startOf(channels.get(mRow), mProgram, now);
+                } else if (mProgram >= 0 && mProgram < programCount(channels.get(mRow)) - 1) {
+                    TvChannel channel = channels.get(mRow);
+                    mProgram = Math.min(programCount(channel) - 1, mProgram + stepFor(event));
+                    mFocusTimeMs = mProgram == channel.pos || isFree(channel) ? 0 : startOf(channel, mProgram, now);
                 }
                 moved();
                 return true;
@@ -654,6 +784,18 @@ public class TvGuideGridView extends View {
         fixFocus();
         List<TvChannel> channels = mService.getShownChannels();
         mOnNowFocused = mRow < 0 || (mRow < channels.size() && mProgram == channels.get(mRow).pos);
+
+        if (mRow < 0 && mShelf != null) {
+            mShelfItems.put(mShelf, mShelfItem);
+        } else if (mRow >= 0 && mRow < channels.size() && isFree(channels.get(mRow))) {
+            TvChannel channel = channels.get(mRow);
+            Video program = programOf(channel, mProgram);
+            if (program != null && program.videoId != null && mProgram > channel.pos) {
+                mFreeFocus.put(channel.id, program.videoId);
+            } else {
+                mFreeFocus.remove(channel.id); // on what's on: follow it as the channel moves on
+            }
+        }
         invalidate();
         notifyFocus();
         // Leaving a channel can put its program on "Continue watching", a moment after the focus
@@ -781,6 +923,18 @@ public class TvGuideGridView extends View {
                 canvas.drawText(about, nameLeft, top + dp(32), mName);
             }
 
+            if (!live) { // Free: cards of one width, scrolled on their own
+                drawFreeRow(canvas, channel, top, cellHeight, rowFocused, width, timelineLeft);
+                continue;
+            }
+
+            // The now line runs down the Live lines only: a Free line has no clock.
+            float nowLineX = timelineLeft + (now - viewStart) * pxPerMs;
+            if (nowLineX >= timelineLeft && nowLineX <= width) {
+                mFill.setColor(RED);
+                canvas.drawRect(nowLineX - dp(1), top - (rowHeight - cellHeight), nowLineX + dp(1), top + cellHeight, mFill);
+            }
+
             // Its programs, each as wide as it is long
             canvas.save();
             canvas.clipRect(timelineLeft, top, width, top + cellHeight);
@@ -847,14 +1001,89 @@ public class TvGuideGridView extends View {
             }
 
             canvas.restore();
+
+            // The now line again, over the programs, where it shows through.
+            if (nowLineX >= timelineLeft && nowLineX <= width) {
+                mFill.setColor(RED);
+                canvas.drawRect(nowLineX - dp(1), top, nowLineX + dp(1), top + cellHeight, mFill);
+            }
         }
 
-        // Now: one red line down every channel
+        // Now, on the ruler above the channels
         float nowX = timelineLeft + (now - viewStart) * pxPerMs;
         if (nowX >= timelineLeft && nowX <= width) {
             mFill.setColor(RED);
-            canvas.drawRect(nowX - dp(1), gridTop, nowX + dp(1), getHeight(), mFill);
+            canvas.drawRect(nowX - dp(1), gridTop, nowX + dp(1), rowTop, mFill);
         }
+    }
+
+    /**
+     * A Free mode line: no clock runs on it, so every program is a card of one width, like the
+     * lines above the grid, and the line scrolls on its own. Already played on the left, what's
+     * on with a red edge, then what's next. A Series line goes on with the rest of the series.
+     */
+    private void drawFreeRow(Canvas canvas, TvChannel channel, float top, float cellHeight, boolean rowFocused, int width, float timelineLeft) {
+        float cardWidth = dp(CARD_DP);
+        float thumbWidth = dp(64);
+        int count = programCount(channel);
+        int first = freeFirst(channel);
+
+        canvas.save();
+        canvas.clipRect(timelineLeft, top, width, top + cellHeight);
+
+        for (int i = first; i < count; i++) {
+            float cellLeft = timelineLeft + (i - first) * cardWidth;
+            if (cellLeft > width) {
+                break;
+            }
+
+            Video video = programOf(channel, i);
+            if (video == null) {
+                break;
+            }
+
+            float cellRight = cellLeft + cardWidth - dp(3);
+            boolean on = rowFocused && i == mProgram;
+            boolean onNow = i == channel.pos;
+            boolean past = i < channel.pos;
+            boolean beyond = i >= channel.lineup.size(); // past the queue: read from the playlist
+
+            mRect.set(cellLeft, top, cellRight, top + cellHeight);
+            mFill.setColor(on ? FOCUSED : onNow ? LINE_NOW : LINE);
+            canvas.drawRoundRect(mRect, dp(7), dp(7), mFill);
+
+            if (onNow) {
+                mFill.setColor(RED);
+                float edge = video.percentWatched > 0 && video.percentWatched < 100
+                        ? cellLeft + (cellRight - cellLeft) * video.percentWatched / 100f : cellRight;
+                canvas.drawRect(cellLeft, top + cellHeight - dp(2.5f), edge, top + cellHeight, mFill);
+            }
+
+            float textLeft = cellLeft + dp(9);
+            android.graphics.Bitmap thumb = thumb(video);
+
+            if (thumb != null && !thumb.isRecycled()) {
+                mRect.set(cellLeft + dp(2), top + dp(2), cellLeft + dp(2) + thumbWidth, top + cellHeight - dp(2));
+                mThumbPaint.setAlpha(past && !on ? 120 : 255);
+                canvas.drawBitmap(thumb, null, mRect, mThumbPaint);
+                textLeft = cellLeft + thumbWidth + dp(10);
+            }
+
+            float room = cellRight - textLeft - dp(8);
+            mTitle.setColor(on ? 0xFF111111 : past ? 0xFF9A9A9A : 0xFFFFFFFF);
+            mTitle.setTypeface(onNow ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            canvas.drawText(fit(video.getTitle() != null ? video.getTitle() : "", mTitle, room), textLeft, top + dp(17), mTitle);
+
+            String author = video.getAuthor() != null ? video.getAuthor().trim() : "";
+            String meta = past ? "Watched" : onNow ? (video.percentWatched > 0 && video.percentWatched < 100 ? "Paused" : "Up first") : author;
+            if (video.badge != null && !video.badge.isEmpty()) {
+                meta = beyond || meta.isEmpty() ? video.badge + (beyond && !author.isEmpty() ? "  •  " + author : "") : meta + "  •  " + video.badge;
+            }
+            mMeta.setColor(on ? 0xFF333333 : past ? 0xFF808080 : 0xFFBDBDBD);
+            canvas.drawText(fit(meta, mMeta, room), textLeft, top + dp(32), mMeta);
+        }
+
+        canvas.restore();
     }
 
     /**
@@ -877,7 +1106,11 @@ public class TvGuideGridView extends View {
             float height = dp(20);
 
             for (String shelf : lines) {
-                String text = shelfName(shelf) + "   " + mService.getShelf(shelf).size();
+                int size = mService.getShelf(shelf).size();
+                String name = shelfName(shelf);
+                // A long search would push the other tabs off the line.
+                name = fit(name, mName, dp(220));
+                String text = name + "   " + (size == 0 ? "…" : String.valueOf(size));
                 float textLeft = x + dp(25);
                 float tabWidth = dp(25) + mName.measureText(text) + dp(11);
                 mRect.set(x, top, x + tabWidth, top + height);
@@ -896,6 +1129,10 @@ public class TvGuideGridView extends View {
                     mPath.lineTo(cx - r * 0.7f, cy + r);
                     mPath.close();
                     canvas.drawPath(mPath, mFill);
+                } else if (TvModeService.SHELF_RESULTS.equals(shelf)) { // a magnifying glass
+                    mStroke.setColor(RED);
+                    canvas.drawCircle(cx - r * 0.2f, cy - r * 0.2f, r * 0.65f, mStroke);
+                    canvas.drawLine(cx + r * 0.3f, cy + r * 0.3f, cx + r, cy + r, mStroke);
                 } else { // a plus
                     canvas.drawRect(cx - r, cy - dp(1), cx + r, cy + dp(1), mFill);
                     canvas.drawRect(cx - dp(1), cy - r, cx + dp(1), cy + r, mFill);
@@ -906,8 +1143,11 @@ public class TvGuideGridView extends View {
                 x += tabWidth + dp(8);
             }
 
-            mName.setColor(0xFF9E9E9E);
-            canvas.drawText("Press Up on the first channel to open", x + dp(6), top + dp(13.5f), mName);
+            // With three tabs the hint no longer fits on the line.
+            if (lines.size() < 3) {
+                mName.setColor(0xFF9E9E9E);
+                canvas.drawText("Press Up on the first channel to open", x + dp(6), top + dp(13.5f), mName);
+            }
             return;
         }
 
@@ -925,10 +1165,21 @@ public class TvGuideGridView extends View {
             mRect.set(left, top, left + dp(150), top + cellHeight);
             mFill.setColor(rowFocused ? RED : LINE);
             canvas.drawRoundRect(mRect, dp(7), dp(7), mFill);
+            boolean results = TvModeService.SHELF_RESULTS.equals(shelf);
             mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFFD6D6D6);
-            canvas.drawText(shelfName(shelf), left + dp(10), top + dp(18), mName);
+            canvas.drawText(fit(shelfName(shelf), mName, dp(136)), left + dp(10), top + dp(18), mName);
             mName.setColor(rowFocused ? 0xFFFFFFFF : 0xFF9E9E9E);
-            canvas.drawText(cards.size() + (cards.size() == 1 ? " program" : " programs"), left + dp(10), top + dp(32), mName);
+            String count = results
+                    ? (mService.isResultsLoading() ? (cards.isEmpty() ? "Looking…" : cards.size() + " so far, looking…")
+                            : cards.size() + (cards.size() == 1 ? " result" : " results"))
+                    : cards.size() + (cards.size() == 1 ? " program" : " programs");
+            canvas.drawText(count, left + dp(10), top + dp(32), mName);
+
+            if (cards.isEmpty()) {
+                mMeta.setColor(0xFFBDBDBD);
+                canvas.drawText("Opening each playlist to check it holds this program", timelineLeft + dp(9), top + dp(25), mMeta);
+                continue;
+            }
 
             // The line scrolls just enough to keep the focused card on screen.
             Integer kept = mShelfFirst.get(shelf);
@@ -972,12 +1223,27 @@ public class TvGuideGridView extends View {
                     textLeft = cellLeft + thumbWidth + dp(10);
                 }
 
+                boolean channelCard = results && mService.isChannelResult(card);
+                if (channelCard) {
+                    // A whole channel, not a program: its number in a red badge over the picture of what it has on.
+                    TvModeService.Found found = mService.resultFound(card);
+                    String number = found != null ? String.valueOf(mService.indexOf(found.channel) + 1) : "";
+                    float badgeWidth = mNumber.measureText(number) + dp(10);
+                    mRect.set(cellLeft + dp(2), top + dp(2), cellLeft + dp(2) + Math.max(thumbWidth * 0.6f, badgeWidth), top + cellHeight - dp(2));
+                    mFill.setColor(RED);
+                    canvas.drawRoundRect(mRect, dp(5), dp(5), mFill);
+                    mNumber.setColor(0xFFFFFFFF);
+                    canvas.drawText(number, mRect.left + (mRect.width() - mNumber.measureText(number)) / 2, top + dp(26), mNumber);
+                    textLeft = Math.max(textLeft, mRect.right + dp(8));
+                }
+
                 float room = cellRight - textLeft - dp(8);
                 mTitle.setColor(on ? 0xFF111111 : 0xFFFFFFFF);
-                mTitle.setTypeface(Typeface.DEFAULT);
-                canvas.drawText(fit(card.getTitle() != null ? card.getTitle() : "", mTitle, room), textLeft, top + dp(17), mTitle);
+                mTitle.setTypeface(channelCard ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+                String cardTitle = card.getTitle() != null ? card.getTitle() : "";
+                canvas.drawText(fit(channelCard ? cardTitle.toUpperCase() : cardTitle, mTitle, room), textLeft, top + dp(17), mTitle);
                 mMeta.setColor(on ? 0xFF333333 : 0xFFBDBDBD);
-                canvas.drawText(fit(mService.savedNote(card), mMeta, room), textLeft, top + dp(32), mMeta);
+                canvas.drawText(fit(results ? mService.resultNote(card) : mService.savedNote(card), mMeta, room), textLeft, top + dp(32), mMeta);
 
                 if (card.percentWatched > 0) { // how far in, as a red edge along the bottom
                     mFill.setColor(RED);

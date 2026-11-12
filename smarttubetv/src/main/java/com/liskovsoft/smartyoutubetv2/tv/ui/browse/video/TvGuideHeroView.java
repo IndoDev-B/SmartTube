@@ -283,6 +283,46 @@ public class TvGuideHeroView extends FrameLayout {
         TvModeService service = TvModeService.instance(context);
         mClock.setText(DateFormat.getTimeFormat(context).format(new Date()));
 
+        // A card of the results line. A channel or program shows as itself, with its channel in the picture box.
+        if (TvModeService.isResult(video)) {
+            Video target = service.resultTarget(video);
+            if (target != null) {
+                show(target);
+                return;
+            }
+
+            // A playlist the finder found: nothing to play here, OK opens it.
+            TvModeService.PlaylistHit hit = service.resultPlaylist(video);
+            mChannelChip.setText("PLAYLIST");
+            mModeChip.setVisibility(GONE);
+            mTitle.setText(video.getTitle());
+            mBy.setMaxLines(1);
+            String by = video.author != null ? video.author : "";
+            String note = service.resultNote(video);
+            String tag = hit != null && hit.uploader ? "The uploader's own list" : "";
+            String line = by.isEmpty() ? note : note.isEmpty() ? by : by + "  •  " + note;
+            mBy.setText(tag.isEmpty() ? line : tag + "  •  " + line);
+            mProgressTrack.setVisibility(INVISIBLE);
+            mOkKey.setVisibility(VISIBLE);
+            mOkLabel.setVisibility(VISIBLE);
+            mOkLabel.setText("Open the playlist");
+            mHoldKey.setVisibility(VISIBLE);
+            mHoldLabel.setVisibility(VISIBLE);
+            mHoldLabel.setText("Make a channel, remove");
+            mPreviewIcon.setVisibility(GONE);
+            mPreviewBug.setVisibility(GONE);
+            previewChannel(null);
+            about(null);
+
+            if (video.videoId != null && !video.videoId.equals(mShownId)) {
+                mShownId = video.videoId;
+                if (!(context instanceof Activity && ((Activity) context).isDestroyed()) && video.cardImageUrl != null) {
+                    Glide.with(context).load(video.cardImageUrl).into(mPreview);
+                }
+            }
+            return;
+        }
+
         // A program of "Continue watching" or "My list": it belongs to no channel, so nothing plays in the picture box.
         if (TvModeService.isShelf(video)) {
             boolean started = video.percentWatched > 0;
