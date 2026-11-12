@@ -52,7 +52,10 @@ public class TvModeService {
     public static final String ACTION_SETTINGS = "@settings";
     public static final String ACTION_SHUFFLE_ALL = "@shuffle_all";
     public static final String ACTION_NEW_CHANNEL = "@new_channel";
+    /** The Type filter. Named before types and genres were told apart. */
     public static final String ACTION_GENRE = "@genre";
+    /** The Genre filter: Action, Cricket, Jazz... within the type picked, or across all. */
+    public static final String ACTION_TOPIC = "@topic";
     public static final String ACTION_LANGUAGE = "@language";
     public static final String ACTION_FAVOURITES = "@favourites";
     /** Marks a video played by the Random button. It belongs to no channel. */
@@ -1309,6 +1312,9 @@ public class TvModeService {
         if (!mFilterKind.isEmpty() && !mFilterKind.equalsIgnoreCase(channel.kind)) {
             mFilterKind = "";
         }
+        if (!mFilterGenre.isEmpty() && !mFilterGenre.equalsIgnoreCase(channel.genre)) {
+            mFilterGenre = "";
+        }
         if (!mFilterLanguage.isEmpty() && !mFilterLanguage.equals(channel.language())) {
             mFilterLanguage = "";
         }
@@ -2195,6 +2201,7 @@ public class TvModeService {
             for (TvChannel channel : mChannels) {
                 if ((!mFavOnly || channel.fav)
                         && (mFilterKind.isEmpty() || mFilterKind.equalsIgnoreCase(channel.kind))
+                        && (mFilterGenre.isEmpty() || mFilterGenre.equalsIgnoreCase(channel.genre))
                         && (mFilterLanguage.isEmpty() || mFilterLanguage.equals(channel.language()))) {
                     shown.add(channel);
                 }
@@ -2242,7 +2249,74 @@ public class TvModeService {
 
     public void setFilterKind(String kind) {
         mFilterKind = kind != null ? kind : "";
+        // A genre the new type has no channel in would leave the guide empty: it goes.
+        if (!mFilterGenre.isEmpty() && !containsIgnoreCase(getGenres(), mFilterGenre)) {
+            mFilterGenre = "";
+        }
         save();
+    }
+
+    /** The guide's Genre filter: only channels filed under this genre. Empty = any. Not a program type. */
+    private String mFilterGenre = "";
+
+    public String getFilterGenre() {
+        ensureLoaded();
+        return mFilterGenre;
+    }
+
+    public void setFilterGenre(String genre) {
+        mFilterGenre = genre != null ? genre : "";
+        save();
+    }
+
+    /**
+     * The genres the Genre filter offers: those of channels of the type picked (all channels when
+     * Type is Any) in the language picked, so no choice empties the guide. The preset list's
+     * order first, then any others.
+     */
+    public List<String> getGenres() {
+        ensureLoaded();
+        List<String> genres = new ArrayList<>();
+        List<String> found = new ArrayList<>();
+
+        for (TvChannel channel : mChannels) {
+            if (!channel.genre.isEmpty()
+                    && (mFilterKind.isEmpty() || mFilterKind.equalsIgnoreCase(channel.kind))
+                    && (mFilterLanguage.isEmpty() || mFilterLanguage.equals(channel.language()))
+                    && !containsIgnoreCase(found, channel.genre)) {
+                found.add(channel.genre);
+            }
+        }
+
+        for (String genre : mGenreOrder) {
+            if (containsIgnoreCase(found, genre) && !containsIgnoreCase(genres, genre)) {
+                genres.add(genre);
+            }
+        }
+
+        for (String genre : found) {
+            if (!containsIgnoreCase(genres, genre)) {
+                genres.add(genre);
+            }
+        }
+
+        return genres;
+    }
+
+    /** How many channels a genre choice would show, with the other filters as they are. */
+    public int countWithGenre(String genre) {
+        int count = 0;
+
+        for (TvChannel channel : mChannels) {
+            if ((!mFavOnly || channel.fav)
+                    && (mFilterKind.isEmpty() || mFilterKind.equalsIgnoreCase(channel.kind))
+                    && (genre.isEmpty() || genre.equalsIgnoreCase(channel.genre))
+                    && (mFilterLanguage.isEmpty() || mFilterLanguage.equals(channel.language()))) {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /** The program types that have channels: first the ones the preset list names, in its order, then any others. */
@@ -3171,6 +3245,9 @@ public class TvModeService {
 
     public void setFilterLanguage(String code) {
         mFilterLanguage = code != null ? code : "";
+        if (!mFilterGenre.isEmpty() && !containsIgnoreCase(getGenres(), mFilterGenre)) {
+            mFilterGenre = ""; // no channel of that genre in this language
+        }
         save();
     }
 
@@ -4579,6 +4656,7 @@ public class TvModeService {
         mGuideChannelId = null;
         mFilterKind = "";
         mFilterLanguage = "";
+        mFilterGenre = "";
         mFavOnly = false;
         mConfigText = null;
         mLineupsChecked = false;
@@ -5502,6 +5580,8 @@ public class TvModeService {
                     mFavOnly = false;
                 }
                 mFilterKind = settings.optString("filterKind", "");
+                // Its own key: older builds read "filterGenre" as the type, from before types and genres were apart.
+                mFilterGenre = settings.optString("filterTopic", "");
                 mFilterLanguage = settings.optString("filterLanguage", "");
                 if (!mHasDevice && mApi.key().isEmpty()) { // saved by a build that kept the key with the state
                     mApi.restore(settings.optString("apiKey", ""), settings.optString("apiDay", ""), settings.optInt("apiUsed", 0), settings.optInt("apiSearches", 0));
@@ -5587,6 +5667,7 @@ public class TvModeService {
             settings.put("guideChannel", mGuideChannelId);
             settings.put("filterGenre", ""); // kept so an older build finds the key; the guide filters by type now
             settings.put("filterKind", mFilterKind);
+            settings.put("filterTopic", mFilterGenre);
             settings.put("filterLanguage", mFilterLanguage);
 
             // What belongs to the TV and not to an account. The key stays on this TV: it is never

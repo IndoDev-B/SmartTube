@@ -674,6 +674,8 @@ public class TvGuideHeroView extends FrameLayout {
             return "Channel mode, remote, sleep timer, history, shuffle all.";
         } else if (TvModeService.ACTION_GENRE.equals(action)) {
             return "Show only one kind of program: movies, series, songs...\nCH+ and CH- stay within them.";
+        } else if (TvModeService.ACTION_TOPIC.equals(action)) {
+            return "Show only one genre: action, cricket, jazz...\nWith a type picked, only that type's genres are offered.";
         } else if (TvModeService.ACTION_LANGUAGE.equals(action)) {
             return "Show only the channels in one language.\nCH+ and CH- stay within them.";
         } else if (TvModeService.ACTION_FAVOURITES.equals(action)) {

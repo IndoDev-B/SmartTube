@@ -86,6 +86,8 @@ public class TvModeMenu {
                 menu.showNewChannel();
             } else if (TvModeService.ACTION_GENRE.equals(item.tvChannelId)) {
                 menu.showGenreFilter();
+            } else if (TvModeService.ACTION_TOPIC.equals(item.tvChannelId)) {
+                menu.showTopicFilter();
             } else if (TvModeService.ACTION_LANGUAGE.equals(item.tvChannelId)) {
                 menu.showLanguageFilter();
             } else if (TvModeService.ACTION_FAVOURITES.equals(item.tvChannelId)) {
@@ -178,6 +180,26 @@ public class TvModeMenu {
         }
 
         mDialog.showDialog("Type");
+    }
+
+    /** The Genre button: the genres of the type picked, or of every type, each with how many channels it shows. */
+    private void showTopicFilter() {
+        String current = mService.getFilterGenre();
+        List<String> genres = mService.getGenres();
+
+        if (genres.isEmpty()) {
+            toast("The channels shown have no genre to pick from");
+            return;
+        }
+
+        appendChoice("Any", current.isEmpty(), () -> mService.setFilterGenre(""));
+
+        for (String genre : genres) {
+            appendChoice(genre + "  ·  " + mService.countWithGenre(genre), genre.equalsIgnoreCase(current), () -> mService.setFilterGenre(genre));
+        }
+
+        String kind = mService.getFilterKind();
+        mDialog.showDialog(kind.isEmpty() ? "Genre" : "Genre of " + kind);
     }
 
     // ---------------- series ----------------

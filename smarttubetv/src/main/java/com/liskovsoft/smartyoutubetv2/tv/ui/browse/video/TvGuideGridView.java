@@ -58,7 +58,7 @@ public class TvGuideGridView extends View {
     private final java.util.Set<String> mThumbsAsked = new java.util.HashSet<>();
     private final TvModeService mService;
     /** How many of the top line's buttons sit on the left. The rest are right-aligned. */
-    private static final int LEFT_BUTTONS = 3;
+    private static final int LEFT_BUTTONS = 4;
     private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint mStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.Path mPath = new android.graphics.Path();
@@ -143,6 +143,7 @@ public class TvGuideGridView extends View {
 
         // Filters on the left, actions on the right. LEFT_BUTTONS says where the first group ends.
         mButtons.add(button(TvModeService.ACTION_GENRE, R.drawable.icon_tv_mode));
+        mButtons.add(button(TvModeService.ACTION_TOPIC, R.drawable.icon_playlist));
         mButtons.add(button(TvModeService.ACTION_LANGUAGE, R.drawable.settings_language));
         mButtons.add(button(TvModeService.ACTION_FAVOURITES, R.drawable.icon_subscriptions));
         mButtons.add(button(TvModeService.ACTION_SEARCH, R.drawable.action_search));
@@ -162,13 +163,35 @@ public class TvGuideGridView extends View {
     /** The filter buttons say what they are set to, so a filter that is on shows without opening it. */
     private void labelButtons() {
         String kind = mService.getFilterKind();
+        String genre = mService.getFilterGenre();
         String language = mService.getFilterLanguage();
+        String languageName = language.isEmpty() ? "" : com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(language);
         mButtons.get(0).title = "Type: " + (kind.isEmpty() ? "Any" : kind);
-        mButtons.get(1).title = "Language: " + (language.isEmpty() ? "Any" : com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(language));
-        mButtons.get(2).title = "Favourites";
-        mButtons.get(3).title = "Search";
-        mButtons.get(4).title = getContext().getString(R.string.tv_mode_new_channel);
-        mButtons.get(5).title = getContext().getString(R.string.tv_mode_settings);
+        mButtons.get(1).title = "Genre: " + (genre.isEmpty() ? "Any" : genre);
+        mButtons.get(2).title = "Language: " + (language.isEmpty() ? "Any" : languageName);
+        mButtons.get(3).title = "Favourites";
+        mButtons.get(4).title = "Search";
+        mButtons.get(5).title = getContext().getString(R.string.tv_mode_new_channel);
+        mButtons.get(6).title = getContext().getString(R.string.tv_mode_settings);
+
+        // When the full labels don't fit on the line: the filters say only what they are set to,
+        // and Favourites keeps just its star. The picture above names the focused button anyway.
+        mShortTitles[0] = kind.isEmpty() ? "Type" : kind;
+        mShortTitles[1] = genre.isEmpty() ? "Genre" : genre;
+        mShortTitles[2] = language.isEmpty() ? "Language" : languageName;
+        mShortTitles[3] = "";
+        mShortTitles[4] = mButtons.get(4).title;
+        mShortTitles[5] = "New";
+        mShortTitles[6] = mButtons.get(6).title;
+    }
+
+    private final String[] mShortTitles = new String[7];
+
+    /** A top line button: its icon, and its label when it has one. */
+    private float pillWidth(String label, float iconSize) {
+        return label == null || label.isEmpty()
+                ? dp(12) + iconSize + dp(12)
+                : dp(12) + iconSize + dp(7) + mPillText.measureText(label) + dp(14);
     }
 
     /** The lines above the time grid that have something on them. */
@@ -833,12 +856,22 @@ public class TvGuideGridView extends View {
         // Top line: the filters from the left, the actions from the right. Each is an icon and a label.
         float iconSize = dp(14);
         float[] pillWidths = new float[mButtons.size()];
+        String[] labels = new String[mButtons.size()];
         float rightWidth = 0;
+        float allWidth = 0;
         for (int i = 0; i < mButtons.size(); i++) {
-            pillWidths[i] = dp(12) + iconSize + dp(7) + mPillText.measureText(mButtons.get(i).title) + dp(14);
-            if (i >= LEFT_BUTTONS) {
-                rightWidth += pillWidths[i] + (i > LEFT_BUTTONS ? dp(9) : 0);
+            labels[i] = mButtons.get(i).title;
+            pillWidths[i] = pillWidth(labels[i], iconSize);
+            allWidth += pillWidths[i] + dp(9);
+        }
+        if (left + allWidth + dp(36) > width - dp(45)) { // too long for one line: the short labels
+            for (int i = 0; i < mButtons.size(); i++) {
+                labels[i] = mShortTitles[i] != null ? mShortTitles[i] : labels[i];
+                pillWidths[i] = pillWidth(labels[i], iconSize);
             }
+        }
+        for (int i = LEFT_BUTTONS; i < mButtons.size(); i++) {
+            rightWidth += pillWidths[i] + (i > LEFT_BUTTONS ? dp(9) : 0);
         }
         float x = left;
         for (int i = 0; i < mButtons.size(); i++) {
@@ -850,6 +883,7 @@ public class TvGuideGridView extends View {
             // A filter that is on keeps a red tint, so it shows from anywhere in the guide.
             boolean active = (TvModeService.ACTION_FAVOURITES.equals(action) && mService.isFavOnly())
                     || (TvModeService.ACTION_GENRE.equals(action) && !mService.getFilterKind().isEmpty())
+                    || (TvModeService.ACTION_TOPIC.equals(action) && !mService.getFilterGenre().isEmpty())
                     || (TvModeService.ACTION_LANGUAGE.equals(action) && !mService.getFilterLanguage().isEmpty());
             mRect.set(x, dp(2), x + pillWidths[i], dp(30));
             mFill.setColor(on ? FOCUSED : active ? 0x99E62117 : 0x1FFFFFFF);
@@ -857,7 +891,7 @@ public class TvGuideGridView extends View {
             int ink = on ? 0xFF111111 : 0xFFFFFFFF;
             drawIcon(canvas, action, x + dp(12) + iconSize / 2, dp(16), iconSize, ink, active);
             mPillText.setColor(ink);
-            canvas.drawText(mButtons.get(i).title, x + dp(12) + iconSize + dp(7), dp(21), mPillText);
+            canvas.drawText(labels[i], x + dp(12) + iconSize + dp(7), dp(21), mPillText);
             x += pillWidths[i] + dp(9);
         }
 
@@ -1294,6 +1328,18 @@ public class TvGuideGridView extends View {
             canvas.drawRect(cx + gap, cy - r, cx + r, cy - gap, mFill);
             canvas.drawRect(cx - r, cy + gap, cx - gap, cy + r, mFill);
             canvas.drawRect(cx + gap, cy + gap, cx + r, cy + r, mFill);
+        } else if (TvModeService.ACTION_TOPIC.equals(action)) { // a tag: filled when the filter is on
+            mPath.reset();
+            mPath.moveTo(cx - r, cy - r * 0.55f);
+            mPath.lineTo(cx + r * 0.35f, cy - r * 0.55f);
+            mPath.lineTo(cx + r, cy);
+            mPath.lineTo(cx + r * 0.35f, cy + r * 0.55f);
+            mPath.lineTo(cx - r, cy + r * 0.55f);
+            mPath.close();
+            canvas.drawPath(mPath, active ? mFill : mStroke);
+            if (!active) {
+                canvas.drawCircle(cx - r * 0.45f, cy, dp(1.5f), mFill);
+            }
         } else if (TvModeService.ACTION_LANGUAGE.equals(action)) { // a globe
             canvas.drawCircle(cx, cy, r - dp(0.75f), mStroke);
             mRect.set(cx - r * 0.45f, cy - r + dp(0.75f), cx + r * 0.45f, cy + r - dp(0.75f));
