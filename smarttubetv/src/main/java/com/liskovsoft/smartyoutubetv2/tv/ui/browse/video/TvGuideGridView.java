@@ -917,21 +917,33 @@ public class TvGuideGridView extends View {
         calendar.set(java.util.Calendar.SECOND, 0);
         calendar.set(java.util.Calendar.MILLISECOND, 0);
         calendar.set(java.util.Calendar.MINUTE, calendar.get(java.util.Calendar.MINUTE) < 30 ? 0 : 30);
-        canvas.save();
-        canvas.clipRect(timelineLeft, gridTop, width, getHeight());
-        for (long mark = calendar.getTimeInMillis(); (mark - viewStart) * pxPerMs < width; mark += halfHour) {
-            float markX = timelineLeft + (mark - viewStart) * pxPerMs;
-            mFill.setColor(0x33FFFFFF);
-            canvas.drawRect(markX, gridTop, markX + dp(1), getHeight(), mFill);
-            canvas.drawText(time(mark), markX + dp(5), rulerBase, mRuler);
-        }
-        canvas.restore();
-
-        // Channels
         float rowTop = gridTop + dp(22);
         float rowHeight = dp(44);
         float cellHeight = dp(40);
         int visible = visibleRows() + 1; // the last one may be cut off, which shows there is more
+
+        // The clock only means something for Live lines. With none on screen, no times, no now line:
+        // Free lines wait for the viewer, and a clock over them read as if they ran on it.
+        boolean anyLive = false;
+        for (int row = mTopRow; row < channels.size() && row < mTopRow + visible; row++) {
+            anyLive |= mService.isLive(channels.get(row));
+        }
+
+        List<Float> marks = new ArrayList<>();
+        canvas.save();
+        canvas.clipRect(timelineLeft, gridTop, width, getHeight());
+        for (long mark = calendar.getTimeInMillis(); (mark - viewStart) * pxPerMs < width; mark += halfHour) {
+            float markX = timelineLeft + (mark - viewStart) * pxPerMs;
+            marks.add(markX);
+            if (anyLive) {
+                mFill.setColor(0x33FFFFFF);
+                canvas.drawRect(markX, gridTop, markX + dp(1), rowTop, mFill);
+                canvas.drawText(time(mark), markX + dp(5), rulerBase, mRuler);
+            }
+        }
+        canvas.restore();
+
+        // Channels
 
         for (int row = mTopRow; row < channels.size() && row < mTopRow + visible; row++) {
             TvChannel channel = channels.get(row);
@@ -962,7 +974,14 @@ public class TvGuideGridView extends View {
                 continue;
             }
 
-            // The now line runs down the Live lines only: a Free line has no clock.
+            // The half hour marks and the now line run down the Live lines only: a Free line has no clock.
+            mFill.setColor(0x33FFFFFF);
+            for (float markX : marks) {
+                if (markX >= timelineLeft && markX <= width) {
+                    canvas.drawRect(markX, top - (rowHeight - cellHeight), markX + dp(1), top + cellHeight, mFill);
+                }
+            }
+
             float nowLineX = timelineLeft + (now - viewStart) * pxPerMs;
             if (nowLineX >= timelineLeft && nowLineX <= width) {
                 mFill.setColor(RED);
@@ -1045,7 +1064,7 @@ public class TvGuideGridView extends View {
 
         // Now, on the ruler above the channels
         float nowX = timelineLeft + (now - viewStart) * pxPerMs;
-        if (nowX >= timelineLeft && nowX <= width) {
+        if (anyLive && nowX >= timelineLeft && nowX <= width) {
             mFill.setColor(RED);
             canvas.drawRect(nowX - dp(1), gridTop, nowX + dp(1), rowTop, mFill);
         }
