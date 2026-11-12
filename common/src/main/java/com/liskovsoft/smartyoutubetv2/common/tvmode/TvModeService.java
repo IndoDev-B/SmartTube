@@ -1748,7 +1748,7 @@ public class TvModeService {
 
         // What stays the same across episodes is the name; the scene and the number change.
         if (channel != null) {
-            Map<String, Integer> shared = new HashMap<>();
+            Map<String, Integer> shared = new java.util.HashMap<>();
             for (Video other : channel.lineup) {
                 if (other == program || other.videoId == null || other.videoId.equals(program.videoId)
                         || other.author == null || !other.author.trim().equalsIgnoreCase(author)) {
@@ -3009,7 +3009,7 @@ public class TvModeService {
         return upcoming;
     }
 
-    private final Map<String, Object[]> mUpcoming = new HashMap<>();
+    private final Map<String, Object[]> mUpcoming = new java.util.HashMap<>();
     /** Goes up each time a playlist is read, so what was built from the old list is built again. */
     private volatile int mEpisodesVersion;
 
