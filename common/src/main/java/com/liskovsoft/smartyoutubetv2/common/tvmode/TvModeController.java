@@ -295,6 +295,7 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onNewVideo(Video item) {
+        getService().adoptTvVideo(item);
         TvModeOverlay overlay = sOverlay.get();
 
         if (!isTvVideo(item)) {
@@ -593,6 +594,7 @@ public class TvModeController extends BasePlayerController {
     @Override
     public boolean onKeyDown(int keyCode) {
         Video current = getVideo();
+        getService().adoptTvVideo(current);
 
         // isControlsShown: the buttons and seek bar are focused, not the rows of videos under them.
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP && hasTopButtons(current) && getPlayer() != null && getPlayer().isControlsShown()) {
@@ -600,6 +602,14 @@ public class TvModeController extends BasePlayerController {
             if (overlay != null && overlay.focusTopButtons()) {
                 return true;
             }
+        }
+
+        // A program from Continue watching, My list or played once isn't a channel's, but the
+        // channel keys still go on from the channel that was on.
+        boolean fromSaved = current != null && (TvModeService.isShelf(current) || TvModeService.ONCE.equals(current.tvChannelId));
+
+        if (fromSaved && getPlayer() != null && (keyCode == KeyEvent.KEYCODE_CHANNEL_UP || keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN)) {
+            return tune(getService().surf(current, keyCode == KeyEvent.KEYCODE_CHANNEL_UP ? 1 : -1));
         }
 
         if (!isTvVideo(current) || getPlayer() == null) {

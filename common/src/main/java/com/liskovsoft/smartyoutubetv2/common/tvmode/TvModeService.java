@@ -548,8 +548,44 @@ public class TvModeService {
     }
 
     /** The video on now on the next (dir 1) or previous (dir -1) channel that has one. */
+    /** The channel the guide and the player last had on. Null when none. */
+    private TvChannel lastChannel() {
+        for (TvChannel channel : mChannels) {
+            if (channel.id.equals(mLastChannelId)) {
+                return channel;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A video that reached the player without its channel tag, though it is the one the last
+     * channel has in its lineup: the player sometimes swaps in its own copy of a video. Without
+     * the tag CH+ / CH- and the top buttons did nothing until the guide was opened again.
+     * The tag goes back on. Only the last channel's lineup counts, so an ordinary SmartTube video
+     * is never taken for a TV one.
+     */
+    public void adoptTvVideo(Video video) {
+        if (video == null || video.tvChannelId != null || video.videoId == null || mLastChannelId == null) {
+            return;
+        }
+
+        TvChannel channel = lastChannel();
+
+        if (channel != null && channel.indexOf(video.videoId) >= 0) {
+            Log.d(TAG, "%s came back without its channel: given back to %s", video.videoId, channel.name);
+            video.tvChannelId = channel.id;
+        }
+    }
+
     public Video surf(Video current, int dir) {
         TvChannel from = findChannel(current);
+
+        // From "Continue watching", "My list" or a program played once: CH+ / CH- go on from the
+        // channel that was on before it.
+        if (from == null && current != null && (isShelf(current) || ONCE.equals(current.tvChannelId))) {
+            from = lastChannel();
+        }
 
         if (from == null || mChannels.size() < 2) {
             return null;
@@ -1840,6 +1876,7 @@ public class TvModeService {
         channel.id = "my-" + System.currentTimeMillis();
         channel.name = seriesName(hit.series.title);
         channel.kind = TvChannel.KIND_SERIES;
+        channel.mode = TvChannel.MODE_FREE; // followed episode by episode, at the viewer's pace
         channel.edited = true;
 
         TvChannel.Series one = new TvChannel.Series();
@@ -2409,6 +2446,11 @@ public class TvModeService {
     /** Sets the filters that suit a program type. The search terms and everything else stay. */
     private static void applyKind(TvChannel channel, String kind) {
         channel.kind = kind != null ? kind : "";
+        // A series is followed episode by episode: on Live an episode aired while nobody watched
+        // is gone, so a Series channel waits for the viewer unless a mode was picked for it.
+        if (channel.isSeries() && TvChannel.MODE_DEFAULT.equals(channel.mode)) {
+            channel.mode = TvChannel.MODE_FREE;
+        }
         channel.type = TvChannel.TYPE_VIDEO;
         channel.length = TvChannel.ANY;
         channel.uploaded = TvChannel.ANY;
