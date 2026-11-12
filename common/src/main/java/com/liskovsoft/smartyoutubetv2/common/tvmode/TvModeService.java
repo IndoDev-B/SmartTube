@@ -1526,6 +1526,8 @@ public class TvModeService {
                     TvChannel.Series one = new TvChannel.Series();
                     one.playlistId = link.group(1);
                     one.pageKey = "linked"; // marks it as linked, below
+                    // The playlist page doesn't give its name to this reader: called after the show.
+                    one.title = show + " · linked in the description";
                     candidates.add(one);
                 }
             }
@@ -1565,7 +1567,8 @@ public class TvModeService {
                     continue;
                 }
 
-                hit.uploader = !author.isEmpty() && author.equalsIgnoreCase(hit.series.author != null ? hit.series.author.trim() : "");
+                // Names may come as "C-Drama Mahal • @C-DramaMahal": the part before the handle is compared.
+                hit.uploader = !author.isEmpty() && ownerName(author).equalsIgnoreCase(ownerName(hit.series.author));
                 found[0]++;
                 Log.d(TAG, "Playlist finder: %s \"%s\" by %s holds it as episode %s", hit.series.playlistId, hit.series.title, hit.series.author, hit.episode);
 
@@ -1594,6 +1597,12 @@ public class TvModeService {
         void onCount(int count);
     }
 
+    private static String ownerName(String author) {
+        String name = author != null ? author : "";
+        int handle = name.indexOf(" • ");
+        return (handle > 0 ? name.substring(0, handle) : name).trim();
+    }
+
     private final ExecutorService mFinder = Executors.newSingleThreadExecutor();
     private static final java.util.regex.Pattern PLAYLIST_LINK = java.util.regex.Pattern.compile("[?&]list=((?:PL|OL|UU)[\\w-]{8,})");
 
@@ -1603,7 +1612,7 @@ public class TvModeService {
         card.tvChannelId = SHELF_RESULTS;
         card.videoId = "pl:" + hit.series.playlistId;
         card.title = hit.series.title;
-        card.author = hit.series.author;
+        card.author = ownerName(hit.series.author);
         card.cardImageUrl = hit.series.image;
 
         int at = 0;
