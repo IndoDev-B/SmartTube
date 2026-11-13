@@ -89,6 +89,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     private final IconButton[] mTopButtons;
     /** Says what the focused button does: the buttons themselves are only icons. */
     private final TextView mTip;
+    /** "CH 12   Name" next to the Random button, while the top buttons are up. */
+    private final TextView mChannelTag;
     private static final int TOP_BUTTON_DP = 36;
     /** The control the focus came from, to hand it back on Down. */
     private java.lang.ref.WeakReference<View> mReturnFocus = new java.lang.ref.WeakReference<>(null);
@@ -257,6 +259,15 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mTip.setBackground(rounded(0xE6000000, dp(4)));
         mTip.setVisibility(GONE);
         addView(mTip, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
+
+        mChannelTag = text(18f, 0xFFFFFFFF, 1);
+        mChannelTag.setTypeface(null, Typeface.BOLD);
+        mChannelTag.setGravity(Gravity.CENTER_VERTICAL);
+        mChannelTag.setShadowLayer(dp(3), 0, 0, 0xCC000000); // readable over a bright picture
+        mChannelTag.setVisibility(GONE);
+        LayoutParams tagParams = new LayoutParams(LayoutParams.WRAP_CONTENT, dp(TOP_BUTTON_DP), Gravity.TOP | Gravity.START);
+        tagParams.setMargins(dp(55 + TOP_BUTTON_DP + 14), dp(30), 0, 0);
+        addView(mChannelTag, tagParams);
 
         mSleep = text(26f, 0xFFBBBBBB, 2);
         mSleep.setGravity(Gravity.CENTER);
@@ -543,6 +554,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         for (IconButton button : mTopButtons) {
             button.setVisibility(visible ? VISIBLE : GONE);
         }
+
+        String channel = visible ? TvModeController.currentChannelLabel() : null;
+        mChannelTag.setText(channel != null ? channel : "");
+        mChannelTag.setVisibility(channel != null ? VISIBLE : GONE);
 
         if (!visible) {
             hideTip();

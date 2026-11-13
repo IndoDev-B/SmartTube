@@ -52,7 +52,7 @@ public class VideoLoaderController extends BasePlayerController {
     };
     private final Runnable mOnApplyPlaybackMode = () -> {
         if (getPlayer() != null && getPlayer().getPositionMs() >= getPlayer().getDurationMs()) {
-            applyPlaybackMode(getPlaybackMode());
+            applyPlaybackMode(endPlaybackMode());
         }
     };
     private final Runnable mShowProgressBar = () -> {
@@ -224,6 +224,22 @@ public class VideoLoaderController extends BasePlayerController {
         }
     }
 
+    /**
+     * TV mode: a channel's lineup is its playlist. "Playlist videos only" would otherwise stop
+     * at the end of every program, since a lineup isn't a YouTube playlist.
+     */
+    private int endPlaybackMode() {
+        int playbackMode = getPlaybackMode();
+        Video ended = getVideo();
+
+        if ((playbackMode == PlayerConstants.PLAYBACK_MODE_LIST || playbackMode == PlayerConstants.PLAYBACK_MODE_REVERSE_LIST)
+                && ended != null && ended.tvChannelId != null && !ended.tvChannelId.startsWith("@")) {
+            return PlayerConstants.PLAYBACK_MODE_ALL;
+        }
+
+        return playbackMode;
+    }
+
     @Override
     public void onPlayEnd() {
         if (getPlayer() == null) {
@@ -238,7 +254,7 @@ public class VideoLoaderController extends BasePlayerController {
         }
 
         // Stop the playback if the user is browsing options or reading comments
-        int playbackMode = getPlaybackMode();
+        int playbackMode = endPlaybackMode();
         if (getAppDialogPresenter().isDialogShown() && !getAppDialogPresenter().isOverlay() && playbackMode != PlayerConstants.PLAYBACK_MODE_ONE) {
             getAppDialogPresenter().setOnFinish(mOnApplyPlaybackMode);
         } else {

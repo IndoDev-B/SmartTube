@@ -186,6 +186,19 @@ public class TvModeController extends BasePlayerController {
     /** The channel of the last video, so the keypad closes on a channel change but not on the next program. */
     private String mRemoteChannelId;
 
+    /** The channel playing, for the line next to the top buttons: "CH 12   Name". Null when it isn't a channel's program. */
+    public static String currentChannelLabel() {
+        TvModeController controller = sInstance.get();
+        Video current = controller != null ? controller.getVideo() : null;
+
+        if (current == null || !controller.isTvVideo(current)) {
+            return null;
+        }
+
+        TvChannel channel = controller.getService().findChannel(current);
+        return channel != null ? "CH " + (controller.getService().indexOf(channel) + 1) + "   " + channel.name : null;
+    }
+
     /** The player's own controls are on screen. */
     public static boolean isControlsUp() {
         TvModeController controller = sInstance.get();
