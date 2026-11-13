@@ -448,6 +448,8 @@ public class TvModeMenu {
                 mDialog.showDialog(title);
             })));
 
+            appendComments(video);
+
             if (!video.isLive) { // a stream has nothing to come back to
                 appendMyList(video);
 
@@ -532,6 +534,21 @@ public class TvModeMenu {
 
     // ---------------- Continue watching, My list ----------------
 
+    /** SmartTube's own comments panel, as its menus open it, without starting the program. */
+    private void appendComments(Video video) {
+        if (video == null || video.videoId == null || video.isUpcoming) {
+            return;
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("View comments", option -> {
+            mDialog.closeDialog();
+            toast("Loading comments...");
+            com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.instance().loadMetadata(video, metadata ->
+                    new com.liskovsoft.smartyoutubetv2.common.app.models.playback.controllers.CommentsController(mContext, metadata)
+                            .onButtonClicked(com.liskovsoft.smartyoutubetv2.common.R.id.action_chat, com.liskovsoft.smartyoutubetv2.common.app.models.playback.manager.PlayerUI.BUTTON_ON));
+        }));
+    }
+
     private void appendMyList(Video video) {
         boolean listed = mService.isInMyList(video.videoId);
 
@@ -601,6 +618,7 @@ public class TvModeMenu {
                                 : description.isEmpty() ? "This program has no description." : description));
                 mDialog.showDialog(title);
             })));
+            appendComments(card);
         }
 
         if (resume && !playlist && !TvModeService.SHELF_HOME.equals(shelf)) { // My list is TV mode's: not offered on Home
