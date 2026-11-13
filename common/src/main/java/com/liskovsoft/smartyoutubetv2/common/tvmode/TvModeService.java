@@ -833,13 +833,32 @@ public class TvModeService {
      * watched if enough of it was seen, otherwise it stays unwatched and can come round again.
      */
     public void watching(TvChannel channel, String videoId, long fromMs) {
+        watching(channel, videoId, fromMs, false);
+    }
+
+    /**
+     * The guide's preview box plays a channel's video. Seen through there, it counts as watched,
+     * but it never goes on "Continue watching": resting on a channel while browsing isn't starting it.
+     */
+    public void watchingInPreview(TvChannel channel, String videoId, long fromMs) {
+        watching(channel, videoId, fromMs, true);
+    }
+
+    /** Only the preview, so far: what was seen there stays off "Continue watching". */
+    private boolean mWatchingPreview;
+
+    private void watching(TvChannel channel, String videoId, long fromMs, boolean preview) {
         if (channel != null && videoId != null && videoId.equals(mWatchingId) && channel == mWatchingChannel) {
+            if (!preview) {
+                mWatchingPreview = false; // taken full screen from the preview: it is being watched now
+            }
             return; // still the same video
         }
 
         stopWatching();
 
         if (channel != null && videoId != null) {
+            mWatchingPreview = preview;
             mWatchingChannel = channel;
             mWatchingId = videoId;
             mWatchingSinceMs = System.currentTimeMillis();
@@ -867,7 +886,9 @@ public class TvModeService {
         }
 
         seenMs = Math.min(seenMs, Math.max(0, durationMs - mWatchingFromMs));
-        noteLeft(channel, videoId, durationMs, seenMs);
+        if (!mWatchingPreview) {
+            noteLeft(channel, videoId, durationMs, seenMs);
+        }
         // Live TV runs on the clock, and a program is usually joined part-way: sitting through
         // 30% of it, or a quarter of an hour of a long one, is having watched it.
         // A channel that waits for its viewer counts from the start: carrying on where it was left
@@ -897,7 +918,7 @@ public class TvModeService {
         long durationMs = known != null && known > 0 ? known : 0;
         long seenMs = System.currentTimeMillis() - mWatchingSinceMs;
 
-        if (durationMs > 0 && seenMs > 0) {
+        if (durationMs > 0 && seenMs > 0 && !mWatchingPreview) {
             noteLeft(channel, videoId, durationMs, Math.min(seenMs, Math.max(0, durationMs - mWatchingFromMs)));
         }
     }
@@ -5950,7 +5971,7 @@ public class TvModeService {
             }
             addAll(state.optJSONArray("deletedPresets"), mDeletedPresets);
             readSaved(state.optJSONArray("resume"), mResume);
-            readSaved(state.optJSONArray("homeResume"), mHomeResume);
+            readSaved(state.optJSONArray("homeResume2"), mHomeResume); // "homeResume" took in the guide's previews by mistake: started over
             // dev.96 kept playlists on the guide's line: they belong to Home's.
             for (java.util.Iterator<TvSaved> it = mResume.iterator(); it.hasNext();) {
                 TvSaved saved = it.next();
@@ -6072,7 +6093,7 @@ public class TvModeService {
                     state.put("watchedAt", watchedAt);
                     state.put("deletedPresets", new JSONArray(deletedPresets));
                     state.put("resume", resume);
-                    state.put("homeResume", homeResume);
+                    state.put("homeResume2", homeResume);
                     state.put("myList", myList);
                     writeFile(file, state.toString());
                     writeFile(new File(mContext.getFilesDir(), DEVICE_FILE), device.toString());

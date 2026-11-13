@@ -372,7 +372,7 @@ public class TvModeController extends BasePlayerController {
     public void onPlayEnd() {
         // An ordinary video ended: a single one comes off "Continue watching", a playlist's notes it was seen through.
         Video ended = getVideo();
-        if (ended != null && ended.tvChannelId == null && getPlayer() != null && TvModeService.isEnabled(getContext())) {
+        if (ended != null && ended.tvChannelId == null && getPlayer() != null && !isEmbedPlayer() && TvModeService.isEnabled(getContext())) {
             long duration = getPlayer().getDurationMs();
             getService().notePlain(ended, duration, duration, true);
         }
@@ -410,7 +410,7 @@ public class TvModeController extends BasePlayerController {
         Video current = getVideo();
 
         // An ordinary video, from Home, search or a playlist: it goes on the same "Continue watching".
-        if (current != null && current.tvChannelId == null && getPlayer() != null && getPlayer().isEngineInitialized()
+        if (current != null && current.tvChannelId == null && getPlayer() != null && !isEmbedPlayer() && getPlayer().isEngineInitialized()
                 && TvModeService.isEnabled(getContext())) {
             long position = getPlayer().getPositionMs();
             if (position > 0) {

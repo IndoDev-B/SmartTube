@@ -579,7 +579,7 @@ public class TvGuideHeroView extends FrameLayout {
         mPreviewBox.addView(mPreviewPlayer, 1, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         mPreviewPlayer.openVideo(copy);
         // Watching here is watching: a program seen through in the preview is as watched as one seen full screen.
-        TvModeService.instance(getContext()).watching(channel, copy.videoId, copy.pendingPosMs);
+        TvModeService.instance(getContext()).watchingInPreview(channel, copy.videoId, copy.pendingPosMs);
         // Once this one has had a few seconds to start: the channels above and below, for the next Up or Down.
         removeCallbacks(mPreloadAround);
         postDelayed(mPreloadAround, PRELOAD_DELAY_MS);
