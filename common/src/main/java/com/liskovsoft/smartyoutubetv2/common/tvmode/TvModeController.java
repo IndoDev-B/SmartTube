@@ -239,6 +239,13 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onPlayEnd() {
+        // An ordinary video ended: a single one comes off "Continue watching", a playlist's notes it was seen through.
+        Video ended = getVideo();
+        if (ended != null && ended.tvChannelId == null && getPlayer() != null && TvModeService.isEnabled(getContext())) {
+            long duration = getPlayer().getDurationMs();
+            getService().notePlain(ended, duration, duration, true);
+        }
+
         // A random video ended: play another, the way the button would.
         if (isRandom(getVideo()) && getPlayer() != null) {
             Video random = getService().randomVideo();
@@ -270,6 +277,16 @@ public class TvModeController extends BasePlayerController {
     /** A saved program is in the player: where it is goes to "Continue watching". now = write it down at once. */
     private void noteSaved(boolean now) {
         Video current = getVideo();
+
+        // An ordinary video, from Home, search or a playlist: it goes on the same "Continue watching".
+        if (current != null && current.tvChannelId == null && getPlayer() != null && getPlayer().isEngineInitialized()
+                && TvModeService.isEnabled(getContext())) {
+            long position = getPlayer().getPositionMs();
+            if (position > 0) {
+                getService().notePlain(current, position, getPlayer().getDurationMs(), now);
+            }
+            return;
+        }
 
         if (TvModeService.isShelf(current) && getPlayer() != null && getPlayer().isEngineInitialized()) {
             long position = getPlayer().getPositionMs();

@@ -64,6 +64,8 @@ public class TvModeService {
     /** The two lines above the time grid: programs left part-way, and programs put aside. Their cards carry these as channel id. */
     public static final String SHELF_RESUME = "@resume";
     public static final String SHELF_LIST = "@mylist";
+    /** "Continue watching" as a row on SmartTube's Home: the same list, but what it plays is ordinary SmartTube. */
+    public static final String SHELF_HOME = "@resume-home";
     /** Marks a Live TV program played once, outside its channel's schedule. */
     public static final String ONCE = "@once";
     private String mOnceChannelId;
@@ -112,6 +114,8 @@ public class TvModeService {
     private boolean mSleepTurnsOff;
     private String mOpenMode = OPEN_GUIDE;
     private String mLastChannelId;
+    /** The channel list's orderVersion this TV last sorted its channels by. A higher one in the list sorts them again, once. */
+    private int mOrderVersion;
     /** The channel the guide's focus was on last, so the guide comes back to it. */
     private String mGuideChannelId;
     /** The guide's filters: only channels of this genre / language are shown. Empty = any. */
@@ -905,7 +909,13 @@ public class TvModeService {
     private long mSavedWrittenPosMs;
 
     public static boolean isShelf(Video video) {
-        return video != null && (SHELF_RESUME.equals(video.tvChannelId) || SHELF_LIST.equals(video.tvChannelId));
+        return video != null && (SHELF_RESUME.equals(video.tvChannelId) || SHELF_LIST.equals(video.tvChannelId)
+                || SHELF_HOME.equals(video.tvChannelId));
+    }
+
+    /** The list a line's cards come from: "My list", or "Continue watching" in the guide and on Home. */
+    private List<TvSaved> savedList(String shelf) {
+        return SHELF_LIST.equals(shelf) ? mMyList : mResume;
     }
 
     /** A line above the time grid, as cards. Empty = the guide doesn't show the line. */
@@ -925,7 +935,7 @@ public class TvModeService {
             for (TvSaved saved : resume ? mResume : mMyList) {
                 Video card = new Video();
                 card.videoId = saved.videoId;
-                card.title = saved.title;
+                card.title = saved.isPlaylist() && !saved.playlistTitle.isEmpty() ? saved.playlistTitle : saved.title;
                 card.author = saved.author;
                 card.cardImageUrl = saved.image;
                 card.tvChannelId = shelf;
@@ -957,7 +967,7 @@ public class TvModeService {
 
     /** What a card of one of the two lines stands for. */
     public TvSaved getSaved(Video card) {
-        return isShelf(card) ? findSaved(SHELF_RESUME.equals(card.tvChannelId) ? mResume : mMyList, card.videoId) : null;
+        return isShelf(card) ? findSaved(savedList(card.tvChannelId), card.videoId) : null;
     }
 
     /** The small line under a saved program's title: what is left of it, or how long it is, and its channel. */
@@ -970,7 +980,11 @@ public class TvModeService {
 
         String note = "";
 
-        if (SHELF_RESUME.equals(card.tvChannelId)) {
+        if (saved.isPlaylist()) {
+            return playlistNote(saved);
+        }
+
+        if (!SHELF_LIST.equals(card.tvChannelId)) {
             note = minutes(Math.max(0, saved.durationMs - saved.positionMs)) + " left";
         } else if (saved.durationMs > 0) {
             note = minutes(saved.durationMs);
@@ -991,7 +1005,7 @@ public class TvModeService {
 
     /** Puts a program first in a list, replacing what the list had on it. */
     private static TvSaved putSaved(List<TvSaved> list, Video video, TvChannel channel, long positionMs, long durationMs) {
-        TvSaved saved = findSaved(list, video.videoId);
+        TvSaved saved = findSingle(list, video.videoId); // a playlist's card that ended on this video stays the playlist's
 
         if (saved != null) {
             list.remove(saved);
@@ -1121,7 +1135,7 @@ public class TvModeService {
     }
 
     public void removeSaved(String shelf, String videoId) {
-        List<TvSaved> list = SHELF_RESUME.equals(shelf) ? mResume : mMyList;
+        List<TvSaved> list = savedList(shelf);
         TvSaved saved = findSaved(list, videoId);
 
         if (saved != null) {
@@ -1131,7 +1145,7 @@ public class TvModeService {
     }
 
     public void clearSaved(String shelf) {
-        (SHELF_RESUME.equals(shelf) ? mResume : mMyList).clear();
+        savedList(shelf).clear();
         savedChanged();
     }
 
@@ -1156,6 +1170,19 @@ public class TvModeService {
         copy.author = saved.author;
         copy.cardImageUrl = saved.image;
         copy.pendingPosMs = Math.max(1, position);
+
+        if (saved.isPlaylist() || SHELF_HOME.equals(card.tvChannelId)) {
+            // Ordinary SmartTube: the playlist plays on in the player's own order, and Home's
+            // videos go to history as usual. Nothing sends it back to a TV channel at its end.
+            copy.playlistId = saved.playlistId;
+            copy.playlistIndex = saved.playlistIndex;
+            if (saved.finished) {
+                copy.pendingPosMs = 1; // from the start: the app's own record would put it at its end
+            }
+            mSavedChannelId = null;
+            return copy;
+        }
+
         copy.incognito = !mYtHistory;
         copy.tvChannelId = card.tvChannelId;
         mSavedChannelId = saved.channelId;
@@ -1207,6 +1234,298 @@ public class TvModeService {
             mSavedWrittenPosMs = positionMs;
             save();
         }
+    }
+
+    // ---------------- Continue watching: ordinary SmartTube videos and playlists ----------------
+
+    /** An ordinary video or playlist goes on the list after this much of it. TV channels keep a minute: flicking past one isn't watching. */
+    private static final long PLAIN_MIN_SEEN_MS = 15_000;
+
+    private static TvSaved findSingle(List<TvSaved> list, String videoId) {
+        for (TvSaved saved : list) {
+            if (!saved.isPlaylist() && videoId != null && videoId.equals(saved.videoId)) {
+                return saved;
+            }
+        }
+
+        return null;
+    }
+
+    private static TvSaved findPlaylist(List<TvSaved> list, String playlistId) {
+        for (TvSaved saved : list) {
+            if (playlistId != null && playlistId.equals(saved.playlistId)) {
+                return saved;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The playlist a video was played from, when it is one worth coming back to. Not YouTube's
+     * Mixes and radios (RD...): they change on every visit and never end. Not Watch later, Liked
+     * videos or a channel's uploads (UU...): those are lists of separate videos.
+     */
+    public static String resumablePlaylist(String playlistId) {
+        if (playlistId == null || playlistId.isEmpty()) {
+            return null;
+        }
+
+        if (playlistId.startsWith("RD") || playlistId.startsWith("UU") || playlistId.equals("WL")
+                || playlistId.equals("LL") || playlistId.equals(Video.PLAYLIST_LIKED_MUSIC)) {
+            return null;
+        }
+
+        return playlistId;
+    }
+
+    /** "Video 5 of 40", or "Finished" once the playlist's last video was seen to its end. */
+    private static String playlistNote(TvSaved saved) {
+        boolean last = saved.playlistSize > 0 && saved.playlistIndex >= saved.playlistSize - 1;
+
+        if (saved.finished && last) {
+            return "Playlist finished";
+        }
+
+        if (saved.playlistIndex < 0) {
+            return "Playlist";
+        }
+
+        return "Playlist  •  video " + (saved.playlistIndex + 1) + (saved.playlistSize > 0 ? " of " + saved.playlistSize : "");
+    }
+
+    public static boolean isFinishedPlaylist(TvSaved saved) {
+        return saved != null && saved.isPlaylist() && saved.finished
+                && saved.playlistSize > 0 && saved.playlistIndex >= saved.playlistSize - 1;
+    }
+
+    /**
+     * The player says how far an ordinary video is: one from Home, search, a channel page or a
+     * playlist, not a TV channel's. A playlist goes on "Continue watching" as one card and stays
+     * until taken off by hand. A single video goes on when it is 10 minutes or longer, and comes
+     * off when finished. Main thread.
+     */
+    public void notePlain(Video video, long positionMs, long durationMs, boolean now) {
+        if (video == null || video.videoId == null || video.tvChannelId != null || video.isLive || video.isShorts || durationMs <= 0) {
+            return;
+        }
+
+        if (!mLoaded) {
+            // Still being read on a worker: this tick is skipped rather than holding up the player.
+            java.util.concurrent.CountDownLatch preloading = mStatePreloading;
+            if (preloading != null && preloading.getCount() > 0) {
+                return;
+            }
+            ensureLoaded();
+        }
+
+        String playlistId = resumablePlaylist(video.playlistId);
+        boolean finished = isFinished(positionMs, durationMs);
+
+        if (playlistId != null) {
+            notePlaylist(video, playlistId, positionMs, durationMs, finished, now);
+            return;
+        }
+
+        TvSaved single = findSingle(mResume, video.videoId);
+
+        if (finished) {
+            if (single != null) {
+                mResume.remove(single);
+                savedChanged();
+            }
+            return;
+        }
+
+        if (single == null) {
+            if (positionMs < PLAIN_MIN_SEEN_MS || durationMs < RESUME_MIN_LENGTH_MS) {
+                return;
+            }
+            putSaved(mResume, video, null, positionMs, durationMs);
+            Log.d(TAG, "Continue watching: \"%s\" added", video.getTitle());
+            savedChanged();
+            return;
+        }
+
+        if (mResume.indexOf(single) != 0) { // watched again: to the front
+            mResume.remove(single);
+            mResume.add(0, single);
+            now = true;
+        }
+
+        updatePosition(single, positionMs, durationMs, now);
+    }
+
+    private void notePlaylist(Video video, String playlistId, long positionMs, long durationMs, boolean finished, boolean now) {
+        TvSaved saved = findPlaylist(mResume, playlistId);
+
+        if (saved == null) {
+            if (positionMs < PLAIN_MIN_SEEN_MS && !finished) {
+                return;
+            }
+            saved = new TvSaved();
+            saved.playlistId = playlistId;
+            mResume.add(0, saved);
+            while (mResume.size() > MAX_SAVED) {
+                mResume.remove(mResume.size() - 1);
+            }
+            Log.d(TAG, "Continue watching: playlist %s added", playlistId);
+            now = true;
+        } else if (mResume.indexOf(saved) != 0) {
+            mResume.remove(saved);
+            mResume.add(0, saved);
+            now = true;
+        }
+
+        if (!video.videoId.equals(saved.videoId)) {
+            now = true; // the playlist moved on to another video
+        }
+
+        String creator = creatorOf(video.author);
+        saved.videoId = video.videoId;
+        saved.title = video.getTitle() != null ? video.getTitle() : saved.title;
+        if (creator != null) {
+            saved.author = creator;
+        }
+        if (video.cardImageUrl != null) {
+            saved.image = video.cardImageUrl;
+        }
+
+        com.liskovsoft.mediaserviceinterfaces.data.PlaylistInfo info = video.playlistInfo;
+        if (info != null && playlistId.equals(info.getPlaylistId())) {
+            if (info.getTitle() != null && !info.getTitle().isEmpty()) {
+                saved.playlistTitle = info.getTitle();
+            }
+            if (info.getSize() > 0) {
+                saved.playlistSize = info.getSize();
+            }
+            if (info.getCurrentIndex() >= 0) {
+                saved.playlistIndex = info.getCurrentIndex();
+            }
+        } else if (video.playlistIndex >= 0) {
+            saved.playlistIndex = video.playlistIndex;
+        }
+
+        if (saved.finished != finished) {
+            saved.finished = finished;
+            now = true;
+        }
+
+        updatePosition(saved, positionMs, durationMs, now);
+    }
+
+    private void updatePosition(TvSaved saved, long positionMs, long durationMs, boolean now) {
+        saved.positionMs = positionMs;
+        saved.durationMs = durationMs;
+        saved.atMs = System.currentTimeMillis();
+        mResumeCards = null;
+        mMyListCards = null;
+
+        // Writing the whole state is heavy: on a pause, a stop or a new video, otherwise every few minutes.
+        if (now || Math.abs(positionMs - mSavedWrittenPosMs) >= 3 * 60_000) {
+            mSavedWrittenPosMs = positionMs;
+            save();
+        }
+    }
+
+    /** "Continue watching" as cards for SmartTube's Home. Fresh objects each time: a row takes its cards over. */
+    public List<Video> getHomeResumeCards() {
+        List<Video> cards = new ArrayList<>();
+
+        if (!mLoaded) {
+            return cards;
+        }
+
+        for (TvSaved saved : mResume) {
+            Video card = new Video();
+            card.videoId = saved.videoId;
+            card.title = saved.isPlaylist() && !saved.playlistTitle.isEmpty() ? saved.playlistTitle : saved.title;
+            card.cardImageUrl = saved.image;
+            card.tvChannelId = SHELF_HOME;
+            String note = saved.isPlaylist() ? playlistNote(saved)
+                    : minutes(Math.max(0, saved.durationMs - saved.positionMs)) + " left";
+            card.secondTitle = saved.author.isEmpty() ? note : saved.author + "  •  " + note;
+            card.percentWatched = !saved.isPlaylist() && saved.durationMs > 0 ? 100f * saved.positionMs / saved.durationMs : -1;
+            cards.add(card);
+        }
+
+        return cards;
+    }
+
+    /** Runs once the saved state is read, on the main thread. At once when it already is; never holds the main thread for it. */
+    public void whenLoaded(Runnable action) {
+        if (mLoaded) {
+            action.run();
+            return;
+        }
+
+        preloadState();
+        final java.util.concurrent.CountDownLatch preloading = mStatePreloading;
+
+        if (preloading == null || preloading.getCount() == 0) {
+            ensureLoaded();
+            action.run();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                preloading.await(20, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            mMain.post(() -> {
+                ensureLoaded();
+                action.run();
+            });
+        }).start();
+    }
+
+    /** Free Series channels: where "Add to a TV channel" can put a playlist. */
+    public List<TvChannel> freeSeriesChannels() {
+        ensureLoaded();
+        List<TvChannel> result = new ArrayList<>();
+
+        for (TvChannel channel : mChannels) {
+            if (channel.isSeries() && !isLive(channel)) {
+                result.add(channel);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * A playlist goes on a Series channel from outside the playlist finder: from "Continue
+     * watching" or SmartTube's search. channel null = a new Series channel of its own.
+     * fromIndex: the video to start at, from 0. Returns the channel, or null when it has the playlist already.
+     */
+    public TvChannel addPlaylistToChannel(TvChannel channel, String playlistId, String title, String author, int fromIndex, Runnable onDone) {
+        ensureLoaded();
+
+        PlaylistHit hit = new PlaylistHit();
+        hit.series = new TvChannel.Series();
+        hit.series.playlistId = playlistId;
+        hit.series.title = title != null && !title.isEmpty() ? title : "Playlist";
+        hit.series.author = author != null ? author : "";
+        hit.episode = Math.max(1, fromIndex + 1);
+
+        if (channel == null) {
+            return createSeriesChannel(hit, onDone);
+        }
+
+        if (channel.findSeries(playlistId) != null) {
+            return null;
+        }
+
+        TvChannel.Series one = hit.series;
+        one.title = seriesName(one.title);
+        one.next = Math.max(0, fromIndex);
+        channel.series.add(one);
+        channel.edited = true;
+        save();
+        fill(channel, onDone);
+        return channel;
     }
 
     /**
@@ -4660,6 +4979,7 @@ public class TvModeService {
         mShown = null;
         mLastChannelId = null;
         mGuideChannelId = null;
+        mOrderVersion = 0;
         mFilterKind = "";
         mFilterLanguage = "";
         mFilterGenre = "";
@@ -5431,7 +5751,12 @@ public class TvModeService {
             // The list grew on a TV that already had channels: put the presets in the list's order,
             // which keeps each genre together. Channels made on this TV stay after them. Only then,
             // so channels the viewer moved stay where they were put until the list itself changes.
-            if (presetsAdded > 0 && hadChannels) {
+            // Or the list was put in a new order on purpose: its orderVersion went up.
+            int orderVersion = config.optInt("orderVersion", 0);
+            boolean reordered = hadChannels && orderVersion > mOrderVersion;
+            mOrderVersion = Math.max(mOrderVersion, orderVersion);
+
+            if ((presetsAdded > 0 || reordered) && hadChannels) {
                 final Map<String, Integer> order = new java.util.HashMap<>();
                 for (int i = 0; i < presets.length(); i++) {
                     JSONObject preset = presets.optJSONObject(i);
@@ -5578,6 +5903,7 @@ public class TvModeService {
                 mScanlines = settings.optBoolean("scanlines", mScanlines);
                 mSleepTurnsOff = settings.optBoolean("sleepTurnsOff", mSleepTurnsOff);
                 mOpenMode = settings.optString("openMode", mOpenMode);
+                mOrderVersion = settings.optInt("orderVersion", 0);
                 mLastChannelId = settings.isNull("lastChannel") ? null : settings.optString("lastChannel", null);
                 mGuideChannelId = settings.isNull("guideChannel") ? mLastChannelId : settings.optString("guideChannel", mLastChannelId);
                 if (!settings.has("filterGenre")) {
@@ -5669,6 +5995,7 @@ public class TvModeService {
             settings.put("scanlines", mScanlines);
             settings.put("sleepTurnsOff", mSleepTurnsOff);
             settings.put("openMode", mOpenMode);
+            settings.put("orderVersion", mOrderVersion);
             settings.put("lastChannel", mLastChannelId);
             settings.put("guideChannel", mGuideChannelId);
             settings.put("filterGenre", ""); // kept so an older build finds the key; the guide filters by type now

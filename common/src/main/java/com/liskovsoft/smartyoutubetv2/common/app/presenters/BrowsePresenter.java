@@ -142,6 +142,30 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
         super.onViewResumed();
 
         refreshIfNeeded();
+        updateHomeResumeRow(); // back from the player: what was just watched is on it
+    }
+
+    private static final int HOME_RESUME_ROW_ID = "tv-mode-home-resume".hashCode();
+
+    /** Home's "Continue watching" row, the second row, redrawn from the list TV mode keeps. Nothing elsewhere. */
+    public void updateHomeResumeRow() {
+        if (getView() == null || getContext() == null || !isHomeSection() || !TvModeService.isEnabled(getContext())) {
+            return;
+        }
+
+        final BrowseSection section = getCurrentSection();
+
+        TvModeService.instance(getContext()).whenLoaded(() -> {
+            if (getView() == null || getCurrentSection() != section) {
+                return;
+            }
+
+            VideoGroup group = VideoGroup.from(TvModeService.instance(getContext()).getHomeResumeCards(), section, 1);
+            group.setId(HOME_RESUME_ROW_ID);
+            group.setTitle("Continue watching");
+            group.setAction(VideoGroup.ACTION_REPLACE); // with a position: only this row is replaced, or removed when empty
+            getView().updateSection(group);
+        });
     }
 
     private void refreshIfNeeded() {
@@ -805,6 +829,13 @@ public class BrowsePresenter extends BasePresenter<BrowseView> implements Sectio
                                 mBrowseProcessor.process(videoGroup);
 
                                 continueGroupIfNeeded(videoGroup, false);
+
+                                // Home: "Continue watching" goes right under the first row. Its place
+                                // is kept even while the list is still being read or is empty.
+                                if (groupIndex.get() == 0 && section.getId() == MediaGroup.TYPE_HOME && TvModeService.isEnabled(getContext())) {
+                                    groupIndex.incrementAndGet();
+                                    updateHomeResumeRow();
+                                }
                             }
                         },
                         error -> {

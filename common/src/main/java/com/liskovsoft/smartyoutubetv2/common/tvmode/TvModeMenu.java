@@ -67,10 +67,7 @@ public class TvModeMenu {
 
         // "Continue watching" and "My list": the program plays by itself, from where it was left.
         if (TvModeService.isShelf(item)) {
-            Video saved = menu.mService.playSaved(item);
-            if (saved != null) {
-                PlaybackPresenter.instance(context).openVideo(saved);
-            }
+            menu.playShelf(item);
             return true;
         }
 
@@ -545,29 +542,68 @@ public class TvModeMenu {
         }));
     }
 
-    /** Hold OK on a program of one of the two lines above the time grid. */
+    /** OK on a card of "Continue watching" or "My list". A playlist seen to its last video opens its own screen. */
+    private void playShelf(Video card) {
+        TvSaved saved = mService.getSaved(card);
+
+        if (TvModeService.isFinishedPlaylist(saved)) {
+            openPlaylist(saved);
+            return;
+        }
+
+        Video video = mService.playSaved(card);
+        if (video != null) {
+            PlaybackPresenter.instance(mContext).openVideo(video);
+        }
+    }
+
+    /** SmartTube's own playlist screen. What plays from there is ordinary SmartTube. */
+    private void openPlaylist(TvSaved saved) {
+        Video playlist = new Video();
+        playlist.videoId = saved.videoId;
+        playlist.playlistId = saved.playlistId;
+        playlist.title = saved.playlistTitle.isEmpty() ? saved.title : saved.playlistTitle;
+        playlist.author = saved.author;
+        com.liskovsoft.smartyoutubetv2.common.app.presenters.ChannelUploadsPresenter.instance(mContext).openChannel(playlist);
+    }
+
+    /** Hold OK on a program of one of the two lines above the time grid, or of "Continue watching" on Home. */
     private void showSavedMenu(Video card) {
         final String shelf = card.tvChannelId;
-        final boolean resume = TvModeService.SHELF_RESUME.equals(shelf);
+        final boolean resume = !TvModeService.SHELF_LIST.equals(shelf);
         final String name = resume ? "Continue watching" : "My list";
         final String title = card.getTitle() != null ? card.getTitle() : "";
+        final TvSaved saved = mService.getSaved(card);
+        final boolean playlist = saved != null && saved.isPlaylist();
 
-        mDialog.appendSingleButton(UiOptionItem.from(resume ? "Carry on watching" : "Watch", option -> {
+        mDialog.appendSingleButton(UiOptionItem.from(resume ? (TvModeService.isFinishedPlaylist(saved) ? "Open the playlist" : "Carry on watching") : "Watch", option -> {
             mDialog.closeDialog();
-            Video saved = mService.playSaved(card);
-            if (saved != null) {
-                PlaybackPresenter.instance(mContext).openVideo(saved);
-            }
+            playShelf(card);
         }));
 
-        mDialog.appendSingleButton(UiOptionItem.from("Program info", option -> mService.loadInfo(card, (videoId, description) -> {
-            mDialog.appendLongTextCategory(title, UiOptionItem.from(
-                    description == null ? "Couldn't load the description. Try again in a moment."
-                            : description.isEmpty() ? "This program has no description." : description));
-            mDialog.showDialog(title);
-        })));
+        if (playlist) {
+            if (!TvModeService.isFinishedPlaylist(saved)) {
+                mDialog.appendSingleButton(UiOptionItem.from("Open the playlist", option -> {
+                    mDialog.closeDialog();
+                    openPlaylist(saved);
+                }));
+            }
 
-        if (resume) {
+            mDialog.appendSingleButton(UiOptionItem.from("Add to a TV channel", option -> {
+                mDialog.closeDialog();
+                showAddToChannel(saved.playlistId, saved.playlistTitle.isEmpty() ? saved.title : saved.playlistTitle,
+                        saved.author, Math.max(0, saved.playlistIndex));
+            }));
+        } else {
+            mDialog.appendSingleButton(UiOptionItem.from("Program info", option -> mService.loadInfo(card, (videoId, description) -> {
+                mDialog.appendLongTextCategory(title, UiOptionItem.from(
+                        description == null ? "Couldn't load the description. Try again in a moment."
+                                : description.isEmpty() ? "This program has no description." : description));
+                mDialog.showDialog(title);
+            })));
+        }
+
+        if (resume && !playlist) {
             appendMyList(card);
         }
 
@@ -1103,5 +1139,45 @@ public class TvModeMenu {
         if (section != null && section.getId() == TvModeService.SECTION_ID && browse.getView() != null) {
             browse.refresh(false);
         }
+
+        browse.updateHomeResumeRow(); // Home's "Continue watching" is the same list
+    }
+
+    // ---------------- Add a playlist to a TV channel ----------------
+
+    /** From SmartTube's own menus: a playlist card in search, or a video played from a playlist. */
+    public static void showAddToChannel(Context context, String playlistId, String title, String author, int fromIndex) {
+        new TvModeMenu(context).showAddToChannel(playlistId, title, author, fromIndex);
+    }
+
+    /** The Free Series channels, and a new one. fromIndex: the video to start at, from 0. */
+    private void showAddToChannel(String playlistId, String title, String author, int fromIndex) {
+        final String name = title != null && !title.isEmpty() ? title : "this playlist";
+        final String from = fromIndex > 0 ? ", from video " + (fromIndex + 1) : "";
+
+        mDialog.appendSingleButton(UiOptionItem.from("New Series channel" + from, option -> {
+            mDialog.closeDialog();
+            TvChannel made = mService.addPlaylistToChannel(null, playlistId, title, author, fromIndex, this::refreshGuide);
+            toast("New channel " + (mService.indexOf(made) + 1) + ": " + made.name);
+            refreshGuide();
+        }));
+
+        for (TvChannel channel : mService.freeSeriesChannels()) {
+            final boolean has = channel.findSeries(playlistId) != null;
+            String label = "CH " + (mService.indexOf(channel) + 1) + "  " + channel.name + (has ? "  (has it already)" : "");
+
+            mDialog.appendSingleButton(UiOptionItem.from(label, option -> {
+                mDialog.closeDialog();
+                if (has) {
+                    toast(channel.name + " already plays this playlist");
+                    return;
+                }
+                mService.addPlaylistToChannel(channel, playlistId, title, author, fromIndex, this::refreshGuide);
+                toast("Added to " + channel.name + from);
+                refreshGuide();
+            }));
+        }
+
+        mDialog.showDialog("Add \"" + name + "\" to a TV channel");
     }
 }

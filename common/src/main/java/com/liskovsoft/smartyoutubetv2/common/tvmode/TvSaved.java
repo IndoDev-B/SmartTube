@@ -19,6 +19,21 @@ public class TvSaved {
     /** Where it was left. 0 = not started. */
     public long positionMs;
     public long atMs;
+    /**
+     * Set when it was played from a playlist: the card stands for the playlist, and videoId is the
+     * video of it played last. Playlists stay until taken off by hand: on shuffle there is no last video.
+     */
+    public String playlistId;
+    public String playlistTitle = "";
+    /** The last video's place in the playlist, from 0. -1 = not known. */
+    public int playlistIndex = -1;
+    public int playlistSize = -1;
+    /** The last video played was seen to its end. */
+    public boolean finished;
+
+    public boolean isPlaylist() {
+        return playlistId != null;
+    }
 
     public JSONObject toJson() throws Exception {
         JSONObject o = new JSONObject();
@@ -31,6 +46,13 @@ public class TvSaved {
         o.put("duration", durationMs);
         o.put("position", positionMs);
         o.put("at", atMs);
+        if (playlistId != null) {
+            o.put("playlist", playlistId);
+            o.put("playlistTitle", playlistTitle);
+            o.put("playlistIndex", playlistIndex);
+            o.put("playlistSize", playlistSize);
+            o.put("finished", finished);
+        }
         return o;
     }
 
@@ -45,6 +67,11 @@ public class TvSaved {
         saved.durationMs = o.optLong("duration", 0);
         saved.positionMs = o.optLong("position", 0);
         saved.atMs = o.optLong("at", 0);
+        saved.playlistId = o.isNull("playlist") ? null : o.optString("playlist", null);
+        saved.playlistTitle = o.optString("playlistTitle", "");
+        saved.playlistIndex = o.optInt("playlistIndex", -1);
+        saved.playlistSize = o.optInt("playlistSize", -1);
+        saved.finished = o.optBoolean("finished", false);
         return saved;
     }
 }

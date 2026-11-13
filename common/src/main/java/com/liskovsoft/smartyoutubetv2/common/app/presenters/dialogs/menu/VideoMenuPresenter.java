@@ -190,6 +190,8 @@ public class VideoMenuPresenter extends BaseMenuPresenter {
             }
         }
 
+        appendAddToTvChannelButton();
+
         if (!mDialogPresenter.isEmpty()) {
             String title = mVideo != null ? mVideo.getTitle() : null;
             // No need to add author because: 1) This could be a channel card. 2) This info isn't so important.
@@ -210,6 +212,8 @@ public class VideoMenuPresenter extends BaseMenuPresenter {
                 menuAction.run();
             }
         }
+
+        appendAddToTvChannelButton();
 
         if (!mDialogPresenter.isEmpty()) {
             String title = mVideo != null ? mVideo.getTitle() : null;
@@ -308,6 +312,32 @@ public class VideoMenuPresenter extends BaseMenuPresenter {
                     MediaServiceManager.chooseChannelPresenter(getContext(), mVideo);
                     mDialogPresenter.closeDialog();
                 }));
+    }
+
+    /** TV mode: a playlist card, from search or anywhere else, goes on a Free Series channel or a new one. */
+    private void appendAddToTvChannelButton() {
+        if (mVideo == null || getContext() == null || !com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.isEnabled(getContext())
+                || mVideo.itemType != com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_PLAYLIST) {
+            return;
+        }
+
+        String playlistId = mVideo.playlistId;
+
+        if (playlistId == null && mVideo.channelId != null && mVideo.channelId.startsWith("VL")) {
+            playlistId = mVideo.channelId.substring(2); // a playlist shown as a channel: "VL" and its id
+        }
+
+        final String id = com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.resumablePlaylist(playlistId);
+
+        if (id == null) {
+            return;
+        }
+
+        mDialogPresenter.appendSingleButton(UiOptionItem.from("Add to a TV channel", optionItem -> {
+            mDialogPresenter.closeDialog();
+            com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeMenu.showAddToChannel(getContext(), id, mVideo.getTitle(),
+                    com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.creatorOf(mVideo.getAuthor()), 0);
+        }));
     }
 
     private void appendOpenPlaylistButton() {
