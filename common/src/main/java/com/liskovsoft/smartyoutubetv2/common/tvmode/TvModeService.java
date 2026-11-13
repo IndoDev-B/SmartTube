@@ -2208,7 +2208,7 @@ public class TvModeService {
         one.title = seriesName(hit.series.title);
         one.author = hit.series.author != null ? hit.series.author : "";
         one.count = hit.series.count;
-        one.next = Math.max(0, hit.episode - 1);
+        one.next = 0; // the whole playlist, from its first episode: watched ones are not left out
         channel.series.add(one);
 
         mChannels.add(channel);

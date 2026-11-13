@@ -676,7 +676,7 @@ public class TvModeMenu {
                 mDialog.closeDialog();
                 openResult(card);
             }));
-            mDialog.appendSingleButton(UiOptionItem.from("Make a Series channel from episode " + hit.episode, option -> {
+            mDialog.appendSingleButton(UiOptionItem.from("New channel", option -> {
                 mDialog.closeDialog();
                 TvChannel made = mService.createSeriesChannel(hit, this::refreshGuide);
                 toast("New channel " + (mService.indexOf(made) + 1) + ": " + made.name);
@@ -1150,14 +1150,13 @@ public class TvModeMenu {
         new TvModeMenu(context).showAddToChannel(playlistId, title, author, fromIndex);
     }
 
-    /** The Free Series channels, and a new one. fromIndex: the video to start at, from 0. */
+    /** The Free Series channels, and a new one. The whole playlist goes on, from its first video: watched ones too. */
     private void showAddToChannel(String playlistId, String title, String author, int fromIndex) {
         final String name = title != null && !title.isEmpty() ? title : "this playlist";
-        final String from = fromIndex > 0 ? ", from video " + (fromIndex + 1) : "";
 
-        mDialog.appendSingleButton(UiOptionItem.from("New Series channel" + from, option -> {
+        mDialog.appendSingleButton(UiOptionItem.from("New channel", option -> {
             mDialog.closeDialog();
-            TvChannel made = mService.addPlaylistToChannel(null, playlistId, title, author, fromIndex, this::refreshGuide);
+            TvChannel made = mService.addPlaylistToChannel(null, playlistId, title, author, 0, this::refreshGuide);
             toast("New channel " + (mService.indexOf(made) + 1) + ": " + made.name);
             refreshGuide();
         }));
@@ -1172,8 +1171,8 @@ public class TvModeMenu {
                     toast(channel.name + " already plays this playlist");
                     return;
                 }
-                mService.addPlaylistToChannel(channel, playlistId, title, author, fromIndex, this::refreshGuide);
-                toast("Added to " + channel.name + from);
+                mService.addPlaylistToChannel(channel, playlistId, title, author, 0, this::refreshGuide);
+                toast("Added to " + channel.name);
                 refreshGuide();
             }));
         }
