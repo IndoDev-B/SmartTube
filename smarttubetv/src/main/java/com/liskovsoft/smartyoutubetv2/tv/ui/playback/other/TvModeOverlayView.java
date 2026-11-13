@@ -712,6 +712,17 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             return false;
         }
 
+        // Only when nothing of the player is above: from the seek bar, Up goes to the row of
+        // controls over it, and only from that top row on to these buttons.
+        View above = focused.focusSearch(View.FOCUS_UP);
+        if (above != null && above != focused && !isTopButton(above) && above.isShown()) {
+            int[] abovePlace = new int[2];
+            above.getLocationOnScreen(abovePlace);
+            if (abovePlace[1] < place[1]) {
+                return false;
+            }
+        }
+
         mReturnFocus = new java.lang.ref.WeakReference<>(focused);
         mTopHeld = mRandomButton.requestFocus();
         if (mTopHeld) {
