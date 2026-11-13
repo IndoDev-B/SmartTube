@@ -881,6 +881,34 @@
       "kind": "Movies"
     },
     {
+      "id": "hindi-short-films",
+      "name": "Hindi Short Films",
+      "terms": [
+        "hindi short film",
+        "best hindi short film",
+        "hindi short movie",
+        "award winning hindi short film"
+      ],
+      "needWords": [
+        "short film|short movie|shortfilm"
+      ],
+      "skipWords": [
+        "trailer",
+        "teaser",
+        "song",
+        "full movie",
+        "web series",
+        "episode",
+        "#shorts",
+        "reaction"
+      ],
+      "genre": "Short films",
+      "languages": [
+        "hi"
+      ],
+      "kind": "Movies"
+    },
+    {
       "id": "nollywood-movies",
       "name": "Nollywood Movies",
       "kind": "Movies",

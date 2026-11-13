@@ -117,6 +117,19 @@ public class TvModeService {
     private boolean mSleepTurnsOff;
     private String mOpenMode = OPEN_GUIDE;
     private String mLastChannelId;
+    /** The channel watched before the current one. Not saved: it only matters while watching. */
+    private String mPrevChannelId;
+
+    /** The channel watched before this one, or null. */
+    public TvChannel previousChannel() {
+        for (TvChannel channel : mChannels) {
+            if (channel.id.equals(mPrevChannelId)) {
+                return channel;
+            }
+        }
+
+        return null;
+    }
     /** The channel list's orderVersion this TV last sorted its channels by. A higher one in the list sorts them again, once. */
     private int mOrderVersion;
     /** The channel the guide's focus was on last, so the guide comes back to it. */
@@ -478,6 +491,9 @@ public class TvModeService {
 
         channel.startedId = video.videoId;
         channel.startedMs = now;
+        if (mLastChannelId != null && !mLastChannelId.equals(channel.id)) {
+            mPrevChannelId = mLastChannelId; // the keypad's Prev goes back to it
+        }
         mLastChannelId = channel.id;
         mGuideChannelId = channel.id; // back in the guide, the focus is on the channel that was playing
 

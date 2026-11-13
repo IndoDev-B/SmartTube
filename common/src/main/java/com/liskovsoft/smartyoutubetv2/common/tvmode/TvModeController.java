@@ -73,12 +73,46 @@ public class TvModeController extends BasePlayerController {
     /** Opens the on-screen keypad. The overlay handles it itself: nothing to do here. */
     public static final int TOP_BUTTON_REMOTE = 3;
 
-    /** On-screen keypad: a digit key. Works exactly like a number key on the remote. */
+    /** On-screen keypad: a digit key. Unlike the remote's number keys nothing tunes by itself: Go does. */
     public static void typeDigit(int digit) {
         TvModeController controller = sInstance.get();
 
-        if (controller != null && controller.getPlayer() != null) {
-            controller.onDigit(digit);
+        if (controller == null || controller.getPlayer() == null) {
+            return;
+        }
+
+        Utils.removeCallbacks(controller.mTuneDigits); // digits typed on the remote before are taken over, not tuned
+        controller.mDigits = controller.mDigits + digit;
+
+        if (controller.mDigits.length() > 3) { // up to channel 999
+            controller.mDigits = controller.mDigits.substring(controller.mDigits.length() - 3);
+        }
+
+        controller.showTyped();
+    }
+
+    /** On-screen keypad, Prev: back to the channel watched before this one. Pressed again, back here. */
+    public static void tunePrevious() {
+        TvModeController controller = sInstance.get();
+
+        if (controller == null || controller.getPlayer() == null) {
+            return;
+        }
+
+        Utils.removeCallbacks(controller.mTuneDigits);
+        controller.mDigits = "";
+        controller.showTyped();
+
+        TvModeService service = controller.getService();
+        TvChannel channel = service.previousChannel();
+
+        if (channel == null) {
+            MessageHelpers.showMessage(controller.getContext(), "No previous channel yet");
+            return;
+        }
+
+        if (!controller.tune(service.tune(channel))) {
+            MessageHelpers.showMessage(controller.getContext(), "Channel " + (service.indexOf(channel) + 1) + " is still loading");
         }
     }
 
@@ -91,12 +125,7 @@ public class TvModeController extends BasePlayerController {
         }
 
         controller.mDigits = controller.mDigits.substring(0, controller.mDigits.length() - 1);
-        Utils.removeCallbacks(controller.mTuneDigits);
-
-        if (!controller.mDigits.isEmpty()) {
-            Utils.postDelayed(controller.mTuneDigits, DIGITS_TIMEOUT_MS); // the pause starts again
-        }
-
+        Utils.removeCallbacks(controller.mTuneDigits); // on the keypad only Go tunes
         controller.showTyped();
     }
 

@@ -231,14 +231,14 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mRemote.addView(mRemoteNumber, numberParams);
         showTypedDigits("");
 
-        String[][] keys = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"Del", "0", "Go"}, {"First", "Last"}};
+        String[][] keys = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"Del", "0", "Go"}, {"First", "Last"}, {"Prev"}};
         for (String[] labels : keys) {
             LinearLayout line = new LinearLayout(context);
             line.setOrientation(LinearLayout.HORIZONTAL);
             java.util.List<TextView> row = new java.util.ArrayList<>();
             for (int i = 0; i < labels.length; i++) {
                 TextView key = remoteKey(labels[i]);
-                // Two keys in the last row: each takes half the width of the three above.
+                // The short rows at the bottom share the width of the three keys above.
                 LinearLayout.LayoutParams keyParams = labels.length == 3
                         ? new LinearLayout.LayoutParams(dp(54), dp(38))
                         : new LinearLayout.LayoutParams(0, dp(38), 1);
@@ -420,6 +420,9 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
                 break;
             case "First":
                 TvModeController.tuneEdge(false);
+                break;
+            case "Prev":
+                TvModeController.tunePrevious();
                 break;
             case "Last":
                 TvModeController.tuneEdge(true);
