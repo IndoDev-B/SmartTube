@@ -543,9 +543,13 @@ public class TvModeMenu {
         mDialog.appendSingleButton(UiOptionItem.from("View comments", option -> {
             mDialog.closeDialog();
             toast("Loading comments...");
-            com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.instance().loadMetadata(video, metadata ->
-                    new com.liskovsoft.smartyoutubetv2.common.app.models.playback.controllers.CommentsController(mContext, metadata)
-                            .onButtonClicked(com.liskovsoft.smartyoutubetv2.common.R.id.action_chat, com.liskovsoft.smartyoutubetv2.common.app.models.playback.manager.PlayerUI.BUTTON_ON));
+            // Its own request: the app's shared loader keeps one at a time, and the guide's preview
+            // replaced this one with its own the moment it loaded a video.
+            com.liskovsoft.sharedutils.rx.RxHelper.execute(
+                    com.liskovsoft.youtubeapi.service.YouTubeServiceManager.instance().getMediaItemService().getMetadataObserve(video.videoId),
+                    metadata -> new com.liskovsoft.smartyoutubetv2.common.app.models.playback.controllers.CommentsController(mContext, metadata)
+                            .onButtonClicked(com.liskovsoft.smartyoutubetv2.common.R.id.action_chat, com.liskovsoft.smartyoutubetv2.common.app.models.playback.manager.PlayerUI.BUTTON_ON),
+                    error -> toast("Couldn't load the comments. Try again in a moment."));
         }));
     }
 
