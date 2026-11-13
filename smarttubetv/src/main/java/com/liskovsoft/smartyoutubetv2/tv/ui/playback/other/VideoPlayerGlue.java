@@ -50,10 +50,8 @@ import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.SubscribeAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TwoStateAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.ThumbsDownAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.ThumbsUpAction;
-import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvGuideAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvRandomAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvSettingsAction;
-import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.TvShuffleAction;
 import com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.VideoSpeedAction;
 import com.liskovsoft.smartyoutubetv2.tv.ui.playback.actions.VideoStatsAction;
@@ -141,8 +139,6 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
         putAction(new SoundOffAction(context));
 
         if (TvModeService.isEnabled(context)) {
-            putAction(new TvShuffleAction(context));
-            putAction(new TvGuideAction(context));
             putAction(new TvRandomAction(context));
             putAction(new TvSettingsAction(context));
         }
@@ -168,11 +164,6 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
         }
         if (mPlayerTweaksData.isPlayerButtonEnabled(PlayerTweaksData.PLAYER_BUTTON_REPEAT_MODE)) {
             adapter.add(mActions.get(R.id.action_repeat));
-        }
-        if (mActions.containsKey(R.id.action_tv_shuffle)) { // TV mode
-            // Random and TV settings sit at the top corners of the player instead (TvModeOverlayView).
-            adapter.add(mActions.get(R.id.action_tv_shuffle));
-            adapter.add(mActions.get(R.id.action_tv_guide));
         }
         if (mPlayerTweaksData.isPlayerButtonEnabled(PlayerTweaksData.PLAYER_BUTTON_VIDEO_SPEED)) {
             adapter.add(mActions.get(R.id.action_video_speed));
@@ -360,49 +351,6 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
                         invalidateUi(channelAction);
                     }
                 });
-    }
-
-    @Override
-    public void setVideo(com.liskovsoft.smartyoutubetv2.common.app.models.data.Video video) {
-        super.setVideo(video);
-
-        // TV mode buttons only on TV mode programs: an ordinary video from Home or search has no channel.
-        boolean tv = video != null && video.tvChannelId != null;
-        showTvButton(R.id.action_tv_guide, tv);
-        showTvButton(R.id.action_tv_shuffle, tv && !TvModeService.isAction(video)); // Random, My list etc. have no lineup
-    }
-
-    /** Shuffle goes right after Repeat (or Next), the guide right after Shuffle. */
-    private void showTvButton(int id, boolean show) {
-        Action action = mActions.get(id);
-        PlaybackControlsRow row = getControlsRow();
-
-        if (action == null || row == null || !(row.getPrimaryActionsAdapter() instanceof ArrayObjectAdapter)) {
-            return;
-        }
-
-        ArrayObjectAdapter adapter = (ArrayObjectAdapter) row.getPrimaryActionsAdapter();
-        boolean shown = adapter.indexOf(action) >= 0;
-
-        if (show == shown) {
-            return;
-        }
-
-        if (!show) {
-            adapter.remove(action);
-            return;
-        }
-
-        int at = Math.max(adapter.indexOf(mActions.get(R.id.action_repeat)),
-                Math.max(adapter.indexOf(mSkipNextAction), adapter.indexOf(mSkipPreviousAction)));
-        if (at < 0 && adapter.size() > 0 && adapter.get(0) instanceof PlaybackControlsRow.PlayPauseAction) {
-            at = 0;
-        }
-        if (id == R.id.action_tv_guide) {
-            at = Math.max(at, adapter.indexOf(mActions.get(R.id.action_tv_shuffle)));
-        }
-
-        adapter.add(at + 1, action);
     }
 
     public void setNextTitle(CharSequence title) {
