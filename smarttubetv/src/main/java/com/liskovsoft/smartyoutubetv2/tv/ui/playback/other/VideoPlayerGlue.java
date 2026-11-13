@@ -362,6 +362,49 @@ public class VideoPlayerGlue extends MaxControlsVideoPlayerGlue<PlayerAdapter> i
                 });
     }
 
+    @Override
+    public void setVideo(com.liskovsoft.smartyoutubetv2.common.app.models.data.Video video) {
+        super.setVideo(video);
+
+        // TV mode buttons only on TV mode programs: an ordinary video from Home or search has no channel.
+        boolean tv = video != null && video.tvChannelId != null;
+        showTvButton(R.id.action_tv_guide, tv);
+        showTvButton(R.id.action_tv_shuffle, tv && !TvModeService.isAction(video)); // Random, My list etc. have no lineup
+    }
+
+    /** Shuffle goes right after Repeat (or Next), the guide right after Shuffle. */
+    private void showTvButton(int id, boolean show) {
+        Action action = mActions.get(id);
+        PlaybackControlsRow row = getControlsRow();
+
+        if (action == null || row == null || !(row.getPrimaryActionsAdapter() instanceof ArrayObjectAdapter)) {
+            return;
+        }
+
+        ArrayObjectAdapter adapter = (ArrayObjectAdapter) row.getPrimaryActionsAdapter();
+        boolean shown = adapter.indexOf(action) >= 0;
+
+        if (show == shown) {
+            return;
+        }
+
+        if (!show) {
+            adapter.remove(action);
+            return;
+        }
+
+        int at = Math.max(adapter.indexOf(mActions.get(R.id.action_repeat)),
+                Math.max(adapter.indexOf(mSkipNextAction), adapter.indexOf(mSkipPreviousAction)));
+        if (at < 0 && adapter.size() > 0 && adapter.get(0) instanceof PlaybackControlsRow.PlayPauseAction) {
+            at = 0;
+        }
+        if (id == R.id.action_tv_guide) {
+            at = Math.max(at, adapter.indexOf(mActions.get(R.id.action_tv_shuffle)));
+        }
+
+        adapter.add(at + 1, action);
+    }
+
     public void setNextTitle(CharSequence title) {
         mSkipNextAction.setLabel1(title != null ? title : getContext().getString(R.string.lb_playback_controls_skip_next));
         invalidateUi(mSkipNextAction);
