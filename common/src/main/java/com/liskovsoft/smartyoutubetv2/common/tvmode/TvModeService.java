@@ -61,6 +61,9 @@ public class TvModeService {
     /** Marks a video played by the Random button. It belongs to no channel. */
     public static final String RANDOM = "@random";
     public static final String ACTION_SEARCH = "@search";
+    /** Filter bar buttons: jump to the first or the last channel of the list as shown. */
+    public static final String ACTION_FIRST = "@first";
+    public static final String ACTION_LAST = "@last";
     /** The two lines above the time grid: programs left part-way, and programs put aside. Their cards carry these as channel id. */
     public static final String SHELF_RESUME = "@resume";
     public static final String SHELF_LIST = "@mylist";
@@ -900,6 +903,8 @@ public class TvModeService {
     }
     /** Newest first. Both belong to the account, like everything else that follows what was watched. */
     private final List<TvSaved> mResume = new ArrayList<>();
+    /** Home's own "Continue watching": ordinary videos and playlists. Kept apart so TV mode's line only shows TV programs. */
+    private final List<TvSaved> mHomeResume = new ArrayList<>();
     private final List<TvSaved> mMyList = new ArrayList<>();
     /** The lists as cards for the guide. Built when asked for, thrown away when a list changes. */
     private List<Video> mResumeCards;
@@ -915,7 +920,7 @@ public class TvModeService {
 
     /** The list a line's cards come from: "My list", or "Continue watching" in the guide and on Home. */
     private List<TvSaved> savedList(String shelf) {
-        return SHELF_LIST.equals(shelf) ? mMyList : mResume;
+        return SHELF_LIST.equals(shelf) ? mMyList : SHELF_HOME.equals(shelf) ? mHomeResume : mResume;
     }
 
     /** A line above the time grid, as cards. Empty = the guide doesn't show the line. */
@@ -1160,7 +1165,7 @@ public class TvModeService {
             return null;
         }
 
-        TvSaved left = findSaved(mResume, saved.videoId);
+        TvSaved left = findSaved(SHELF_HOME.equals(card.tvChannelId) ? mHomeResume : mResume, saved.videoId);
         // The player's own record is to the second, when it has one. Ours is from when the program left the screen.
         long kept = left != null ? savedPositionMs(saved.videoId) : 0;
         long position = left == null ? 0 : kept > 0 && kept < 0.97 * left.durationMs ? kept : left.positionMs;
@@ -1327,11 +1332,11 @@ public class TvModeService {
             return;
         }
 
-        TvSaved single = findSingle(mResume, video.videoId);
+        TvSaved single = findSingle(mHomeResume, video.videoId);
 
         if (finished) {
             if (single != null) {
-                mResume.remove(single);
+                mHomeResume.remove(single);
                 savedChanged();
             }
             return;
@@ -1341,15 +1346,15 @@ public class TvModeService {
             if (positionMs < PLAIN_MIN_SEEN_MS || durationMs < RESUME_MIN_LENGTH_MS) {
                 return;
             }
-            putSaved(mResume, video, null, positionMs, durationMs);
+            putSaved(mHomeResume, video, null, positionMs, durationMs);
             Log.d(TAG, "Continue watching: \"%s\" added", video.getTitle());
             savedChanged();
             return;
         }
 
-        if (mResume.indexOf(single) != 0) { // watched again: to the front
-            mResume.remove(single);
-            mResume.add(0, single);
+        if (mHomeResume.indexOf(single) != 0) { // watched again: to the front
+            mHomeResume.remove(single);
+            mHomeResume.add(0, single);
             now = true;
         }
 
@@ -1357,7 +1362,7 @@ public class TvModeService {
     }
 
     private void notePlaylist(Video video, String playlistId, long positionMs, long durationMs, boolean finished, boolean now) {
-        TvSaved saved = findPlaylist(mResume, playlistId);
+        TvSaved saved = findPlaylist(mHomeResume, playlistId);
 
         if (saved == null) {
             if (positionMs < PLAIN_MIN_SEEN_MS && !finished) {
@@ -1365,15 +1370,15 @@ public class TvModeService {
             }
             saved = new TvSaved();
             saved.playlistId = playlistId;
-            mResume.add(0, saved);
-            while (mResume.size() > MAX_SAVED) {
-                mResume.remove(mResume.size() - 1);
+            mHomeResume.add(0, saved);
+            while (mHomeResume.size() > MAX_SAVED) {
+                mHomeResume.remove(mHomeResume.size() - 1);
             }
             Log.d(TAG, "Continue watching: playlist %s added", playlistId);
             now = true;
-        } else if (mResume.indexOf(saved) != 0) {
-            mResume.remove(saved);
-            mResume.add(0, saved);
+        } else if (mHomeResume.indexOf(saved) != 0) {
+            mHomeResume.remove(saved);
+            mHomeResume.add(0, saved);
             now = true;
         }
 
@@ -1436,7 +1441,7 @@ public class TvModeService {
             return cards;
         }
 
-        for (TvSaved saved : mResume) {
+        for (TvSaved saved : mHomeResume) {
             Video card = new Video();
             card.videoId = saved.videoId;
             card.title = saved.isPlaylist() && !saved.playlistTitle.isEmpty() ? saved.playlistTitle : saved.title;
@@ -4969,6 +4974,7 @@ public class TvModeService {
         mWatched.clear();
         mWatchedAt.clear();
         mResume.clear();
+        mHomeResume.clear();
         mMyList.clear();
         mResumeCards = null;
         mMyListCards = null;
@@ -5928,6 +5934,17 @@ public class TvModeService {
             }
             addAll(state.optJSONArray("deletedPresets"), mDeletedPresets);
             readSaved(state.optJSONArray("resume"), mResume);
+            readSaved(state.optJSONArray("homeResume"), mHomeResume);
+            // dev.96 kept playlists on the guide's line: they belong to Home's.
+            for (java.util.Iterator<TvSaved> it = mResume.iterator(); it.hasNext();) {
+                TvSaved saved = it.next();
+                if (saved.isPlaylist()) {
+                    it.remove();
+                    if (findPlaylist(mHomeResume, saved.playlistId) == null) {
+                        mHomeResume.add(saved);
+                    }
+                }
+            }
             readSaved(state.optJSONArray("myList"), mMyList);
         } catch (Throwable e) {
             Log.e(TAG, "Can't read the saved TV mode state: %s", e.getMessage());
@@ -6022,6 +6039,7 @@ public class TvModeService {
             final JSONObject watchedAt = new JSONObject(mWatchedAt);
             final List<String> deletedPresets = new ArrayList<>(mDeletedPresets);
             final JSONArray resume = writeSaved(mResume);
+            final JSONArray homeResume = writeSaved(mHomeResume);
             final JSONArray myList = writeSaved(mMyList);
             final File file = stateFile(mAccount); // named now: the account may be another by the time this is written
 
@@ -6038,6 +6056,7 @@ public class TvModeService {
                     state.put("watchedAt", watchedAt);
                     state.put("deletedPresets", new JSONArray(deletedPresets));
                     state.put("resume", resume);
+                    state.put("homeResume", homeResume);
                     state.put("myList", myList);
                     writeFile(file, state.toString());
                     writeFile(new File(mContext.getFilesDir(), DEVICE_FILE), device.toString());

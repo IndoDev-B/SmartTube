@@ -70,6 +70,92 @@ public class TvModeController extends BasePlayerController {
     public static final int TOP_BUTTON_RANDOM = 0;
     public static final int TOP_BUTTON_SETTINGS = 1;
     public static final int TOP_BUTTON_MYLIST = 2;
+    /** Opens the on-screen keypad. The overlay handles it itself: nothing to do here. */
+    public static final int TOP_BUTTON_REMOTE = 3;
+
+    /** On-screen keypad: a digit key. Works exactly like a number key on the remote. */
+    public static void typeDigit(int digit) {
+        TvModeController controller = sInstance.get();
+
+        if (controller != null && controller.getPlayer() != null) {
+            controller.onDigit(digit);
+        }
+    }
+
+    /** On-screen keypad: takes back the last typed digit. Nothing left = nothing gets tuned. */
+    public static void deleteDigit() {
+        TvModeController controller = sInstance.get();
+
+        if (controller == null || controller.mDigits.isEmpty()) {
+            return;
+        }
+
+        controller.mDigits = controller.mDigits.substring(0, controller.mDigits.length() - 1);
+        Utils.removeCallbacks(controller.mTuneDigits);
+
+        if (!controller.mDigits.isEmpty()) {
+            Utils.postDelayed(controller.mTuneDigits, DIGITS_TIMEOUT_MS); // the pause starts again
+        }
+
+        controller.showTyped();
+    }
+
+    /** On-screen keypad, Go: tunes what was typed now instead of after the pause. */
+    public static void tuneTypedNow() {
+        TvModeController controller = sInstance.get();
+
+        if (controller != null && !controller.mDigits.isEmpty()) {
+            Utils.removeCallbacks(controller.mTuneDigits);
+            controller.tuneDigits();
+        }
+    }
+
+    /** On-screen keypad, First / Last: the first or last channel of the list the guide shows. */
+    public static void tuneEdge(boolean last) {
+        TvModeController controller = sInstance.get();
+
+        if (controller == null || controller.getPlayer() == null) {
+            return;
+        }
+
+        // Half-typed digits would otherwise tune somewhere else a moment later.
+        Utils.removeCallbacks(controller.mTuneDigits);
+        controller.mDigits = "";
+        controller.showTyped();
+
+        TvModeService service = controller.getService();
+        List<TvChannel> shown = service.getShownChannels();
+
+        if (shown.isEmpty()) {
+            MessageHelpers.showMessage(controller.getContext(), "No channels");
+            return;
+        }
+
+        TvChannel channel = shown.get(last ? shown.size() - 1 : 0);
+        int number = service.indexOf(channel) + 1;
+        Video current = controller.getVideo();
+
+        if (current != null && channel.id.equals(current.tvChannelId)) {
+            MessageHelpers.showMessage(controller.getContext(), "Already on CH " + number);
+            return;
+        }
+
+        if (!controller.tune(service.tune(channel))) {
+            MessageHelpers.showMessage(controller.getContext(), "Channel " + number + " is still loading");
+        }
+    }
+
+    /** The keypad shows the digits typed so far, also the ones typed on the remote. */
+    private void showTyped() {
+        TvModeOverlay overlay = sOverlay.get();
+
+        if (overlay != null) {
+            overlay.showTypedDigits(mDigits);
+        }
+    }
+
+    /** The channel of the last video, so the keypad closes on a channel change but not on the next program. */
+    private String mRemoteChannelId;
 
     /** The player's own controls are on screen. */
     public static boolean isControlsUp() {
@@ -82,6 +168,9 @@ public class TvModeController extends BasePlayerController {
         TvModeController controller = sInstance.get();
 
         if (controller != null && controller.getPlayer() != null) {
+            if (button == TOP_BUTTON_REMOTE) {
+                return; // the keypad is the overlay's own
+            }
             if (button == TOP_BUTTON_MYLIST) {
                 controller.toggleMyList();
                 return;
@@ -314,6 +403,13 @@ public class TvModeController extends BasePlayerController {
     public void onNewVideo(Video item) {
         getService().adoptTvVideo(item);
         TvModeOverlay overlay = sOverlay.get();
+
+        // The keypad did its job once the channel changed. The next program on the same channel keeps it.
+        String channelId = item != null ? item.tvChannelId : null;
+        if (overlay != null && !android.text.TextUtils.equals(channelId, mRemoteChannelId)) {
+            overlay.hideRemote();
+        }
+        mRemoteChannelId = channelId;
 
         if (!isTvVideo(item)) {
             // A normal video: nothing of TV mode may stay on screen.
@@ -683,6 +779,7 @@ public class TvModeController extends BasePlayerController {
         }
 
         MessageHelpers.showMessage(getContext(), "CH " + mDigits);
+        showTyped();
         Utils.removeCallbacks(mTuneDigits);
         Utils.postDelayed(mTuneDigits, DIGITS_TIMEOUT_MS);
 
@@ -690,8 +787,13 @@ public class TvModeController extends BasePlayerController {
     }
 
     private void tuneDigits() {
+        if (mDigits.isEmpty()) {
+            return; // the keypad's Del took them all back
+        }
+
         int number = Integer.parseInt(mDigits);
         mDigits = "";
+        showTyped();
 
         if (getPlayer() == null) {
             return;

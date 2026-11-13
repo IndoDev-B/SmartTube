@@ -26,7 +26,7 @@ public interface TvModeOverlay {
 
     void setScanlines(boolean enabled);
 
-    /** Random (top left) and TV settings (top right). Shown together with the player's controls. */
+    /** Random (top left); keypad, My list and TV settings (top right). Shown together with the player's controls. */
     void showTopButtons(boolean show);
 
     /**
@@ -46,6 +46,12 @@ public interface TvModeOverlay {
 
     /** Hides the top buttons even when the cursor is on them: a video that isn't TV mode's started. */
     void dropTopButtons();
+
+    /** The on-screen keypad's number line: the channel digits typed so far. Empty = none. */
+    void showTypedDigits(String digits);
+
+    /** Closes the on-screen keypad, if open. The focus goes back to its top button. */
+    void hideRemote();
 
     /** Dims the screen after the sleep timer, with a line of text. */
     void showSleep(String message);

@@ -79,7 +79,13 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     private final IconButton mRandomButton;
     private final IconButton mListButton;
     private final IconButton mSettingsButton;
-    /** The three buttons from left to right, the way Left and Right move through them. */
+    private final IconButton mRemoteButton;
+    /** The on-screen keypad under the keypad button: type a channel number without a remote that has digits. */
+    private final LinearLayout mRemote;
+    private final TextView mRemoteNumber;
+    /** The keypad's keys row by row, the way the D-pad moves through them. */
+    private final java.util.List<java.util.List<TextView>> mRemoteRows = new java.util.ArrayList<>();
+    /** The top buttons from left to right, the way Left and Right move through them. */
     private final IconButton[] mTopButtons;
     /** Says what the focused button does: the buttons themselves are only icons. */
     private final TextView mTip;
@@ -204,7 +210,47 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mRandomButton = topButton(TvModeController.TOP_BUTTON_RANDOM, "Play a random program", Gravity.START, 55);
         mListButton = topButton(TvModeController.TOP_BUTTON_MYLIST, "Save for later", Gravity.END, 55 + TOP_BUTTON_DP + 10);
         mSettingsButton = topButton(TvModeController.TOP_BUTTON_SETTINGS, "TV settings", Gravity.END, 55);
-        mTopButtons = new IconButton[] {mRandomButton, mListButton, mSettingsButton};
+        // Left of My list: the keypad, for remotes without number keys.
+        mRemoteButton = topButton(TvModeController.TOP_BUTTON_REMOTE, "Channel keypad", Gravity.END, 55 + 2 * (TOP_BUTTON_DP + 10));
+        mTopButtons = new IconButton[] {mRandomButton, mRemoteButton, mListButton, mSettingsButton};
+
+        mRemote = new LinearLayout(context);
+        mRemote.setOrientation(LinearLayout.VERTICAL);
+        mRemote.setPadding(dp(10), dp(10), dp(10), dp(10));
+        mRemote.setBackground(rounded(0xE6101010, dp(10)));
+        mRemote.setVisibility(GONE);
+        LayoutParams remoteParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        remoteParams.setMargins(0, dp(30 + TOP_BUTTON_DP + 10), dp(55), 0);
+        addView(mRemote, remoteParams);
+
+        mRemoteNumber = text(22f, 0xFFFFFFFF, 1);
+        mRemoteNumber.setGravity(Gravity.CENTER);
+        mRemoteNumber.setTypeface(null, Typeface.BOLD);
+        LinearLayout.LayoutParams numberParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(34));
+        numberParams.bottomMargin = dp(6);
+        mRemote.addView(mRemoteNumber, numberParams);
+        showTypedDigits("");
+
+        String[][] keys = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"Del", "0", "Go"}, {"First", "Last"}};
+        for (String[] labels : keys) {
+            LinearLayout line = new LinearLayout(context);
+            line.setOrientation(LinearLayout.HORIZONTAL);
+            java.util.List<TextView> row = new java.util.ArrayList<>();
+            for (int i = 0; i < labels.length; i++) {
+                TextView key = remoteKey(labels[i]);
+                // Two keys in the last row: each takes half the width of the three above.
+                LinearLayout.LayoutParams keyParams = labels.length == 3
+                        ? new LinearLayout.LayoutParams(dp(54), dp(38))
+                        : new LinearLayout.LayoutParams(0, dp(38), 1);
+                keyParams.leftMargin = i == 0 ? 0 : dp(6);
+                line.addView(key, keyParams);
+                row.add(key);
+            }
+            LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+            lineParams.topMargin = mRemoteRows.isEmpty() ? 0 : dp(6);
+            mRemote.addView(line, lineParams);
+            mRemoteRows.add(row);
+        }
 
         mTip = text(13f, 0xFFFFFFFF, 1);
         mTip.setPadding(dp(8), dp(3), dp(8), dp(3));
@@ -269,7 +315,11 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
                 case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
                 case android.view.KeyEvent.KEYCODE_ENTER:
                     if (event.getRepeatCount() == 0) {
-                        TvModeController.onTopButton(which);
+                        if (which == TvModeController.TOP_BUTTON_REMOTE) {
+                            openRemote();
+                        } else {
+                            TvModeController.onTopButton(which);
+                        }
                     }
                     return true;
                 case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
@@ -291,6 +341,173 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             return false;
         });
         return button;
+    }
+
+    /** A key of the on-screen keypad: a dark rounded box, white with dark text when focused, like the top buttons. */
+    private TextView remoteKey(final String label) {
+        final TextView key = text(label.length() > 1 ? 14f : 18f, 0xFFFFFFFF, 1);
+        key.setText(label);
+        key.setGravity(Gravity.CENTER);
+        key.setTypeface(null, Typeface.BOLD);
+        key.setFocusable(true);
+        key.setFocusableInTouchMode(true);
+        paintKey(key, false);
+        key.setOnFocusChangeListener((view, focused) -> paintKey(key, focused));
+        key.setOnKeyListener((view, keyCode, event) -> {
+            // The keypad isn't inside the player's rows, so the player never sees these keys:
+            // everything a remote can press here is handled here.
+            int digit = digitOf(keyCode);
+
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+                // The matching key-up must not reach anything else either: Back would leave the player.
+                return keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_BACK || digit != -1;
+            }
+
+            restartTopTimeout();
+            keepControlsUp();
+
+            if (digit != -1) { // the remote's own number keys still work while the keypad is open
+                TvModeController.typeDigit(digit);
+                return true;
+            }
+
+            switch (keyCode) {
+                case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
+                case android.view.KeyEvent.KEYCODE_ENTER:
+                    if (event.getRepeatCount() == 0) {
+                        pressRemoteKey(label);
+                    }
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
+                case android.view.KeyEvent.KEYCODE_DPAD_RIGHT:
+                case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                    moveInRemote(key, keyCode);
+                    return true; // never out of the keypad: Back closes it
+                case android.view.KeyEvent.KEYCODE_BACK:
+                    hideRemote();
+                    return true;
+            }
+
+            return false;
+        });
+        return key;
+    }
+
+    private static int digitOf(int keyCode) {
+        if (keyCode >= android.view.KeyEvent.KEYCODE_0 && keyCode <= android.view.KeyEvent.KEYCODE_9) {
+            return keyCode - android.view.KeyEvent.KEYCODE_0;
+        }
+        if (keyCode >= android.view.KeyEvent.KEYCODE_NUMPAD_0 && keyCode <= android.view.KeyEvent.KEYCODE_NUMPAD_9) {
+            return keyCode - android.view.KeyEvent.KEYCODE_NUMPAD_0;
+        }
+        return -1;
+    }
+
+    private void paintKey(TextView key, boolean focused) {
+        key.setBackground(rounded(focused ? 0xFFF1F1F1 : 0x33FFFFFF, dp(6)));
+        key.setTextColor(focused ? 0xFF111111 : 0xFFFFFFFF);
+    }
+
+    private void pressRemoteKey(String label) {
+        switch (label) {
+            case "Del":
+                TvModeController.deleteDigit();
+                break;
+            case "Go":
+                TvModeController.tuneTypedNow();
+                break;
+            case "First":
+                TvModeController.tuneEdge(false);
+                break;
+            case "Last":
+                TvModeController.tuneEdge(true);
+                break;
+            default:
+                TvModeController.typeDigit(label.charAt(0) - '0');
+        }
+    }
+
+    /** D-pad inside the keypad. Up and Down land on the key nearest straight above or below. */
+    private void moveInRemote(TextView from, int keyCode) {
+        for (int r = 0; r < mRemoteRows.size(); r++) {
+            java.util.List<TextView> row = mRemoteRows.get(r);
+            int c = row.indexOf(from);
+
+            if (c == -1) {
+                continue;
+            }
+
+            TextView to = null;
+
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT && c > 0) {
+                to = row.get(c - 1);
+            } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && c + 1 < row.size()) {
+                to = row.get(c + 1);
+            } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP || keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) {
+                int toRow = r + (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP ? -1 : 1);
+                if (toRow >= 0 && toRow < mRemoteRows.size()) {
+                    java.util.List<TextView> target = mRemoteRows.get(toRow);
+                    float middle = (c + 0.5f) / row.size(); // the rows don't all have the same number of keys
+                    to = target.get(Math.min(target.size() - 1, (int) (middle * target.size())));
+                }
+            }
+
+            if (to != null) {
+                to.requestFocus();
+            }
+            return;
+        }
+    }
+
+    /** OK on the keypad button: the keypad opens under it with the cursor on 1. */
+    private void openRemote() {
+        mRemote.setVisibility(VISIBLE);
+        mRemoteRows.get(0).get(0).requestFocus();
+        restartTopTimeout();
+    }
+
+    @Override
+    public void hideRemote() {
+        if (mRemote.getVisibility() != VISIBLE) {
+            return;
+        }
+
+        // The focus moves before the keypad goes: a focused view that vanishes lets Android put the cursor anywhere.
+        if (mRemote.hasFocus() && mRemoteButton.getVisibility() == VISIBLE) {
+            mRemoteButton.requestFocus();
+        }
+
+        mRemote.setVisibility(GONE);
+    }
+
+    @Override
+    public void showTypedDigits(String digits) {
+        mRemoteNumber.setText(digits == null || digits.isEmpty() ? "CH  - -" : "CH  " + digits);
+    }
+
+    /**
+     * The player's controls fade out after a few seconds without a key, and the keypad's keys
+     * never reach the player. Each key on the keypad restarts that wait, so it stays while used.
+     */
+    private void keepControlsUp() {
+        if (!TvModeController.isControlsUp()) {
+            return;
+        }
+
+        Context context = getContext();
+        while (context instanceof android.content.ContextWrapper && !(context instanceof androidx.fragment.app.FragmentActivity)) {
+            context = ((android.content.ContextWrapper) context).getBaseContext();
+        }
+
+        if (context instanceof androidx.fragment.app.FragmentActivity) {
+            for (androidx.fragment.app.Fragment fragment : ((androidx.fragment.app.FragmentActivity) context).getSupportFragmentManager().getFragments()) {
+                if (fragment instanceof androidx.leanback.app.PlaybackSupportFragment) {
+                    ((androidx.leanback.app.PlaybackSupportFragment) fragment).tickle();
+                }
+            }
+        }
     }
 
     /** Down or Back on a top button: the cursor goes back to the player. */
@@ -315,6 +532,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             setTopButtonsVisible(false);
             com.liskovsoft.smartyoutubetv2.tv.ui.mod.leanback.playerglue.tooltips.TooltipCompatHandler.hideAll();
         }
+
+        mRemote.setVisibility(GONE); // after the focus moved on, see hideRemote()
     }
 
     private void setTopButtonsVisible(boolean visible) {
@@ -324,6 +543,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
         if (!visible) {
             hideTip();
+            mRemote.setVisibility(GONE);
         }
     }
 
@@ -345,8 +565,14 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mTip.setVisibility(GONE);
     }
 
+    /** A top button, or a key of the keypad that hangs under them. */
     private boolean isTopButton(View view) {
-        return view == mRandomButton || view == mListButton || view == mSettingsButton;
+        for (View parent = view; parent != null; parent = parent.getParent() instanceof View ? (View) parent.getParent() : null) {
+            if (parent == mRemote) {
+                return true;
+            }
+        }
+        return view == mRandomButton || view == mRemoteButton || view == mListButton || view == mSettingsButton;
     }
 
     @Override
@@ -421,6 +647,17 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
                     mPath.lineTo(cx, cy + r);
                 }
                 canvas.drawPath(mPath, mStroke);
+            } else if (which == TvModeController.TOP_BUTTON_REMOTE) { // a phone keypad: 3 rows of 3 dots and a 0
+                float step = r * 0.62f;
+                float dot = r * 0.17f;
+                for (int row = 0; row < 4; row++) {
+                    float y = cy + (row - 1.5f) * step;
+                    for (int col = -1; col <= 1; col++) {
+                        if (row < 3 || col == 0) {
+                            canvas.drawCircle(cx + col * step * 1.15f, y, dot, mFill);
+                        }
+                    }
+                }
             } else { // settings: three sliders
                 for (int i = -1; i <= 1; i++) {
                     float y = cy + i * r * 0.72f;
@@ -433,6 +670,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
     @Override
     public void showTopButtons(boolean show) {
+        if (!show) {
+            hideRemote(); // the keypad goes with the controls; the cursor waits on its button
+        }
+
         if (!show && mTopHeld) {
             return; // the cursor is on them: they stay when the controls fade out
         }
@@ -478,7 +719,8 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
     @Override
     public void focusRandomButton() {
-        if (mTopHeld && !mRandomButton.isFocused() && !mListButton.isFocused() && !mSettingsButton.isFocused()) {
+        View focused = getRootView().findFocus();
+        if (mTopHeld && (focused == null || !isTopButton(focused))) {
             setTopButtonsVisible(true);
             mRandomButton.requestFocus();
         }

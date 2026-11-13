@@ -374,7 +374,9 @@ public class TvGuideHeroView extends FrameLayout {
             mProgressTrack.setVisibility(INVISIBLE);
             mOkKey.setVisibility(VISIBLE);
             mOkLabel.setVisibility(VISIBLE);
-            mOkLabel.setText(!TvModeService.ACTION_FAVOURITES.equals(video.tvChannelId) ? "Open" : service.isFavOnly() ? "Show all channels" : "Show favourites only");
+            mOkLabel.setText(TvModeService.ACTION_FIRST.equals(video.tvChannelId) ? "Go to the first channel"
+                    : TvModeService.ACTION_LAST.equals(video.tvChannelId) ? "Go to the last channel"
+                    : !TvModeService.ACTION_FAVOURITES.equals(video.tvChannelId) ? "Open" : service.isFavOnly() ? "Show all channels" : "Show favourites only");
             mHoldKey.setVisibility(GONE);
             mHoldLabel.setVisibility(GONE);
             mPreviewBug.setVisibility(GONE);
@@ -670,7 +672,11 @@ public class TvGuideHeroView extends FrameLayout {
     }
 
     private static String describe(String action) {
-        if (TvModeService.ACTION_SETTINGS.equals(action)) {
+        if (TvModeService.ACTION_FIRST.equals(action)) {
+            return "Jump to the first channel in the list.\nWith a filter on, the first of the channels it shows.";
+        } else if (TvModeService.ACTION_LAST.equals(action)) {
+            return "Jump to the last channel in the list.\nWith a filter on, the last of the channels it shows.";
+        } else if (TvModeService.ACTION_SETTINGS.equals(action)) {
             return "Channel mode, remote, sleep timer, history, shuffle all.";
         } else if (TvModeService.ACTION_GENRE.equals(action)) {
             return "Show only one kind of program: movies, series, songs...\nCH+ and CH- stay within them.";

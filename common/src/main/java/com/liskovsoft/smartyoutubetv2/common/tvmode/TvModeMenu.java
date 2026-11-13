@@ -603,7 +603,7 @@ public class TvModeMenu {
             })));
         }
 
-        if (resume && !playlist) {
+        if (resume && !playlist && !TvModeService.SHELF_HOME.equals(shelf)) { // My list is TV mode's: not offered on Home
             appendMyList(card);
         }
 

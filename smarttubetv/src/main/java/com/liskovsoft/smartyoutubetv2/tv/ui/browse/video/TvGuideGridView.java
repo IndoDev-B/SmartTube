@@ -58,7 +58,7 @@ public class TvGuideGridView extends View {
     private final java.util.Set<String> mThumbsAsked = new java.util.HashSet<>();
     private final TvModeService mService;
     /** How many of the top line's buttons sit on the left. The rest are right-aligned. */
-    private static final int LEFT_BUTTONS = 4;
+    private static final int LEFT_BUTTONS = 6;
     private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint mStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final android.graphics.Path mPath = new android.graphics.Path();
@@ -95,7 +95,8 @@ public class TvGuideGridView extends View {
     private Listener mListener;
     /** -1 = the buttons in the top line, otherwise the channel's place in the list. */
     private int mRow;
-    private int mButton;
+    /** Starts on Type, the first filter, as before First and Last were put ahead of it. */
+    private int mButton = 2;
     /** The focused program's place in its channel's lineup. */
     private int mProgram = -1;
     /** The time the focus is at. Up/Down land on whatever the next channel has on at this time. */
@@ -147,6 +148,10 @@ public class TvGuideGridView extends View {
         mStroke.setStrokeWidth(dp(1.5f));
 
         // Filters on the left, actions on the right. LEFT_BUTTONS says where the first group ends.
+        // First and Last lead: a long list is a lot of Down presses to its end.
+        // Their picture above comes from leanback, which the common R imported here doesn't carry.
+        mButtons.add(button(TvModeService.ACTION_FIRST, com.liskovsoft.smartyoutubetv2.tv.R.drawable.lb_ic_skip_previous));
+        mButtons.add(button(TvModeService.ACTION_LAST, com.liskovsoft.smartyoutubetv2.tv.R.drawable.lb_ic_skip_next));
         mButtons.add(button(TvModeService.ACTION_GENRE, R.drawable.icon_tv_mode));
         mButtons.add(button(TvModeService.ACTION_TOPIC, R.drawable.icon_playlist));
         mButtons.add(button(TvModeService.ACTION_LANGUAGE, R.drawable.settings_language));
@@ -171,26 +176,52 @@ public class TvGuideGridView extends View {
         String genre = mService.getFilterGenre();
         String language = mService.getFilterLanguage();
         String languageName = language.isEmpty() ? "" : com.liskovsoft.smartyoutubetv2.common.tvmode.TvLanguage.nameOf(language);
-        mButtons.get(0).title = "Type: " + (kind.isEmpty() ? "Any" : kind);
-        mButtons.get(1).title = "Genre: " + (genre.isEmpty() ? "Any" : genre);
-        mButtons.get(2).title = "Language: " + (language.isEmpty() ? "Any" : languageName);
-        mButtons.get(3).title = "Favourites";
-        mButtons.get(4).title = "Search";
-        mButtons.get(5).title = getContext().getString(R.string.tv_mode_new_channel);
-        mButtons.get(6).title = getContext().getString(R.string.tv_mode_settings);
+        // First and Last show only their icon on the line: the titles are for the picture above.
+        mButtons.get(0).title = "First channel";
+        mButtons.get(1).title = "Last channel";
+        mButtons.get(2).title = "Type: " + (kind.isEmpty() ? "Any" : kind);
+        mButtons.get(3).title = "Genre: " + (genre.isEmpty() ? "Any" : genre);
+        mButtons.get(4).title = "Language: " + (language.isEmpty() ? "Any" : languageName);
+        mButtons.get(5).title = "Favourites";
+        mButtons.get(6).title = "Search";
+        mButtons.get(7).title = getContext().getString(R.string.tv_mode_new_channel);
+        mButtons.get(8).title = getContext().getString(R.string.tv_mode_settings);
 
         // When the full labels don't fit on the line: the filters say only what they are set to,
         // and Favourites keeps just its star. The picture above names the focused button anyway.
-        mShortTitles[0] = kind.isEmpty() ? "Type" : kind;
-        mShortTitles[1] = genre.isEmpty() ? "Genre" : genre;
-        mShortTitles[2] = language.isEmpty() ? "Language" : languageName;
-        mShortTitles[3] = "";
-        mShortTitles[4] = mButtons.get(4).title;
-        mShortTitles[5] = "New";
+        mShortTitles[0] = "";
+        mShortTitles[1] = "";
+        mShortTitles[2] = kind.isEmpty() ? "Type" : kind;
+        mShortTitles[3] = genre.isEmpty() ? "Genre" : genre;
+        mShortTitles[4] = language.isEmpty() ? "Language" : languageName;
+        mShortTitles[5] = "";
         mShortTitles[6] = mButtons.get(6).title;
+        mShortTitles[7] = "New";
+        mShortTitles[8] = mButtons.get(8).title;
     }
 
-    private final String[] mShortTitles = new String[7];
+    private final String[] mShortTitles = new String[9];
+
+    /** First and Last: they move the focus within the guide, so nothing outside it hears of them. */
+    private static boolean isJump(String action) {
+        return TvModeService.ACTION_FIRST.equals(action) || TvModeService.ACTION_LAST.equals(action);
+    }
+
+    /** To the first or the last channel the filters show, on what it has on now, as Down from the buttons would. */
+    private void jumpTo(boolean last) {
+        List<TvChannel> channels = mService.getShownChannels();
+
+        if (channels.isEmpty()) {
+            return;
+        }
+
+        mShelf = null;
+        mFocusTimeMs = 0;
+        mReturnRow = -1;
+        mRow = last ? channels.size() - 1 : 0;
+        mProgram = -1;
+        moved(); // scrolls the list so the row is on screen
+    }
 
     /** A top line button: its icon, and its label when it has one. */
     private float pillWidth(String label, float iconSize) {
@@ -787,8 +818,13 @@ public class TvGuideGridView extends View {
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
-            if (!mLongPressed && event.isTracking() && !event.isCanceled() && mListener != null && getFocused() != null) {
-                mListener.onClicked(getFocused());
+            if (!mLongPressed && event.isTracking() && !event.isCanceled() && getFocused() != null) {
+                Video focused = getFocused();
+                if (mRow < 0 && mShelf == null && isJump(focused.tvChannelId)) {
+                    jumpTo(TvModeService.ACTION_LAST.equals(focused.tvChannelId));
+                } else if (mListener != null) {
+                    mListener.onClicked(focused);
+                }
             }
             mLongPressed = false;
             return true;
@@ -865,7 +901,7 @@ public class TvGuideGridView extends View {
         float rightWidth = 0;
         float allWidth = 0;
         for (int i = 0; i < mButtons.size(); i++) {
-            labels[i] = mButtons.get(i).title;
+            labels[i] = isJump(mButtons.get(i).tvChannelId) ? "" : mButtons.get(i).title; // icon only
             pillWidths[i] = pillWidth(labels[i], iconSize);
             allWidth += pillWidths[i] + dp(9);
         }
@@ -1346,7 +1382,21 @@ public class TvGuideGridView extends View {
         mFill.setColor(color);
         mStroke.setColor(color);
 
-        if (TvModeService.ACTION_GENRE.equals(action)) { // four tiles
+        if (isJump(action)) { // an arrow to a bar: up to the top of the list, or down to its end
+            boolean last = TvModeService.ACTION_LAST.equals(action);
+            float bar = dp(1.25f);
+            float edge = last ? cy + r : cy - r; // where the bar sits
+            float dir = last ? 1 : -1; // the way the arrow points
+            canvas.drawRect(cx - r, Math.min(edge, edge - dir * bar * 2), cx + r, Math.max(edge, edge - dir * bar * 2), mFill);
+            float tip = edge - dir * (bar * 2 + dp(1.5f));
+            float base = cy - dir * r;
+            mPath.reset();
+            mPath.moveTo(cx, tip);
+            mPath.lineTo(cx - r * 0.8f, base);
+            mPath.lineTo(cx + r * 0.8f, base);
+            mPath.close();
+            canvas.drawPath(mPath, mFill);
+        } else if (TvModeService.ACTION_GENRE.equals(action)) { // four tiles
             float gap = dp(1.5f);
             canvas.drawRect(cx - r, cy - r, cx - gap, cy - gap, mFill);
             canvas.drawRect(cx + gap, cy - r, cx + r, cy - gap, mFill);

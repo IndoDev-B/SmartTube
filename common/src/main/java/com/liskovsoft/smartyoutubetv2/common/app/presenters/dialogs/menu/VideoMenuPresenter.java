@@ -316,8 +316,11 @@ public class VideoMenuPresenter extends BaseMenuPresenter {
 
     /** TV mode: a playlist card, from search or anywhere else, goes on a Free Series channel or a new one. */
     private void appendAddToTvChannelButton() {
+        // Search serves playlists in YouTube's newer card format, which comes through as an unknown
+        // type. A plain video card is TYPE_VIDEO: one inside a playlist would otherwise offer its playlist under its own title.
         if (mVideo == null || getContext() == null || !com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.isEnabled(getContext())
-                || mVideo.itemType != com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_PLAYLIST) {
+                || mVideo.itemType == com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_VIDEO
+                || mVideo.itemType == com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_CHANNEL) {
             return;
         }
 
@@ -328,16 +331,40 @@ public class VideoMenuPresenter extends BaseMenuPresenter {
         }
 
         final String id = com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.resumablePlaylist(playlistId);
+        final Video card = mVideo;
+        final android.content.Context context = getContext();
+        final String title = card.getTitle();
+        final String author = com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.creatorOf(card.getAuthor());
+        Log.d(TAG, "Add to a TV channel? type %s, playlist %s, channel %s, nested %s", card.itemType, card.playlistId, card.channelId, card.hasNestedItems());
 
-        if (id == null) {
+        if (id != null) {
+            mDialogPresenter.appendSingleButton(UiOptionItem.from("Add to a TV channel", optionItem -> {
+                mDialogPresenter.closeDialog();
+                com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeMenu.showAddToChannel(context, id, title, author, 0);
+            }));
             return;
         }
 
-        mDialogPresenter.appendSingleButton(UiOptionItem.from("Add to a TV channel", optionItem -> {
-            mDialogPresenter.closeDialog();
-            com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeMenu.showAddToChannel(getContext(), id, mVideo.getTitle(),
-                    com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.creatorOf(mVideo.getAuthor()), 0);
-        }));
+        // A playlist card that opens like a channel and carries no playlist id: its videos do.
+        // Read its first page when the item is picked, not every time the menu opens.
+        if (card.playlistId == null && card.hasNestedItems()) {
+            mDialogPresenter.appendSingleButton(UiOptionItem.from("Add to a TV channel", optionItem -> {
+                mDialogPresenter.closeDialog();
+                RxHelper.execute(com.liskovsoft.youtubeapi.service.YouTubeServiceManager.instance().getContentService().getGroupObserve(card.mediaItem),
+                        group -> {
+                            String found = null;
+                            for (int i = 0; group != null && group.getMediaItems() != null && i < group.getMediaItems().size() && found == null; i++) {
+                                found = com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.resumablePlaylist(group.getMediaItems().get(i).getPlaylistId());
+                            }
+                            if (found == null) {
+                                com.liskovsoft.sharedutils.helpers.MessageHelpers.showMessage(context, "This playlist can't be added to a channel");
+                                return;
+                            }
+                            com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeMenu.showAddToChannel(context, found, title, author, 0);
+                        },
+                        error -> com.liskovsoft.sharedutils.helpers.MessageHelpers.showMessage(context, "Couldn't read the playlist. Try again in a moment."));
+            }));
+        }
     }
 
     private void appendOpenPlaylistButton() {
