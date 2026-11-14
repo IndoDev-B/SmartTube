@@ -488,6 +488,7 @@ public class TvModeController extends BasePlayerController {
             // A normal video: nothing of TV mode may stay on screen.
             mDecoratedId = null;
             if (overlay != null) {
+                overlay.setChannelTag(null);
                 overlay.hideBanner();
                 overlay.hideSwitching();
                 overlay.setScanlines(false);
@@ -533,6 +534,8 @@ public class TvModeController extends BasePlayerController {
         }
 
         overlay.setScanlines(getService().isScanlinesEnabled());
+        // Every channel change, by any key: the banner may wait for the controls to go, this can't.
+        overlay.setChannelTag("CH " + (getService().indexOf(channel) + 1) + "   " + channel.name);
 
         if (item.videoId == null || item.videoId.equals(mDecoratedId)) {
             return;

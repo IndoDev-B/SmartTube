@@ -293,11 +293,6 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mNextTitle.setText(nextTitle);
         mBanner.setVisibility(VISIBLE);
 
-        // The keypad tunes with the top buttons up: the line next to them follows the new channel.
-        if (mRandomButton.getVisibility() == VISIBLE) {
-            mChannelTag.setText("CH " + number + "   " + name);
-            mChannelTag.setVisibility(VISIBLE);
-        }
         removeCallbacks(mHideBanner);
         postDelayed(mHideBanner, BANNER_MS);
     }
@@ -486,6 +481,13 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         mRemote.setVisibility(VISIBLE);
         mRemoteRows.get(0).get(0).requestFocus();
         restartTopTimeout();
+    }
+
+    @Override
+    public void setChannelTag(String label) {
+        mChannelTag.setText(label != null ? label : "");
+        // Shown with the top buttons only; setTopButtonsVisible() reads it again when they come up.
+        mChannelTag.setVisibility(label != null && mRandomButton.getVisibility() == VISIBLE ? VISIBLE : GONE);
     }
 
     @Override

@@ -53,6 +53,9 @@ public interface TvModeOverlay {
     /** Closes the on-screen keypad, if open. The focus goes back to its top button. */
     void hideRemote();
 
+    /** "CH 12   Name" next to the top buttons. Null = no channel: the line goes. */
+    void setChannelTag(String label);
+
     /** Dims the screen after the sleep timer, with a line of text. */
     void showSleep(String message);
 
