@@ -195,7 +195,27 @@ public class TvGuideFragment extends VideoRowsFragment {
         mWasPaused = true;
 
         if (mHero != null) {
-            mHero.setPreviewAllowed(false); // the player, or a menu, is taking over
+            if (com.liskovsoft.smartyoutubetv2.common.app.presenters.AppDialogPresenter.instance(getContext()).isDialogShown()) {
+                // A menu over the guide (TV settings, a program's menu): TV doesn't stop for it, the
+                // preview plays on behind. Should the menu start the player, the player stops it.
+                TvModeService.instance(getContext()).setGuidePreviewStopper(() -> {
+                    if (mHero != null) {
+                        mHero.setPreviewAllowed(false);
+                    }
+                });
+            } else {
+                mHero.setPreviewAllowed(false); // the player is taking over
+            }
+        }
+    }
+
+    /** Out of sight altogether (Home pressed with a menu open): the preview that played on under the menu stops. */
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        if (mHero != null) {
+            mHero.setPreviewAllowed(false);
         }
     }
 

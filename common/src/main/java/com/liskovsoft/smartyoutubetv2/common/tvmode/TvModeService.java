@@ -3133,6 +3133,22 @@ public class TvModeService {
         }
     }
 
+    /** Stops the guide's preview, which plays on under a menu. Set by the guide, taken once by the player. */
+    private Runnable mGuidePreviewStopper;
+
+    public void setGuidePreviewStopper(Runnable stopper) {
+        mGuidePreviewStopper = stopper;
+    }
+
+    /** The full-screen player starts: nothing may go on playing in the guide behind it. */
+    public void stopGuidePreview() {
+        Runnable stopper = mGuidePreviewStopper;
+        mGuidePreviewStopper = null;
+        if (stopper != null) {
+            stopper.run();
+        }
+    }
+
     /** A playlist mixed into a searching channel goes: its queued videos too. What the searches found stays. */
     public void removePlaylistSource(TvChannel channel, TvChannel.Series one, Runnable onDone) {
         channel.series.remove(one);

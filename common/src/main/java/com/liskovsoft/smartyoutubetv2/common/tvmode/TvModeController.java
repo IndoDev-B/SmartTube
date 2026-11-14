@@ -462,6 +462,7 @@ public class TvModeController extends BasePlayerController {
         // tagging it made the preview act as the TV player, stuck at the end of a program.
         if (!isEmbedPlayer()) {
             getService().adoptTvVideo(item);
+            getService().stopGuidePreview(); // it may still be playing under a menu that started this
         }
         TvModeOverlay overlay = sOverlay.get();
 

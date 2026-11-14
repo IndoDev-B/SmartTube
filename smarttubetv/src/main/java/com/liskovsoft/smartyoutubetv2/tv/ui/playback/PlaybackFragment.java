@@ -230,6 +230,9 @@ public class PlaybackFragment extends SeekModePlaybackFragment implements Playba
     public void onResume() {
         super.onResume();
 
+        // TV mode: the guide's preview plays on under a menu. The full-screen player is now in front.
+        com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.instance(getContext()).stopGuidePreview();
+
         if ((Util.SDK_INT <= 23 || mPlayer == null)) {
             initializePlayer();
         }
