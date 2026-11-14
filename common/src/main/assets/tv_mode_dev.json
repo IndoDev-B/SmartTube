@@ -1753,22 +1753,37 @@
       "kind": "Shows",
       "genre": "Classics",
       "languages": [
-        "*"
+        "hi"
       ],
       "terms": [
         "old doordarshan ads",
         "90s indian tv ads",
         "old indian ads",
-        "90s tv commercials compilation",
-        "80s commercials",
-        "funny commercials",
-        "funny clips compilation",
-        "comedy clips",
-        "bloopers and outtakes",
-        "candid camera pranks",
+        "funny indian ads",
         "old doordarshan title songs",
         "mile sur mera tumhara",
-        "funny news bloopers"
+        "hindi comedy clips",
+        "funny hindi clips"
+      ]
+    },
+    {
+      "id": "retro-commercials",
+      "name": "Retro Commercials and Bloopers",
+      "kind": "Shows",
+      "genre": "Classics",
+      "languages": [
+        "en"
+      ],
+      "region": "US",
+      "terms": [
+        "80s commercials",
+        "90s tv commercials compilation",
+        "super bowl commercials",
+        "funny commercials",
+        "tv bloopers and outtakes",
+        "funny news bloopers",
+        "just for laughs gags",
+        "classic tv theme songs"
       ]
     },
     {
