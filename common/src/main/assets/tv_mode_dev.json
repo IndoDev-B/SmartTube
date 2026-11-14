@@ -1414,9 +1414,11 @@
       "terms": [
         "lofi hip hop mix",
         "chill beats mix",
-        "study music"
+        "study music",
+        "hindi lofi songs",
+        "bollywood lofi slowed reverb",
+        "hindi lofi mashup"
       ],
-      "length": "long",
       "genre": "Lo-fi",
       "languages": [
         "*"
@@ -1509,6 +1511,41 @@
       ]
     },
     {
+      "id": "punjabi-songs",
+      "name": "Punjabi Songs",
+      "kind": "Songs",
+      "genre": "Punjabi",
+      "languages": [
+        "pa"
+      ],
+      "length": "medium",
+      "playlists": true,
+      "terms": [
+        "new punjabi songs",
+        "latest punjabi songs",
+        "punjabi hit songs",
+        "old punjabi songs",
+        "punjabi songs jukebox"
+      ]
+    },
+    {
+      "id": "unplugged-instrumental",
+      "name": "Unplugged and Instrumental",
+      "kind": "Songs",
+      "genre": "Unplugged",
+      "languages": [
+        "hi"
+      ],
+      "terms": [
+        "hindi unplugged songs",
+        "bollywood acoustic cover",
+        "hindi songs cover",
+        "flute instrumental hindi songs",
+        "sitar instrumental bollywood",
+        "piano cover bollywood songs"
+      ]
+    },
+    {
       "id": "ghazals",
       "name": "Ghazals",
       "terms": [
@@ -1572,11 +1609,14 @@
     },
     {
       "id": "movies-explained",
-      "name": "Movies Explained",
+      "name": "Video Essays",
       "terms": [
         "movie explained in english",
         "film analysis",
-        "behind the scenes film"
+        "behind the scenes film",
+        "video essay",
+        "history video essay",
+        "video essay explained"
       ],
       "length": "medium",
       "blocked": [
@@ -1619,6 +1659,26 @@
       "kind": "Shows"
     },
     {
+      "id": "trailers",
+      "name": "Trailers",
+      "kind": "Shows",
+      "genre": "Film",
+      "languages": [
+        "*"
+      ],
+      "terms": [
+        "official trailer",
+        "new movie trailer",
+        "hindi movie official trailer",
+        "web series official trailer",
+        "official teaser"
+      ],
+      "needWords": [
+        "trailer|teaser"
+      ],
+      "order": "new"
+    },
+    {
       "id": "comedy",
       "name": "Comedy",
       "terms": [
@@ -1629,7 +1689,9 @@
         "late night comedy show",
         "snl sketches",
         "comedy show full episode",
-        "stand up comedy full show"
+        "stand up comedy full show",
+        "classic sitcom full episode",
+        "best sitcom moments"
       ],
       "genre": "Comedy",
       "languages": [
@@ -1674,9 +1736,9 @@
       "id": "retro-tv",
       "name": "Retro TV",
       "terms": [
-        "90s tv commercials compilation",
         "classic tv show full episode",
-        "80s commercials"
+        "80s tv show full episode",
+        "90s tv show full episode"
       ],
       "genre": "Classics",
       "languages": [
@@ -1684,6 +1746,30 @@
       ],
       "kind": "Shows",
       "region": "US"
+    },
+    {
+      "id": "retro-ads",
+      "name": "Retro Ads and Funny Clips",
+      "kind": "Shows",
+      "genre": "Classics",
+      "languages": [
+        "*"
+      ],
+      "terms": [
+        "old doordarshan ads",
+        "90s indian tv ads",
+        "old indian ads",
+        "90s tv commercials compilation",
+        "80s commercials",
+        "funny commercials",
+        "funny clips compilation",
+        "comedy clips",
+        "bloopers and outtakes",
+        "candid camera pranks",
+        "old doordarshan title songs",
+        "mile sur mera tumhara",
+        "funny news bloopers"
+      ]
     },
     {
       "id": "magic",
@@ -1708,7 +1794,13 @@
         "stand up comedy hindi",
         "hindi stand up comedy special",
         "kapil sharma show",
-        "hindi comedy show full episode"
+        "hindi comedy show full episode",
+        "johnny lever comedy scenes",
+        "paresh rawal comedy scenes",
+        "rajpal yadav comedy scenes",
+        "taarak mehta ka ooltah chashmah full episode",
+        "sarabhai vs sarabhai full episode",
+        "office office full episode"
       ],
       "playlists": true,
       "genre": "Comedy",
@@ -1734,11 +1826,13 @@
     },
     {
       "id": "kavi-sammelan",
-      "name": "Kavi Sammelan",
+      "name": "Kavi Sammelan and Mushaira",
       "terms": [
         "kavi sammelan",
         "hasya kavi sammelan",
-        "mushaira"
+        "mushaira",
+        "urdu mushaira",
+        "jashn e rekhta mushaira"
       ],
       "genre": "Poetry",
       "languages": [
@@ -1768,7 +1862,10 @@
         "kids cartoon",
         "animation short",
         "how animation is made",
-        "classic cartoons"
+        "classic cartoons",
+        "tom and jerry classic",
+        "looney tunes classic cartoons",
+        "popeye cartoon"
       ],
       "playlists": true,
       "genre": "Cartoons",
@@ -2333,7 +2430,9 @@
       "terms": [
         "hindi podcast full episode",
         "podcast in hindi interview",
-        "comedy podcast hindi"
+        "comedy podcast hindi",
+        "hindi motivational speech",
+        "motivational video hindi"
       ],
       "length": "long",
       "playlists": true,
@@ -2390,13 +2489,16 @@
     },
     {
       "id": "tennis",
-      "name": "Tennis",
+      "name": "Racket Sports",
       "terms": [
         "tennis highlights",
-        "tennis classic match"
+        "tennis classic match",
+        "badminton highlights",
+        "badminton best rallies",
+        "table tennis highlights"
       ],
       "length": "medium",
-      "genre": "Tennis",
+      "genre": "Racket sports",
       "languages": [
         "en"
       ],
@@ -2422,7 +2524,10 @@
       "terms": [
         "ufc full fight",
         "boxing full fight",
-        "martial arts documentary"
+        "martial arts documentary",
+        "wwe full match",
+        "wwe highlights",
+        "indian wrestling dangal"
       ],
       "length": "medium",
       "genre": "Combat",
@@ -2569,8 +2674,7 @@
         "travel vlog walking tour",
         "city walking tour 4k",
         "travel documentary",
-        "road trip vlog",
-        "van life travel"
+        "road trip vlog"
       ],
       "genre": "Travel",
       "languages": [
@@ -2578,6 +2682,23 @@
       ],
       "kind": "Lifestyle",
       "region": "US"
+    },
+    {
+      "id": "van-life",
+      "name": "Van Life and Tiny Homes",
+      "kind": "Lifestyle",
+      "genre": "Van life",
+      "languages": [
+        "en"
+      ],
+      "terms": [
+        "van life",
+        "van conversion tour",
+        "tiny house tour",
+        "overlanding adventure",
+        "living on a sailboat",
+        "off grid cabin life"
+      ]
     },
     {
       "id": "hiking-and-camping",
@@ -2673,7 +2794,9 @@
         "motorcycle restoration",
         "formula 1 race highlights",
         "f1 documentary",
-        "f1 onboard"
+        "f1 onboard",
+        "dashcam close calls",
+        "car crash compilation dashcam"
       ],
       "length": "medium",
       "genre": "Vehicles",
@@ -3082,7 +3205,9 @@
       "terms": [
         "wildlife live cam",
         "nature live camera",
-        "bird feeder live cam"
+        "bird feeder live cam",
+        "africa safari live cam",
+        "wildlife live cam watering hole"
       ],
       "features": [
         "live"
@@ -3385,7 +3510,10 @@
         "hindi horror story audio",
         "hawa mahal vividh bharati",
         "hindi suspense kahani audio",
-        "hindi audio story"
+        "hindi audio story",
+        "hindi horror story",
+        "sacchi bhutiya kahani",
+        "hindi horror podcast"
       ],
       "length": "long",
       "genre": "Stories",
@@ -3670,7 +3798,6 @@
     "Sufi",
     "Talk",
     "Tech",
-    "Tennis",
     "Travel",
     "True crime",
     "Vehicles",
@@ -3685,7 +3812,11 @@
     "Turkish",
     "Pakistani",
     "Asian",
-    "Filipino"
+    "Filipino",
+    "Punjabi",
+    "Unplugged",
+    "Van life",
+    "Racket sports"
   ],
   "foreignHints": {
     "en": [

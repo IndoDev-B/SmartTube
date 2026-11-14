@@ -106,6 +106,32 @@ public class TvModeService {
     /** Last results page per search, so the next fill continues instead of starting over. Worker thread only. */
     private final Map<String, MediaGroup> mPages = new ConcurrentHashMap<>();
     private final List<String> mGlobalSkipWords = new ArrayList<>();
+
+    /**
+     * The words every channel skips, less the ones this channel requires: a Trailers channel needs
+     * "trailer", which every other channel keeps out.
+     */
+    private List<String> globalSkipWords(TvChannel channel) {
+        if (channel.needWords.isEmpty()) {
+            return mGlobalSkipWords;
+        }
+
+        List<String> skip = new ArrayList<>();
+
+        for (String word : mGlobalSkipWords) {
+            boolean needed = false;
+            for (String need : channel.needWords) {
+                for (String alternative : need.split("\\|")) {
+                    needed |= alternative.trim().equalsIgnoreCase(word);
+                }
+            }
+            if (!needed) {
+                skip.add(word);
+            }
+        }
+
+        return skip;
+    }
     /** Ready-made topics for New channel: a name followed by its search terms. */
     private final List<List<String>> mIdeas = new ArrayList<>();
     private String mDefaultMode = TvChannel.MODE_FREE;
@@ -4910,7 +4936,7 @@ public class TvModeService {
 
         String title = itemTitle.toLowerCase(Locale.ROOT);
 
-        if (containsAny(title, channel.skipWords) || containsAny(title, mGlobalSkipWords)) {
+        if (containsAny(title, channel.skipWords) || containsAny(title, globalSkipWords(channel))) {
             return false;
         }
 
@@ -5761,7 +5787,7 @@ public class TvModeService {
 
         String lower = title.toLowerCase(Locale.ROOT);
 
-        if (containsAny(lower, channel.skipWords) || containsAny(lower, mGlobalSkipWords)) {
+        if (containsAny(lower, channel.skipWords) || containsAny(lower, globalSkipWords(channel))) {
             return true;
         }
 
