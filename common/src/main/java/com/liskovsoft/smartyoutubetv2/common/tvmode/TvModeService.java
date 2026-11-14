@@ -3343,10 +3343,19 @@ public class TvModeService {
 
             mMain.post(() -> {
                 channel.loading = false;
-                int added = mChannels.contains(channel) ? dealFromPlaylists(channel) : 0;
+                boolean searches = !channel.terms.isEmpty() || !channel.creators.isEmpty();
+                int added = mChannels.contains(channel) ? dealFromPlaylists(channel, !searches) : 0;
                 Log.d(TAG, "%s: +%s videos from its own playlists", channel.name, added);
                 if (added > 0) {
                     save();
+                }
+
+                // Every playlist video is queued or has played: the searches fill the rest. Played
+                // ones come round again only on a channel that has nothing to search.
+                if (searches && channel.ahead() < minAhead(channel) && mChannels.contains(channel)) {
+                    channel.searchNext = true;
+                    fill(channel, onDone, urgent);
+                    return; // the search runs the waiters
                 }
 
                 List<Runnable> waiters = new ArrayList<>(channel.waiters);
@@ -3364,7 +3373,7 @@ public class TvModeService {
     }
 
     /** Main thread. Up to the channel's usual queue, from its hand-picked playlists. */
-    private int dealFromPlaylists(TvChannel channel) {
+    private int dealFromPlaylists(TvChannel channel, boolean replay) {
         Set<String> inLineup = new HashSet<>();
         for (Video video : channel.lineup) {
             inLineup.add(video.videoId);
@@ -3385,7 +3394,7 @@ public class TvModeService {
         }
 
         // Once every one has played, they come round again.
-        List<Video> pool = fresh.isEmpty() ? seen : fresh;
+        List<Video> pool = fresh.isEmpty() && replay ? seen : fresh;
         Collections.shuffle(pool);
         int added = 0;
 
@@ -4289,12 +4298,13 @@ public class TvModeService {
             return;
         }
 
-        // A channel with playlists added by hand: every other top-up comes from them, all of it
-        // when the channel has nothing to search.
-        if (!channel.series.isEmpty() && (channel.terms.isEmpty() && channel.creators.isEmpty() || (channel.playlistTurn++ & 1) == 0)) {
+        // A channel with playlists added by hand fills from them first. Its searches only run once
+        // every video of them is queued or has played: see fillFromPlaylists.
+        if (!channel.series.isEmpty() && !channel.searchNext) {
             fillFromPlaylists(channel, onDone, urgent);
             return;
         }
+        channel.searchNext = false;
 
         final long now = System.currentTimeMillis();
         // Sources take turns: each search term, each YouTube channel, then (when the channel also

@@ -224,8 +224,8 @@ public class TvChannel {
      * They were picked, so the channel's filters never take them out.
      */
     public final java.util.Set<String> picked = new java.util.HashSet<>();
-    /** Takes turns between a channel's searches and its hand-picked playlists. Not saved. */
-    public int playlistTurn;
+    /** Its hand-picked playlists had nothing new: the next top-up searches. Not saved. */
+    public boolean searchNext;
 
     public Series findSeries(String playlistId) {
         for (Series one : series) {
