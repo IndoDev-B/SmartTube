@@ -779,16 +779,32 @@ public class TvModeService {
      * is never taken for a TV one.
      */
     public void adoptTvVideo(Video video) {
-        if (video == null || video.tvChannelId != null || video.videoId == null || mLastChannelId == null) {
+        if (video == null || video.tvChannelId != null || video.videoId == null) {
             return;
         }
 
-        TvChannel channel = lastChannel();
+        // The last channel watched, and the one the guide has in focus: going full screen from the
+        // guide's preview hands the player the preview's copy, which carries no tag on purpose.
+        // Untagged, the program played as an ordinary video and stopped at its end.
+        for (String id : new String[] {mLastChannelId, mGuideChannelId}) {
+            TvChannel channel = id != null ? findChannelById(id) : null;
 
-        if (channel != null && channel.indexOf(video.videoId) >= 0) {
-            Log.d(TAG, "%s came back without its channel: given back to %s", video.videoId, channel.name);
-            video.tvChannelId = channel.id;
+            if (channel != null && channel.indexOf(video.videoId) >= 0) {
+                Log.d(TAG, "%s came back without its channel: given back to %s", video.videoId, channel.name);
+                video.tvChannelId = channel.id;
+                return;
+            }
         }
+    }
+
+    private TvChannel findChannelById(String id) {
+        for (TvChannel channel : mChannels) {
+            if (channel.id.equals(id)) {
+                return channel;
+            }
+        }
+
+        return null;
     }
 
     public Video surf(Video current, int dir) {
