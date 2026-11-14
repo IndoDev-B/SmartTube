@@ -448,7 +448,30 @@ public class TvModeService {
      * on to its next one, the way it would in the player.
      */
     public void previewEnded(TvChannel channel, String videoId) {
+        previewEnded(channel, videoId, 0);
+    }
+
+    /**
+     * realDurationMs: the length the player found. On Live TV the clock decides what is on, but a
+     * video whose length YouTube didn't give is counted as 10 minutes: a 7-minute song then
+     * "played" for 3 more, and the preview, started where the clock was, past its real end,
+     * ended at once and started again, over and over. Its real length is kept, and the channel
+     * moves on to its next program now.
+     */
+    public void previewEnded(TvChannel channel, String videoId, long realDurationMs) {
         Video onNow = channel.onNow();
+
+        if (isLive(channel)) {
+            if (onNow != null && videoId != null && videoId.equals(onNow.videoId) && realDurationMs > 0 && channel.ahead() > 0) {
+                channel.durations.put(videoId, realDurationMs);
+                channel.liveStartMs = System.currentTimeMillis() - realDurationMs; // it ends now
+                syncLive(channel);
+                channel.group = null;
+                topUp(channel);
+                save();
+            }
+            return;
+        }
 
         if (isLive(channel) || onNow == null || videoId == null || !videoId.equals(onNow.videoId) || channel.ahead() < 1) {
             return;

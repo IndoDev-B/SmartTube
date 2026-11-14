@@ -554,11 +554,13 @@ public class TvGuideHeroView extends FrameLayout {
             @Override
             public void finishReally() {
                 boolean ended = false;
+                long realDuration = 0;
 
                 try {
                     if (isEngineInitialized()) {
                         long duration = getDurationMs();
                         ended = duration > 0 && duration - getPositionMs() < 3_000;
+                        realDuration = duration;
                     }
                 } catch (Throwable e) {
                     // the player was already taken apart: not an end
@@ -567,7 +569,8 @@ public class TvGuideHeroView extends FrameLayout {
                 super.finishReally();
 
                 if (ended) {
-                    TvGuideHeroView.this.post(() -> onPreviewEnded(channel, this));
+                    final long length = realDuration;
+                    TvGuideHeroView.this.post(() -> onPreviewEnded(channel, this, length));
                 }
             }
         };
@@ -593,12 +596,12 @@ public class TvGuideHeroView extends FrameLayout {
     };
 
     /** The preview played a program to its end: a Free mode channel moves to its next one, and the preview follows. */
-    private void onPreviewEnded(TvChannel channel, EmbedPlayerView player) {
+    private void onPreviewEnded(TvChannel channel, EmbedPlayerView player, long realDurationMs) {
         if (player != mPreviewPlayer || channel != mPreviewChannel) {
             return; // the focus has moved on since
         }
 
-        TvModeService.instance(getContext()).previewEnded(channel, mPreviewVideoId);
+        TvModeService.instance(getContext()).previewEnded(channel, mPreviewVideoId, realDurationMs);
         stopPreview();
         startPreview();
 
