@@ -220,6 +220,15 @@ public class TvChannel {
     /** Made from a playlist: plays it in order, as a Series channel does, under any program type. */
     public boolean inOrder;
     /**
+     * A YouTube channel's handle ("@aajtak"): this TV channel is that channel's live stream, looked
+     * up afresh each time, since the stream's video changes whenever it restarts. Empty = an ordinary channel.
+     */
+    public String liveOf = "";
+
+    public boolean isLiveOf() {
+        return liveOf != null && !liveOf.isEmpty();
+    }
+    /**
      * Videos a playlist added by hand to a channel that isn't in order (a Songs channel, say).
      * They were picked, so the channel's filters never take them out.
      */
@@ -315,6 +324,9 @@ public class TvChannel {
         o.put("kind", kind);
         if (inOrder) {
             o.put("inOrder", true);
+        }
+        if (isLiveOf()) {
+            o.put("liveOf", liveOf);
         }
         o.put("origin", origin);
         o.put("seriesRun", seriesRun);
@@ -496,6 +508,7 @@ public class TvChannel {
         c.name = name;
         c.kind = kind;
         c.inOrder = inOrder;
+        c.liveOf = liveOf;
         c.origin = origin;
         c.seriesRun = seriesRun;
         c.seriesLoop = seriesLoop;
@@ -615,6 +628,7 @@ public class TvChannel {
     public void readSettings(JSONObject o) {
         kind = o.optString("kind", "");
         inOrder = o.optBoolean("inOrder", false);
+        liveOf = o.optString("liveOf", "");
         origin = o.optString("origin", "");
         seriesRun = o.optInt("seriesRun", 1);
         seriesLoop = o.optBoolean("seriesLoop", true);

@@ -3167,6 +3167,270 @@
       "kind": "Live streams"
     },
     {
+      "id": "live-aajtak",
+      "name": "Aaj Tak",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@aajtak",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-abpnews",
+      "name": "ABP News",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@abpnews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-zeenews",
+      "name": "Zee News",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@zeenews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-indiatv",
+      "name": "India TV",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@indiatv",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-ndtvindia",
+      "name": "NDTV India",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@ndtvindia",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-tv9bharatvarsh",
+      "name": "TV9 Bharatvarsh",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@tv9bharatvarsh",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-news18india",
+      "name": "News18 India",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@news18india",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-republicbharat",
+      "name": "Republic Bharat",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "hi"
+      ],
+      "liveOf": "@republicbharat",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-ndtv",
+      "name": "NDTV 24x7",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@ndtv",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-indiatoday",
+      "name": "India Today",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@indiatoday",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-timesnow",
+      "name": "Times Now",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@TimesNow",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-republicworld",
+      "name": "Republic TV",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@RepublicWorld",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-cnnnews18",
+      "name": "CNN-News18",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@cnnnews18",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-wionews",
+      "name": "WION",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@WIONews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-dwnews",
+      "name": "DW News",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@dwnews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-france24_en",
+      "name": "France 24",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@France24_en",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-skynews",
+      "name": "Sky News",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@SkyNews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-aljazeeraenglish",
+      "name": "Al Jazeera",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@aljazeeraenglish",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-abcnews",
+      "name": "ABC News Live",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@ABCNews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-nbcnews",
+      "name": "NBC News NOW",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@NBCNews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-cbsnews",
+      "name": "CBS News",
+      "kind": "Live streams",
+      "genre": "News",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@CBSNews",
+      "mode": "live",
+      "terms": []
+    },
+    {
+      "id": "live-markets",
+      "name": "Bloomberg",
+      "kind": "Live streams",
+      "genre": "Business",
+      "languages": [
+        "en"
+      ],
+      "liveOf": "@markets",
+      "mode": "live",
+      "terms": []
+    },
+    {
       "id": "space-live",
       "name": "Space Live",
       "terms": [

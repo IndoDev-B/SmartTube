@@ -438,6 +438,147 @@ public class TvModeService {
     }
 
     /**
+     * Full screen on a Live TV channel's stream: it plays until the channel is changed, so its slot
+     * grows with it and the guide's clock doesn't move on behind the viewer. Each tick of the player.
+     */
+    public void holdStream(Video stream) {
+        TvChannel channel = findChannel(stream);
+        Video onNow = channel != null ? channel.onNow() : null;
+
+        if (channel == null || !isLive(channel) || channel.isLiveOf() || onNow == null || !stream.videoId.equals(onNow.videoId)) {
+            return;
+        }
+
+        long seen = System.currentTimeMillis() - channel.liveStartMs;
+        channel.durations.put(stream.videoId, Math.max(TvChannel.STREAM_SLOT_MS, seen + 90_000));
+    }
+
+    /** The player left a stream it held: its slot ends now, and the channel's next program starts on the clock. */
+    public void releaseStream(Video stream) {
+        TvChannel channel = findChannel(stream);
+        Video onNow = channel != null ? channel.onNow() : null;
+
+        if (channel == null || !isLive(channel) || channel.isLiveOf() || onNow == null || !stream.videoId.equals(onNow.videoId)) {
+            return;
+        }
+
+        long seen = System.currentTimeMillis() - channel.liveStartMs;
+        if (seen > TvChannel.STREAM_SLOT_MS) { // held past its own slot: it ends where it was left
+            channel.durations.put(stream.videoId, seen);
+            syncLive(channel);
+            channel.group = null;
+            save();
+        }
+    }
+
+    /** A network's live stream channel: what YouTube says it is streaming now. At most every few minutes. */
+    private void fillLiveOf(final TvChannel channel, final Runnable onDone, final boolean urgent) {
+        final long now = System.currentTimeMillis();
+        final Video onNow = channel.onNow();
+
+        if (channel.loading) {
+            if (onDone != null) {
+                channel.waiters.add(onDone);
+            }
+            return;
+        }
+
+        if (onNow != null && now - channel.lastFillMs < 10 * 60_000) {
+            if (onDone != null) {
+                onDone.run();
+            }
+            return;
+        }
+
+        channel.loading = true;
+        channel.lastFillMs = now;
+
+        (urgent ? mWorker : mBackground).execute(() -> {
+            final String[] live = lookupLive(channel.liveOf);
+
+            mMain.post(() -> {
+                channel.loading = false;
+                Video current = channel.onNow();
+
+                if (live != null && mChannels.contains(channel) && (current == null || !live[0].equals(current.videoId))) {
+                    Video video = new Video();
+                    video.videoId = live[0];
+                    video.title = live[1];
+                    video.author = channel.name;
+                    video.secondTitle = channel.name;
+                    video.isLive = true;
+                    video.cardImageUrl = "https://i.ytimg.com/vi/" + live[0] + "/hqdefault.jpg";
+                    video.bgImageUrl = video.cardImageUrl;
+                    video.tvChannelId = channel.id;
+                    channel.lineup.add(video);
+                    channel.durations.put(video.videoId, TvChannel.STREAM_SLOT_MS);
+                    channel.pos = channel.lineup.size() - 1; // the old stream is gone: this one is on now
+                    while (channel.pos > 3) { // nothing to come back to on a stream channel
+                        channel.durations.remove(channel.lineup.remove(0).videoId);
+                        channel.pos--;
+                    }
+                    channel.liveStartMs = 0;
+                    channel.group = null;
+                    Log.d(TAG, "%s: live now: %s", channel.name, live[1]);
+                    save();
+                } else if (live == null) {
+                    Log.d(TAG, "%s: %s isn't streaming now", channel.name, channel.liveOf);
+                }
+
+                List<Runnable> waiters = new ArrayList<>(channel.waiters);
+                channel.waiters.clear();
+
+                if (onDone != null) {
+                    onDone.run();
+                }
+
+                for (Runnable waiter : waiters) {
+                    waiter.run();
+                }
+            });
+        });
+    }
+
+    /**
+     * The video a YouTube channel streams live now, and its title, read from the channel's /live
+     * page, the way a browser opens it. No API units. Null when it isn't streaming. Worker threads.
+     */
+    private static String[] lookupLive(String handle) {
+        HttpURLConnection connection = null;
+
+        try {
+            String path = handle.startsWith("@") || handle.startsWith("channel/") ? handle : "@" + handle;
+            connection = (HttpURLConnection) new URL("https://www.youtube.com/" + path + "/live").openConnection();
+            connection.setConnectTimeout(15_000);
+            connection.setReadTimeout(20_000);
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
+            connection.setRequestProperty("Accept-Language", "en");
+            String page = readStream(connection.getInputStream());
+
+            if (!page.contains("\"isLiveNow\":true")) {
+                return null;
+            }
+
+            java.util.regex.Matcher id = java.util.regex.Pattern.compile("<link rel=\"canonical\" href=\"https://www\\.youtube\\.com/watch\\?v=([\\w-]{11})\"").matcher(page);
+            if (!id.find()) {
+                return null;
+            }
+
+            java.util.regex.Matcher title = java.util.regex.Pattern.compile("<meta name=\"title\" content=\"([^\"]*)\"").matcher(page);
+            String name = title.find() ? title.group(1) : "Live";
+            name = name.replace("&amp;", "&").replace("&#39;", "'").replace("&quot;", "\"").replace("&lt;", "<").replace("&gt;", ">");
+            return new String[] {id.group(1), name};
+        } catch (Throwable e) {
+            Log.e(TAG, "Can't look up the live stream of %s: %s", handle, e.getMessage());
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
      * Live TV: play a program that isn't on now. The channel's schedule moves so that this program
      * starts now and everything after it follows.<br/>
      * A later program: the ones jumped over weren't watched, so they come back at the end of the lineup.<br/>
@@ -2434,6 +2575,14 @@ public class TvModeService {
             channel.liveStartMs = now - (long) (Math.random() * 0.6 * durationOf(channel, onNow));
         }
 
+        // A network's stream channel shows its one stream in half-hour boxes, on the clock's half
+        // hours, the way a TV guide shows a 24-hour news channel.
+        if (channel.isLiveOf() && channel.ahead() == 0) {
+            channel.durations.put(onNow.videoId, TvChannel.STREAM_SLOT_MS);
+            channel.liveStartMs = now - now % TvChannel.STREAM_SLOT_MS;
+            return;
+        }
+
         while (channel.ahead() > 0 && now - channel.liveStartMs >= durationOf(channel, channel.onNow())) {
             Video passed = channel.onNow();
             channel.liveStartMs += durationOf(channel, passed);
@@ -4319,6 +4468,11 @@ public class TvModeService {
 
     /** urgent: somebody is waiting for this channel. Otherwise it queues behind the other background searches. */
     private void fill(final TvChannel channel, final Runnable onDone, final boolean urgent) {
+        if (channel.isLiveOf()) { // one network's live stream, whatever video it is today
+            fillLiveOf(channel, onDone, urgent);
+            return;
+        }
+
         if (channel.isSeries()) { // playlists in order: nothing is searched, shuffled or filtered
             fillSeries(channel, onDone, urgent);
             return;
@@ -5776,6 +5930,10 @@ public class TvModeService {
      */
     private boolean stale(TvChannel channel, Video video) {
         String title = video.getTitle();
+
+        if (channel.isLiveOf()) { // the network's own stream: no filter applies, a new one replaces it
+            return false;
+        }
 
         if (channel.isSeries() || channel.picked.contains(video.videoId)) { // picked by hand: only one that no longer exists goes
             return mGone.contains(video.videoId);

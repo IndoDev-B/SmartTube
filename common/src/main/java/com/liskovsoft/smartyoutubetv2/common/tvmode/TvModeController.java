@@ -313,6 +313,13 @@ public class TvModeController extends BasePlayerController {
             return;
         }
 
+        // Full screen, a stream plays on until the channel is changed: its slot grows with it.
+        // Only the guide's preview moves on when the slot is over.
+        if (!isEmbedPlayer()) {
+            getService().holdStream(current);
+            return;
+        }
+
         Video next = getService().afterStream(current);
 
         if (next != null) {
@@ -444,6 +451,10 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onEngineReleased() {
+        Video current = getVideo();
+        if (!isEmbedPlayer() && isTvVideo(current) && current.isLive) {
+            getService().releaseStream(current); // its slot ends here: the channel's next program is on from now
+        }
         noteSaved(true);
         getService().checkpoint(); // a channel's program: where it was left, before the app can be closed
     }
