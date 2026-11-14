@@ -748,6 +748,19 @@ public class TvModeMenu {
             return;
         }
 
+        // Playlists added by hand ("Add to a TV channel"): their videos mix in with the searches.
+        if (!channel.series.isEmpty()) {
+            List<OptionItem> playlists = new ArrayList<>();
+            for (TvChannel.Series one : new ArrayList<>(channel.series)) {
+                playlists.add(UiOptionItem.from("Remove: " + one.title, option -> {
+                    mDialog.closeDialog();
+                    mService.removePlaylistSource(channel, one, this::refreshGuide);
+                    toast("Removed " + one.title);
+                }));
+            }
+            mDialog.appendStringsCategory("Playlists mixed in (" + channel.series.size() + ")", playlists);
+        }
+
         // Search terms: press one to remove it, or add one.
         List<OptionItem> terms = new ArrayList<>();
         for (String term : channel.terms) {

@@ -1546,18 +1546,41 @@ public class TvModeService {
         }).start();
     }
 
-    /** Free Series channels: where "Add to a TV channel" can put a playlist. */
+    /**
+     * Where "Add to a TV channel" can put a playlist: channels that play playlists in order
+     * (Series, or one made from a playlist), Live or Free, and Songs channels, which mix it in.
+     */
     public List<TvChannel> freeSeriesChannels() {
         ensureLoaded();
         List<TvChannel> result = new ArrayList<>();
 
         for (TvChannel channel : mChannels) {
-            if (channel.isSeries() && !isLive(channel)) {
+            if (channel.isSeries() || TvChannel.KIND_SONGS.equalsIgnoreCase(channel.kind)) {
                 result.add(channel);
             }
         }
 
         return result;
+    }
+
+    /** A new channel's program type, from its playlist's name. Only a label: the channel plays the playlist in order either way. */
+    private static String kindFromTitle(String title) {
+        String lower = title != null ? title.toLowerCase(Locale.ROOT) : "";
+
+        if (lower.matches(".*(songs?|music|jukebox|hits|gaane|gane|geet|bhajans?|qawwali|ghazals?|album|playlist mix|lofi|remix).*")) {
+            return TvChannel.KIND_SONGS;
+        }
+        if (lower.matches(".*(documentar(y|ies)|docu).*")) {
+            return "Documentary";
+        }
+        if (lower.matches(".*(lectures?|course|tutorials?|lessons?|class).*")) {
+            return "Learning";
+        }
+        if (lower.matches(".*(podcasts?).*")) {
+            return "Podcasts";
+        }
+
+        return TvChannel.KIND_SERIES;
     }
 
     /**
@@ -1576,13 +1599,22 @@ public class TvModeService {
         hit.episode = Math.max(1, fromIndex + 1);
 
         if (channel == null) {
-            return createSeriesChannel(hit, onDone);
+            // Its own channel, in the playlist's order, on Free so nothing plays while nobody is
+            // watching. The program type is only a label for the guide's Type filter.
+            TvChannel made = createSeriesChannel(hit, onDone);
+            made.inOrder = true;
+            made.kind = kindFromTitle(title);
+            mShown = null;
+            save();
+            return made;
         }
 
         if (channel.findSeries(playlistId) != null) {
             return null;
         }
 
+        // A channel in order takes it into its rotation. Any other one (Songs) mixes its videos in
+        // with what its searches find, shuffled: see fillFromPlaylists.
         TvChannel.Series one = hit.series;
         one.title = seriesName(one.title);
         one.next = Math.max(0, fromIndex);
@@ -3065,6 +3097,65 @@ public class TvModeService {
         fill(channel, onDone);
     }
 
+    /**
+     * A video's real length, from the player that loaded it. Every channel that has it queued
+     * keeps it. On Live TV, a program found to be shorter than counted may already be over by
+     * the clock: the channel moves on to what is really on now. Main thread.
+     */
+    public void learnDuration(String videoId, long durationMs) {
+        if (videoId == null || durationMs <= 0 || !mLoaded) {
+            return;
+        }
+
+        boolean changed = false;
+
+        for (TvChannel channel : mChannels) {
+            if (channel.indexOf(videoId) < 0) {
+                continue;
+            }
+
+            Long known = channel.durations.get(videoId);
+            if (known != null && Math.abs(known - durationMs) < 2_000) {
+                continue;
+            }
+
+            channel.durations.put(videoId, durationMs);
+            changed = true;
+            Log.d(TAG, "%s: %s is really %s s long (counted %s)", channel.name, videoId, durationMs / 1000, known != null ? known / 1000 + " s" : "10 min");
+            // A Live channel that was on it may be past its end by now. The program playing goes on
+            // to its own end in the player either way: only the guide moves.
+            syncLive(channel);
+        }
+
+        if (changed) {
+            mUpcoming.clear();
+            save();
+        }
+    }
+
+    /** A playlist mixed into a searching channel goes: its queued videos too. What the searches found stays. */
+    public void removePlaylistSource(TvChannel channel, TvChannel.Series one, Runnable onDone) {
+        channel.series.remove(one);
+        channel.edited = true;
+        List<Video> its = mEpisodes.get(one.playlistId);
+        Set<String> ids = new HashSet<>();
+        for (int i = 0; its != null && i < its.size(); i++) {
+            ids.add(its.get(i).videoId);
+        }
+
+        for (int i = channel.lineup.size() - 1; i > channel.pos; i--) {
+            String id = channel.lineup.get(i).videoId;
+            if (ids.contains(id) && channel.picked.contains(id)) {
+                unqueue(channel, channel.lineup.remove(i));
+                channel.picked.remove(id);
+            }
+        }
+
+        channel.group = null;
+        save();
+        fill(channel, onDone);
+    }
+
     public void removeSeries(TvChannel channel, TvChannel.Series one, Runnable onDone) {
         channel.series.remove(one);
         channel.seriesTurn = 0;
@@ -3196,6 +3287,116 @@ public class TvModeService {
                 }
             });
         });
+    }
+
+    /**
+     * A channel that searches (a Songs channel) with playlists added by hand: their videos come
+     * in shuffled, none twice until all have played, and no filter of the channel applies to them.
+     */
+    private void fillFromPlaylists(final TvChannel channel, final Runnable onDone, final boolean urgent) {
+        if (channel.loading) {
+            if (onDone != null) {
+                channel.waiters.add(onDone);
+            }
+            return;
+        }
+
+        channel.loading = true;
+        channel.lastFillMs = System.currentTimeMillis();
+        final List<String[]> toRead = new ArrayList<>();
+
+        for (TvChannel.Series one : channel.series) {
+            Long failedAt = mEpisodesFailed.get(one.playlistId);
+            if (needsReading(one.playlistId, channel.lastFillMs) && (failedAt == null || channel.lastFillMs - failedAt > 5 * 60_000)) {
+                toRead.add(new String[] {one.playlistId, one.pageKey});
+            }
+        }
+
+        (urgent ? mWorker : mBackground).execute(() -> {
+            for (String[] playlist : toRead) {
+                List<Video> episodes = readEpisodes(playlist[0], playlist[1]);
+                if (!episodes.isEmpty()) {
+                    mEpisodes.put(playlist[0], episodes);
+                    mEpisodesReadAt.put(playlist[0], System.currentTimeMillis());
+                    mEpisodesVersion++;
+                    mEpisodesFailed.remove(playlist[0]);
+                } else {
+                    mEpisodesFailed.put(playlist[0], System.currentTimeMillis());
+                }
+            }
+
+            mMain.post(() -> {
+                channel.loading = false;
+                int added = mChannels.contains(channel) ? dealFromPlaylists(channel) : 0;
+                Log.d(TAG, "%s: +%s videos from its own playlists", channel.name, added);
+                if (added > 0) {
+                    save();
+                }
+
+                List<Runnable> waiters = new ArrayList<>(channel.waiters);
+                channel.waiters.clear();
+
+                if (onDone != null) {
+                    onDone.run();
+                }
+
+                for (Runnable waiter : waiters) {
+                    waiter.run();
+                }
+            });
+        });
+    }
+
+    /** Main thread. Up to the channel's usual queue, from its hand-picked playlists. */
+    private int dealFromPlaylists(TvChannel channel) {
+        Set<String> inLineup = new HashSet<>();
+        for (Video video : channel.lineup) {
+            inLineup.add(video.videoId);
+        }
+
+        List<Video> fresh = new ArrayList<>();
+        List<Video> seen = new ArrayList<>();
+
+        for (TvChannel.Series one : channel.series) {
+            List<Video> its = mEpisodes.get(one.playlistId);
+            for (int i = 0; its != null && i < its.size(); i++) {
+                Video source = its.get(i);
+                if (source.videoId == null || inLineup.contains(source.videoId)) {
+                    continue;
+                }
+                (mWatched.contains(source.videoId) ? seen : fresh).add(source);
+            }
+        }
+
+        // Once every one has played, they come round again.
+        List<Video> pool = fresh.isEmpty() ? seen : fresh;
+        Collections.shuffle(pool);
+        int added = 0;
+
+        for (int i = 0; i < pool.size() && channel.ahead() < minAhead(channel); i++) {
+            Video source = pool.get(i);
+            Video video = Video.from(source);
+            video.playlistId = null;
+            video.playlistParams = null;
+            video.playlistIndex = -1;
+            video.author = source.author;
+            video.tvChannelId = channel.id;
+            channel.lineup.add(video);
+            channel.picked.add(video.videoId);
+
+            TvDataApi.Facts facts = mFacts.get(video.videoId);
+            long durationMs = source.getDurationMs() > 0 ? source.getDurationMs() : facts != null ? facts.durationMs : 0;
+            if (durationMs > 0) {
+                channel.durations.put(video.videoId, durationMs);
+            }
+
+            if (channel.group != null) {
+                channel.group.add(video);
+            }
+            added++;
+        }
+
+        return added;
     }
 
     /** Every video of a playlist, in the playlist's order. Worker threads. */
@@ -4069,6 +4270,13 @@ public class TvModeService {
     private void fill(final TvChannel channel, final Runnable onDone, final boolean urgent) {
         if (channel.isSeries()) { // playlists in order: nothing is searched, shuffled or filtered
             fillSeries(channel, onDone, urgent);
+            return;
+        }
+
+        // A channel with playlists added by hand: every other top-up comes from them, all of it
+        // when the channel has nothing to search.
+        if (!channel.series.isEmpty() && (channel.terms.isEmpty() && channel.creators.isEmpty() || (channel.playlistTurn++ & 1) == 0)) {
+            fillFromPlaylists(channel, onDone, urgent);
             return;
         }
 
@@ -5517,7 +5725,7 @@ public class TvModeService {
     private boolean stale(TvChannel channel, Video video) {
         String title = video.getTitle();
 
-        if (channel.isSeries()) { // its playlists were picked by hand: only an episode that no longer exists goes
+        if (channel.isSeries() || channel.picked.contains(video.videoId)) { // picked by hand: only one that no longer exists goes
             return mGone.contains(video.videoId);
         }
 

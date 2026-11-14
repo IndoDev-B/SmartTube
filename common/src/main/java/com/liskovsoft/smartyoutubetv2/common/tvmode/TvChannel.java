@@ -52,6 +52,7 @@ public class TvChannel {
 
     /** Program type: playlists played whole, in episode order, like a rerun channel. */
     public static final String KIND_SERIES = "Series";
+    public static final String KIND_SONGS = "Songs";
 
     /** One series of a rerun channel: a YouTube playlist and how far the channel is into it. */
     public static final class Series {
@@ -208,9 +209,23 @@ public class TvChannel {
         return duration != null && duration > 0 ? duration : 10 * 60_000;
     }
 
+    /**
+     * Plays its playlists in order, a bookmark each: a Series channel, or any channel made from a
+     * playlist (songs, documentaries...), whatever its program type says.
+     */
     public boolean isSeries() {
-        return KIND_SERIES.equalsIgnoreCase(kind);
+        return KIND_SERIES.equalsIgnoreCase(kind) || inOrder;
     }
+
+    /** Made from a playlist: plays it in order, as a Series channel does, under any program type. */
+    public boolean inOrder;
+    /**
+     * Videos a playlist added by hand to a channel that isn't in order (a Songs channel, say).
+     * They were picked, so the channel's filters never take them out.
+     */
+    public final java.util.Set<String> picked = new java.util.HashSet<>();
+    /** Takes turns between a channel's searches and its hand-picked playlists. Not saved. */
+    public int playlistTurn;
 
     public Series findSeries(String playlistId) {
         for (Series one : series) {
@@ -298,6 +313,9 @@ public class TvChannel {
         o.put("id", id);
         o.put("name", name);
         o.put("kind", kind);
+        if (inOrder) {
+            o.put("inOrder", true);
+        }
         o.put("origin", origin);
         o.put("seriesRun", seriesRun);
         o.put("seriesLoop", seriesLoop);
@@ -374,6 +392,9 @@ public class TvChannel {
             if (checked.contains(video.videoId)) {
                 item.put("k", 1);
             }
+            if (picked.contains(video.videoId)) {
+                item.put("h", 1);
+            }
             if (episodes.containsKey(video.videoId)) {
                 item.put("e", episodes.get(video.videoId));
             }
@@ -401,6 +422,9 @@ public class TvChannel {
             }
             if (item.optInt("k", 0) == 1) {
                 checked.add(video.videoId);
+            }
+            if (item.optInt("h", 0) == 1) {
+                picked.add(video.videoId);
             }
             if (!item.isNull("e")) {
                 episodes.put(video.videoId, item.optString("e", ""));
@@ -471,6 +495,7 @@ public class TvChannel {
         c.id = id;
         c.name = name;
         c.kind = kind;
+        c.inOrder = inOrder;
         c.origin = origin;
         c.seriesRun = seriesRun;
         c.seriesLoop = seriesLoop;
@@ -532,6 +557,7 @@ public class TvChannel {
         c.published.putAll(published);
         c.durations.putAll(durations);
         c.checked.addAll(checked);
+        c.picked.addAll(picked);
         return c;
     }
 
@@ -588,6 +614,7 @@ public class TvChannel {
     /** Reads the search settings. Used for saved channels and for the preset list. */
     public void readSettings(JSONObject o) {
         kind = o.optString("kind", "");
+        inOrder = o.optBoolean("inOrder", false);
         origin = o.optString("origin", "");
         seriesRun = o.optInt("seriesRun", 1);
         seriesLoop = o.optBoolean("seriesLoop", true);

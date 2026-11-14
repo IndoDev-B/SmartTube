@@ -368,6 +368,21 @@ public class TvModeController extends BasePlayerController {
         return reload;
     }
 
+    /**
+     * The player knows a video's real length the moment it has loaded it, in the guide's preview
+     * too. A channel's lineup often doesn't: YouTube leaves the length off some search results and
+     * the guide then counts 10 minutes. Kept now, the guide's boxes and Live TV's clock are right.
+     */
+    @Override
+    public void onVideoLoaded(Video item) {
+        if (item != null && !item.isLive && getPlayer() != null && TvModeService.isEnabled(getContext())) {
+            long duration = getPlayer().getDurationMs();
+            if (duration > 0 && duration < Video.MAX_LIVE_DURATION_MS) {
+                getService().learnDuration(item.videoId, duration);
+            }
+        }
+    }
+
     @Override
     public void onPlayEnd() {
         // An ordinary video ended: a single one comes off "Continue watching", a playlist's notes it was seen through.
