@@ -456,6 +456,11 @@ public class TvModeController extends BasePlayerController {
         Video current = getVideo();
         if (!isEmbedPlayer() && isTvVideo(current) && current.isLive) {
             getService().releaseStream(current); // its slot ends here: the channel's next program is on from now
+        } else if (!isEmbedPlayer() && isTvVideo(current) && getPlayer() != null && getPlayer().isEngineInitialized()
+                && getPlayer().getPositionMs() > 0) {
+            // Leaving full screen, paused or not: Live TV's clock goes to where the program was
+            // left, so the guide's preview carries on from there instead of a song or two later.
+            getService().alignLive(current, getPlayer().getPositionMs());
         }
         noteSaved(true);
         getService().checkpoint(); // a channel's program: where it was left, before the app can be closed
