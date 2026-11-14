@@ -443,7 +443,11 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public void onNewVideo(Video item) {
-        getService().adoptTvVideo(item);
+        // Not in a preview player: the guide's preview box plays an untagged copy on purpose, and
+        // tagging it made the preview act as the TV player, stuck at the end of a program.
+        if (!isEmbedPlayer()) {
+            getService().adoptTvVideo(item);
+        }
         TvModeOverlay overlay = sOverlay.get();
 
         // The keypad did its job once the channel changed. The next program on the same channel keeps it.
