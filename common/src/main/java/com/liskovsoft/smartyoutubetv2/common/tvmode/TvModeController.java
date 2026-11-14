@@ -38,11 +38,13 @@ public class TvModeController extends BasePlayerController {
     private String mBannerWaitingId;
     private boolean mSleeping;
     private final Runnable mTuneDigits = this::tuneDigits;
-    private static final long PRELOAD_DELAY_MS = 4_000;
+    // Flipping quickly, a batch per channel rested on piled up with the playing video and the
+    // state saves: memory filled and the app stopped answering. One each way, after a longer rest.
+    private static final long PRELOAD_DELAY_MS = 6_000;
     private final Runnable mPreloadNeighbours = this::preloadNeighbours;
     private Disposable mPreloadAction;
     /** Channels pre-loaded each way. Must stay within FormatInfoWrapper's cache (8 videos) with room for the playing one. */
-    private static final int PRELOAD_DEPTH = 3;
+    private static final int PRELOAD_DEPTH = 1;
     private volatile int mPreloadGeneration;
     private final Runnable mHideSwitching = () -> {
         TvModeOverlay overlay = sOverlay.get();
@@ -472,8 +474,23 @@ public class TvModeController extends BasePlayerController {
         // Not in a preview player: the guide's preview box plays an untagged copy on purpose, and
         // tagging it made the preview act as the TV player, stuck at the end of a program.
         if (!isEmbedPlayer()) {
+            stopPreload();
             getService().adoptTvVideo(item);
             getService().stopGuidePreview(); // it may still be playing under a menu that started this
+
+            // After a restart the app reopens the last video before TV mode's state is read, so
+            // nothing could tell it was a channel's. Once the state is in, it is looked at again.
+            if (item != null && item.tvChannelId == null && !getService().isLoaded()) {
+                final Video waiting = item;
+                getService().whenLoaded(() -> {
+                    if (getVideo() == waiting && waiting.tvChannelId == null) {
+                        getService().adoptTvVideo(waiting);
+                        if (waiting.tvChannelId != null) {
+                            onNewVideo(waiting); // as if it had come from its channel: banner, keys, top buttons
+                        }
+                    }
+                });
+            }
         }
         TvModeOverlay overlay = sOverlay.get();
 
@@ -608,6 +625,13 @@ public class TvModeController extends BasePlayerController {
         liftSwitching(FIRST_FRAME_MS); // playing: give the first frame a moment to reach the screen
         Utils.removeCallbacks(mPreloadNeighbours);
         Utils.postDelayed(mPreloadNeighbours, PRELOAD_DELAY_MS);
+    }
+
+    /** A batch still loading stops at its next video: the channel it was for is left. */
+    private void stopPreload() {
+        Utils.removeCallbacks(mPreloadNeighbours);
+        mPreloadGeneration++;
+        RxHelper.disposeActions(mPreloadAction);
     }
 
     /**

@@ -90,7 +90,7 @@ public class TvModeService {
     private static final int PLAYER_ROWS = 6;
     private static final int PLAYER_ROW_VIDEOS = 8;
     private static final long TOP_UP_PERIOD_MS = 60_000;
-    private static final long SAVE_DELAY_MS = 2_000;
+    private static final long SAVE_DELAY_MS = 5_000;
     private static final long SKIP_WINDOW_MS = 30_000;
     private static final int MAX_WATCHED = 3_000;
     @SuppressLint("StaticFieldLeak")
@@ -6340,6 +6340,8 @@ public class TvModeService {
      * which stay the main thread's. Main thread.
      */
     public void preloadState() {
+        FreezeWatch.start(mContext);
+
         if (mLoaded || mStatePreloading != null) {
             return;
         }
@@ -6467,10 +6469,22 @@ public class TvModeService {
     private void save() {
         mShown = null; // every change comes through here, and a change may move a channel in or out of the filters
 
+        // Once changes stop for a few seconds, and at least every half minute: flipping channels
+        // saved the whole state every 2 s, a copy of everything each time.
+        long now = System.currentTimeMillis();
         if (!mSavePending) {
             mSavePending = true;
-            mMain.postDelayed(mSaveNow, SAVE_DELAY_MS);
+            mSaveFirstMs = now;
         }
+        mMain.removeCallbacks(mSaveNow);
+        mMain.postDelayed(mSaveNow, Math.max(0, Math.min(SAVE_DELAY_MS, mSaveFirstMs + SAVE_MAX_WAIT_MS - now)));
+    }
+
+    private long mSaveFirstMs;
+    private static final long SAVE_MAX_WAIT_MS = 30_000;
+
+    public boolean isLoaded() {
+        return mLoaded;
     }
 
     private void saveNow() {
