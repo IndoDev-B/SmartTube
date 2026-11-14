@@ -506,6 +506,11 @@ public class VideoStateController extends BasePlayerController {
                     ? getPlayerData().getLastSubtitleFormat() : FormatItem.SUBTITLE_NONE;
         }
 
+        // The error fixer took them off this one video (they hung it): a reload must not put them back.
+        if (getPlayer().getVideo() != null && ErrorFixerController.isSubtitlesOff(getPlayer().getVideo().videoId)) {
+            result = FormatItem.SUBTITLE_NONE;
+        }
+
         getPlayer().setFormat(result);
     }
 

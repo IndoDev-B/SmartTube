@@ -495,9 +495,23 @@ public class ErrorFixerController extends BasePlayerController implements OnLong
         return getPlayer() != null && !FormatItem.SUBTITLE_NONE.equals(getPlayer().getSubtitleFormat());
     }
 
+    /**
+     * SmartTube Plus: subtitles go off for the video that hung or failed, not for good. Saving
+     * "off" (and unticking "subtitles only on the current channel") turned them off on every
+     * video after one slow load, which flipping TV channels makes common.
+     */
     private void disableSubtitles() {
-        getPlayerData().setSubtitlesPerChannelEnabled(false); // Important!
-        getPlayerData().setFormat(FormatItem.SUBTITLE_NONE);
+        sSubtitlesOffFor = getVideo() != null ? getVideo().videoId : null;
+        if (getPlayer() != null) {
+            getPlayer().setFormat(FormatItem.SUBTITLE_NONE);
+        }
+    }
+
+    /** The video whose subtitles the fixer turned off. Another video plays with the saved choice again. */
+    private static volatile String sSubtitlesOffFor;
+
+    public static boolean isSubtitlesOff(String videoId) {
+        return videoId != null && videoId.equals(sSubtitlesOffFor);
     }
 
     private boolean isStreamEnded() {
