@@ -52,8 +52,14 @@ public class ErrorFixerController extends BasePlayerController implements OnLong
         // SmartTube Plus: a video that ended sits at its very end: stopped there ("playlist videos
         // only", "pause"), or waiting while comments or a menu are open. That reads as buffering,
         // and fixing the "stall" reloaded the video about 20 s later: it played again from the start.
+        // Still playing there is the other case: the player stalled loading its last fraction of a
+        // second and never says it ended, so it sat on the end screen. That one is over: it ends now.
         if (isOfflineVideo() && getPlayer().getDurationMs() > 0
                 && getPlayer().getDurationMs() - getPlayer().getPositionMs() < 1_000) {
+            if (getPlayer().getPlayWhenReady()) {
+                Log.d(TAG, "Stalled in its last second: taken as ended");
+                getMainController().onPlayEnd();
+            }
             return;
         }
 
