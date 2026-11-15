@@ -1,45 +1,69 @@
 # SmartTube Plus
 
-SmartTube Plus is [SmartTube](https://github.com/yuliskov/SmartTube) with a few extra features. SmartTube is a free, open-source YouTube client for Android TV by Yuriy Liskov. Everything SmartTube does, this app does too. It installs next to the official app, so you can keep both.
+[SmartTube](https://github.com/yuliskov/SmartTube) with a TV mode added: YouTube as a set of TV channels with a programme guide. Everything else is SmartTube as it is.
 
-This is a personal project. It is not made or supported by the SmartTube author. Please don't report problems with this app to SmartTube.
+This is a personal fork. It is not made or supported by SmartTube's author, so please don't report its problems to SmartTube.
 
-![The TV guide](images/plus/guide.png)
+![The TV guide: channel list, timeline and a live preview of the focused channel](images/plus/guide.jpg)
 
-## What it adds
+## TV mode
 
-**TV mode** turns YouTube into a TV with channels. It is in the dev build for now.
+Each channel is a running lineup of YouTube videos, picked by search terms, YouTube channels or playlists. Your YouTube recommendations and watch history are never used to fill them.
 
-- **About 200 channels in 20 genres**, in English and Hindi: Movies, Songs, Documentary, Kids, Podcasts, Live streams, Ambience and more. Each channel is a lineup of YouTube videos found by search. No recommendations and no watch history are used.
-- **A TV guide** on one time line, with a red line for now. The focused channel plays in a preview window.
-- **Live TV or Free mode.** A Live TV channel runs on the clock, even while the app is closed. A Free mode channel waits where you left it.
-- **CH+ and CH-** change channel. Number keys tune to a channel number. Up and Down can change channel too, for remotes without channel buttons.
-- **Filters** for genre, language and favourites. They only hide channels, and CH+ / CH- stay within what is shown.
-- **Your own channels.** Make one from a topic, then set its search terms, YouTube channels, length, upload date, order, features, language and genre. Hold OK on a channel for its options.
-- **Sleep timer**, a random-video button, and a VHS-style effect while a channel loads.
+- **About 180 preset channels** in English and Hindi: movies, music, series, documentaries, kids, podcasts, sport, news and ambience, plus 22 live news channels that follow a network's own stream.
+- **Live or Free.** A Live channel runs on the clock while the app is closed, so you join part-way through, like real TV. A Free channel waits where you left it.
+- **A programme guide** with a timeline, a red line for now, and the focused channel playing in the preview.
+- **Changing channel** works with CH+ / CH-, number keys, Up / Down, or the on-screen keypad for remotes without numbers. The keypad's arrows browse channels and show what's on without switching; Go switches.
+- **Series channels** play playlists in episode order and remember the episode you're on.
+- **Podcast channels** follow named podcasters and sort their shows by upload date, newest on the right.
+- **Your own channels.** Make one from a topic or a playlist, then set its search terms, YouTube channels, length, language, upload date and skip words. Hold OK on a programme for its options, including **Why is this on?**, which shows the search it came from and which of its words the title matched.
+- **Continue watching** and **Save for later** lists, a sleep timer, and a random-programme button.
 
-**In every build:** at the end of a video the focus stays on the player controls. SmartTube moves it to the chapters.
+![Full screen: the channel banner shows what's on and what's next](images/plus/player.jpg)
 
 ## Install
 
-Use the [Downloader](https://www.aftvnews.com/downloader/) app on the TV and enter a code.
+On the TV, open the [Downloader](https://www.aftvnews.com/downloader/) app and enter a code:
 
-| | Code | What you get |
+| | Code | |
 |---|---|---|
-| **SmartTube Plus** | `9583142` | SmartTube with the small fixes. Follows each SmartTube release. |
-| **SmartTube Plus dev** | `6905756` | Everything above plus TV mode. Updated often, may have rough edges. |
+| **SmartTube Plus** | `9583142` | The release app. Rebuilt on each SmartTube release. |
+| **SmartTube Plus dev** | `6905756` | Gets every change first. Installs next to the release app. |
 
-Or download an APK from [Releases](https://github.com/IndoDev-B/SmartTube/releases). The first install asks you to allow apps from unknown sources. After that the app updates itself from Settings, About.
+Or download an APK from [Releases](https://github.com/IndoDev-B/SmartTube/releases). The first install asks you to allow apps from unknown sources. After that, update from Settings > About.
 
-It works on Android TV, Google TV and Fire TV. It does not work on Fire TV devices that run Vega OS (Fire TV Stick 4K Select and newer).
+It runs on Android TV, Google TV and Fire TV. It does not run on Fire TV devices with Vega OS (Fire TV Stick 4K Select and newer). It installs alongside the official SmartTube.
 
-## How it is built
+## YouTube Data API key (optional)
 
-- The `master` branch is SmartTube, untouched. The `my-features` branch holds the changes.
-- Every push to `my-features` builds the dev app.
-- When SmartTube publishes a release, a workflow applies the changes on top of it and publishes SmartTube Plus.
-- TV mode's preset channels are in `common/src/main/assets/tv_mode_dev.json`. The app downloads that file, so the channel list can change without a new build.
+TV mode works without a key. Searches then go through the same YouTube interface the app already uses, which gives a title, a creator, a rough view count and age, and usually a length.
 
-## Credits and licence
+A key lets channels know more about a video before it airs:
 
-All credit for SmartTube goes to [Yuriy Liskov](https://github.com/yuliskov) and its contributors. If you find the app useful, consider [supporting the original project](https://github.com/yuliskov/SmartTube#donation). This fork keeps SmartTube's licence.
+- **The language the uploader set**, so a Hindi film doesn't land on an English channel because its title is in English.
+- **Exact length, views and upload date**, for the length, view-count and freshness rules.
+- **Searching as a country** (English channels search as the US, for example), which gives different results from searching from India.
+- **YouTube's most-popular chart**, which the Trending channels read.
+
+The key is your own and stays on your TV. Google gives each key 10,000 units a day at no cost. Details for 50 videos cost 1 unit and a search costs 100, so the app limits itself to about 95 searches a day and stops for the day before the limit.
+
+To get one:
+
+1. Go to the [Google Cloud console](https://console.cloud.google.com/) and create a project (any name).
+2. Open [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) and press **Enable**.
+3. Go to **APIs & Services > Credentials**, press **Create credentials > API key**, and copy the key.
+4. Recommended: edit the key and, under **API restrictions**, restrict it to YouTube Data API v3.
+5. In the app, open the TV guide, then **TV settings > YouTube API key**, and paste it. The line then shows whether Google accepted it.
+
+No billing account is needed for this.
+
+## How the repository is set up
+
+- **`my-features`** is the default branch and holds all the changes. Every push to it builds the dev app.
+- **The release app** is built by a workflow that takes SmartTube's latest release tag and applies `my-features` on top of it. It runs daily and only builds when SmartTube has a new release, or when started by hand.
+- **`master`** is a plain copy of SmartTube and is not used by either build. It is not kept up to date.
+- **The preset channel list** is [`common/src/main/assets/tv_mode_dev.json`](common/src/main/assets/tv_mode_dev.json) for dev and `tv_mode_stable.json` for release. The apps download it from this repository, so channel changes reach TVs without a new build.
+
+## Credits
+
+All credit for SmartTube goes to [Yuriy Liskov](https://github.com/yuliskov) and its contributors. If you find it useful, [support the original project](https://github.com/yuliskov/SmartTube#donation). This fork keeps SmartTube's licence.
