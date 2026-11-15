@@ -2582,7 +2582,10 @@
         "marathon highlights",
         "formula 1 race highlights",
         "chess grandmaster game",
-        "chess tournament highlights"
+        "chess tournament highlights",
+        "pro kabaddi highlights",
+        "kabaddi match highlights",
+        "kushti dangal full fight"
       ],
       "length": "medium",
       "genre": "Sports",
@@ -2629,20 +2632,6 @@
         "full highlights",
         " vs "
       ]
-    },
-    {
-      "id": "kabaddi-and-kushti",
-      "name": "Kabaddi and Kushti",
-      "terms": [
-        "kabaddi highlights",
-        "kushti dangal"
-      ],
-      "length": "medium",
-      "genre": "Kabaddi",
-      "languages": [
-        "hi"
-      ],
-      "kind": "Sports"
     },
     {
       "id": "fitness",
