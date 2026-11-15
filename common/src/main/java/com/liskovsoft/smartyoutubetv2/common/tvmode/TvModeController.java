@@ -836,29 +836,46 @@ public class TvModeController extends BasePlayerController {
 
     @Override
     public boolean onNextClicked() {
-        return blockIfLive();
+        return skipLive(1);
     }
 
     @Override
     public boolean onPreviousClicked() {
-        return blockIfLive();
+        return skipLive(-1);
     }
 
-    /** Live TV plays only what's on now: no skipping along the lineup. */
-    private boolean blockIfLive() {
+    /**
+     * Live TV: Next and Previous play the program after or before this one from its start, and the
+     * channel's schedule moves with it, the way a seek moves it. Free channels go on as the player does.
+     */
+    private boolean skipLive(int dir) {
         Video current = getVideo();
 
         if (!isTvVideo(current)) {
             return false;
         }
 
-        TvChannel channel = getService().findChannel(current);
+        TvModeService service = getService();
+        TvChannel channel = service.findChannel(current);
 
-        if (channel == null || !getService().isLive(channel)) {
+        if (channel == null || !service.isLive(channel)) {
             return false;
         }
 
-        MessageHelpers.showMessage(getContext(), "Live channel: change channel or Shuffle");
+        int index = channel.indexOf(current.videoId);
+        int to = index + dir;
+
+        if (index == -1 || to < 0 || to >= channel.lineup.size()) {
+            MessageHelpers.showMessage(getContext(), dir > 0 ? "Nothing after this yet" : "Nothing before this");
+            return true;
+        }
+
+        Video picked = service.jumpLive(channel, channel.lineup.get(to));
+
+        if (picked == null || !tune(picked)) {
+            MessageHelpers.showMessage(getContext(), "Can't play that program now");
+        }
+
         return true;
     }
 
