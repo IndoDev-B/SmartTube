@@ -1051,6 +1051,63 @@ public class TvModeService {
         }
     }
 
+    /** "Why is this on?": where the program came from, and the channel's rules it passed. For the program's menu. */
+    public String whyOn(TvChannel channel, Video video) {
+        StringBuilder text = new StringBuilder();
+        String reason = channel.reasons.get(video.videoId);
+        text.append(reason != null ? reason : "It joined this channel before the app kept track of where programs come from").append(".\n\n");
+
+        if (channel.isSeries() && reason != null && reason.startsWith("Episode")) {
+            return text.toString().trim();
+        }
+
+        text.append("It fits the channel's rules:\n");
+
+        Long durationMs = channel.durations.get(video.videoId);
+        String lengthRule = channel.minMinutes > 0 ? "at least " + channel.minMinutes + " min"
+                : TvChannel.LENGTH_SHORT.equals(channel.length) ? "under 4 min"
+                : TvChannel.LENGTH_MEDIUM.equals(channel.length) ? "4 to 20 min"
+                : TvChannel.LENGTH_LONG.equals(channel.length) ? "over 20 min" : "any length";
+        text.append("• Length: ").append(durationMs != null && durationMs > 0 ? durationMs / 60_000 + " min" : "not known")
+                .append(" (the channel takes ").append(lengthRule).append(")\n");
+
+        String language = channel.language();
+        text.append("• Language: ").append(language.isEmpty() ? "the channel takes any" : "the title reads as " + TvLanguage.nameOf(language)).append('\n');
+
+        Long publishedMs = channel.published.get(video.videoId);
+        int fresh = freshDays(channel);
+        if (publishedMs != null && publishedMs > 0) {
+            long days = (System.currentTimeMillis() - publishedMs) / (24L * 60 * 60_000);
+            text.append("• Uploaded: ").append(days < 1 ? "today" : "about " + days + (days == 1 ? " day" : " days") + " ago");
+            text.append(fresh > 0 ? " (the channel shows the last " + fresh + " days)\n" : "\n");
+        } else if (fresh > 0) {
+            text.append("• Uploaded: within the last ").append(fresh).append(" days\n");
+        }
+
+        TvDataApi.Facts facts = mFacts.get(video.videoId);
+        long minViews = Math.max(mMinViews, channel.minViews);
+        if (facts != null && facts.views >= 0) {
+            text.append("• Views: ").append(facts.views).append(minViews > 0 ? " (at least " + minViews + " needed)\n" : "\n");
+        }
+
+        if (!channel.needWords.isEmpty()) {
+            text.append("• Its title has the words the channel needs: ").append(android.text.TextUtils.join(", ", channel.needWords).replace("|", " or ")).append('\n');
+        }
+
+        int skips = channel.skipWords.size() + globalSkipWords(channel).size();
+        if (skips > 0) {
+            text.append("• None of the ").append(skips).append(" skip words is in its title\n");
+        }
+
+        if (!channel.blocked.isEmpty()) {
+            text.append("• Not from one of the ").append(channel.blocked.size()).append(" blocked creators\n");
+        }
+
+        text.append(mWatched.contains(video.videoId) ? "• Watched before: the channel lets it come back after a while\n" : "• Not watched yet\n");
+
+        return text.toString().trim();
+    }
+
     // What is being watched now, in the player or in the guide's preview: both are watching.
     private TvChannel mWatchingChannel;
     private String mWatchingId;
@@ -3623,6 +3680,7 @@ public class TvModeService {
             video.tvChannelId = channel.id;
             channel.lineup.add(video);
             channel.picked.add(video.videoId);
+            channel.reasons.put(video.videoId, "From a playlist added to this channel by hand, shuffled in with the searches");
 
             TvDataApi.Facts facts = mFacts.get(video.videoId);
             long durationMs = source.getDurationMs() > 0 ? source.getDurationMs() : facts != null ? facts.durationMs : 0;
@@ -3849,6 +3907,8 @@ public class TvModeService {
                 video.tvChannelId = channel.id;
                 channel.lineup.add(video);
                 channel.episodes.put(video.videoId, one.playlistId + "#" + one.next);
+                channel.reasons.put(video.videoId, "Episode " + (one.next + 1) + (one.count > 0 ? " of " + one.count : "")
+                        + " of the series " + (one.title.isEmpty() ? "" : "\"" + one.title + "\" ") + "this channel plays in order");
 
                 TvDataApi.Facts facts = mFacts.get(video.videoId);
                 long durationMs = source.getDurationMs() > 0 ? source.getDurationMs() : facts != null ? facts.durationMs : 0;
@@ -4738,7 +4798,13 @@ public class TvModeService {
                         }
                     }
 
-                    int added = fromApi || fromChart ? appendFacts(channel, foundFacts, fromChart) : append(channel, found, fromCreator ? term : null);
+                    String reason = fromChart ? "From YouTube's most popular chart (" + term + ")"
+                            : fromApi ? "Found by the search \"" + term + "\", asked as " + apiRegion
+                            : fromPlaylist ? "From a playlist found by searching \"" + term + "\""
+                            : fromCreator ? "A new upload from the YouTube channel " + term
+                            : recent ? "Found by the search \"" + query + "\", this week's uploads"
+                            : "Found by the search \"" + query + "\"";
+                    int added = fromApi || fromChart ? appendFacts(channel, foundFacts, fromChart, reason) : append(channel, found, fromCreator ? term : null, reason);
                     Log.d(TAG, "%s: +%s videos from \"%s\"%s", channel.name, added, term,
                             recent ? " (this week)" : fromApi ? " (Data API, as " + apiRegion + ", of " + foundFacts.size() + ")"
                                     : fromChart ? " (most popular chart, of " + foundFacts.size() + ")" : "");
@@ -4956,7 +5022,7 @@ public class TvModeService {
     private static final java.util.regex.Pattern YEAR = java.util.regex.Pattern.compile("(?<![\\d])(19[2-9]\\d|20[0-3]\\d)(?![\\dpP])");
 
     /** creator: set when the videos came from a creator's own page, where YouTube leaves the name off. */
-    private int append(TvChannel channel, List<MediaItem> found, String creator) {
+    private int append(TvChannel channel, List<MediaItem> found, String creator, String reason) {
         List<Video> fresh = new ArrayList<>();
         Set<String> seen = new HashSet<>();
 
@@ -4997,6 +5063,7 @@ public class TvModeService {
             }
 
             keepFacts(channel, video.videoId, video.getDurationMs());
+            channel.reasons.put(video.videoId, reason);
             fresh.add(video);
         }
 
@@ -5014,7 +5081,7 @@ public class TvModeService {
      */
     private static final int CHART_PER_CATEGORY = 5;
 
-    private int appendFacts(TvChannel channel, List<TvDataApi.Facts> found, boolean fromChart) {
+    private int appendFacts(TvChannel channel, List<TvDataApi.Facts> found, boolean fromChart, String reason) {
         List<Video> fresh = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         Map<Integer, Integer> perCategory = new java.util.HashMap<>();
@@ -5059,6 +5126,7 @@ public class TvModeService {
             }
 
             keepFacts(channel, facts.id, 0);
+            channel.reasons.put(facts.id, reason);
             fresh.add(video);
         }
 
@@ -5098,6 +5166,10 @@ public class TvModeService {
             } else if (seen.add(video.videoId)) { // not while it is still in the lineup
                 it.remove();
                 fresh.add(video);
+                String before = channel.reasons.get(video.videoId);
+                if (before != null && !before.startsWith("Back again")) {
+                    channel.reasons.put(video.videoId, "Back again: it played while nobody was watching. First: " + before);
+                }
                 rejoin--;
             }
         }

@@ -208,6 +208,8 @@ public class TvChannel {
     public final Map<String, Long> apiRest = new HashMap<>();
     /** When a video in the lineup was uploaded, by video id. For channels whose videos go stale. */
     public final Map<String, Long> published = new HashMap<>();
+    /** Why a video in the lineup is there: the search, YouTube channel or playlist it came from. By video id. */
+    public final Map<String, String> reasons = new HashMap<>();
     /** Callers waiting for the search that is running now. */
     public final List<Runnable> waiters = new ArrayList<>();
 
@@ -425,6 +427,9 @@ public class TvChannel {
             if (published.containsKey(video.videoId)) {
                 item.put("p", published.get(video.videoId));
             }
+            if (reasons.containsKey(video.videoId)) {
+                item.put("r", reasons.get(video.videoId));
+            }
             items.put(item);
         }
 
@@ -455,6 +460,9 @@ public class TvChannel {
             }
             if (item.optLong("p", 0) > 0) {
                 published.put(video.videoId, item.optLong("p", 0));
+            }
+            if (!item.isNull("r") && item.has("r")) {
+                reasons.put(video.videoId, item.optString("r", ""));
             }
             out.add(video);
         }
@@ -580,6 +588,7 @@ public class TvChannel {
         c.apiTokens.putAll(apiTokens);
         c.apiRest.putAll(apiRest);
         c.published.putAll(published);
+        c.reasons.putAll(reasons);
         c.durations.putAll(durations);
         c.checked.addAll(checked);
         c.picked.addAll(picked);

@@ -448,6 +448,13 @@ public class TvModeMenu {
                 mDialog.showDialog(title);
             })));
 
+            // Where it came from and the channel's rules it passed: so a wrong program says which search or source to fix.
+            mDialog.appendSingleButton(UiOptionItem.from("Why is this on?", option -> {
+                String title = video.getTitle() != null ? video.getTitle() : "";
+                mDialog.appendLongTextCategory(title, UiOptionItem.from(mService.whyOn(channel, video)));
+                mDialog.showDialog("Why is this on " + channel.name + "?");
+            }));
+
             appendComments(video);
 
             if (!video.isLive) { // a stream has nothing to come back to
