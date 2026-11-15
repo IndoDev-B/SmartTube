@@ -1051,62 +1051,107 @@ public class TvModeService {
         }
     }
 
-    /** "Why is this on?": where the program came from, and the channel's rules it passed. For the program's menu. */
+    /**
+     * "Why is this on?": what this program itself matched. The search that found it and which of
+     * its words are in the title, or that none are and YouTube matched it on something else; then
+     * the program's own length, age, views, language and creator. For the program's menu.
+     */
     public String whyOn(TvChannel channel, Video video) {
         StringBuilder text = new StringBuilder();
         String reason = channel.reasons.get(video.videoId);
-        text.append(reason != null ? reason : "It joined this channel before the app kept track of where programs come from").append(".\n\n");
+        String title = video.getTitle() != null ? video.getTitle() : "";
+        String lowerTitle = title.toLowerCase(Locale.ROOT);
+        String description = mDescriptions.get(video.videoId);
+        String lowerDescription = description != null ? description.toLowerCase(Locale.ROOT) : "";
 
-        if (channel.isSeries() && reason != null && reason.startsWith("Episode")) {
-            return text.toString().trim();
+        text.append(reason != null ? reason : "It joined this channel before the app kept track of where programs come from").append(".\n");
+
+        // The search term is the quoted part of the reason.
+        int open = reason != null ? reason.indexOf('"') : -1;
+        int close = open >= 0 ? reason.indexOf('"', open + 1) : -1;
+
+        if (close > open + 1 && !reason.startsWith("Episode")) {
+            List<String> inTitle = new ArrayList<>();
+            List<String> inDescription = new ArrayList<>();
+            List<String> nowhere = new ArrayList<>();
+
+            for (String word : reason.substring(open + 1, close).toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")) {
+                // The language's name is added to searches by the app, not part of the topic.
+                if (word.length() < 3 || WHY_SKIP.contains(word) || word.equals(TvLanguage.searchWord(channel.language()))) {
+                    continue;
+                }
+                (lowerTitle.contains(word) ? inTitle : lowerDescription.contains(word) ? inDescription : nowhere).add(word);
+            }
+
+            if (!inTitle.isEmpty()) {
+                text.append("• In the title: ").append(android.text.TextUtils.join(", ", inTitle)).append('\n');
+            }
+            if (!inDescription.isEmpty()) {
+                text.append("• Only in the description: ").append(android.text.TextUtils.join(", ", inDescription)).append('\n');
+            }
+            if (!nowhere.isEmpty()) {
+                text.append("• Not in the title").append(description != null ? " or description" : "").append(": ")
+                        .append(android.text.TextUtils.join(", ", nowhere)).append('\n');
+            }
+            if (inTitle.isEmpty() && inDescription.isEmpty()) {
+                text.append("• YouTube put it in the results without the search's words: it matched on tags or a related topic. Blocking its creator or adding a skip word keeps this kind out.\n");
+            }
+        } else if (reason != null && reason.startsWith("A new upload")) {
+            text.append("• Its creator is one of the YouTube channels this channel follows\n");
         }
 
-        text.append("It fits the channel's rules:\n");
+        for (String need : channel.needWords) {
+            for (String option : need.split("\\|")) {
+                if (!option.isEmpty() && lowerTitle.contains(option)) {
+                    text.append("• Has the required word: ").append(option).append('\n');
+                    break;
+                }
+            }
+        }
+
+        text.append('\n');
+
+        String author = video.getAuthor();
+        if (author != null && !author.isEmpty()) {
+            text.append("Creator: ").append(author).append('\n');
+        }
 
         Long durationMs = channel.durations.get(video.videoId);
-        String lengthRule = channel.minMinutes > 0 ? "at least " + channel.minMinutes + " min"
-                : TvChannel.LENGTH_SHORT.equals(channel.length) ? "under 4 min"
-                : TvChannel.LENGTH_MEDIUM.equals(channel.length) ? "4 to 20 min"
-                : TvChannel.LENGTH_LONG.equals(channel.length) ? "over 20 min" : "any length";
-        text.append("• Length: ").append(durationMs != null && durationMs > 0 ? durationMs / 60_000 + " min" : "not known")
-                .append(" (the channel takes ").append(lengthRule).append(")\n");
-
-        String language = channel.language();
-        text.append("• Language: ").append(language.isEmpty() ? "the channel takes any" : "the title reads as " + TvLanguage.nameOf(language)).append('\n');
+        if (durationMs != null && durationMs > 0 && !video.isLive) {
+            text.append("Length: ").append(durationMs / 60_000).append(" min\n");
+        }
 
         Long publishedMs = channel.published.get(video.videoId);
-        int fresh = freshDays(channel);
-        if (publishedMs != null && publishedMs > 0) {
-            long days = (System.currentTimeMillis() - publishedMs) / (24L * 60 * 60_000);
-            text.append("• Uploaded: ").append(days < 1 ? "today" : "about " + days + (days == 1 ? " day" : " days") + " ago");
-            text.append(fresh > 0 ? " (the channel shows the last " + fresh + " days)\n" : "\n");
-        } else if (fresh > 0) {
-            text.append("• Uploaded: within the last ").append(fresh).append(" days\n");
+        long uploadedMs = publishedMs != null && publishedMs > 0 ? publishedMs : publishedFrom(video.secondTitle);
+        if (uploadedMs > 0) {
+            long days = (System.currentTimeMillis() - uploadedMs) / (24L * 60 * 60_000);
+            text.append("Uploaded: ").append(days < 1 ? "today" : days < 60 ? days + (days == 1 ? " day" : " days") + " ago"
+                    : days < 730 ? (days / 30) + " months ago" : (days / 365) + " years ago").append('\n');
         }
 
         TvDataApi.Facts facts = mFacts.get(video.videoId);
-        long minViews = Math.max(mMinViews, channel.minViews);
-        if (facts != null && facts.views >= 0) {
-            text.append("• Views: ").append(facts.views).append(minViews > 0 ? " (at least " + minViews + " needed)\n" : "\n");
+        long views = facts != null && facts.views >= 0 ? facts.views : parseViews(video.secondTitle);
+        if (views >= 0) {
+            text.append("Views: ").append(views >= 1_000_000 ? (views / 100_000) / 10.0 + "M" : views >= 1_000 ? views / 1_000 + "K" : String.valueOf(views)).append('\n');
         }
 
-        if (!channel.needWords.isEmpty()) {
-            text.append("• Its title has the words the channel needs: ").append(android.text.TextUtils.join(", ", channel.needWords).replace("|", " or ")).append('\n');
+        String language = TvLanguage.detect(title);
+        if (language != null) {
+            text.append("Title reads as: ").append(TvLanguage.nameOf(language)).append('\n');
         }
 
-        int skips = channel.skipWords.size() + globalSkipWords(channel).size();
-        if (skips > 0) {
-            text.append("• None of the ").append(skips).append(" skip words is in its title\n");
+        Long watchedAt = mWatchedAt.get(video.videoId);
+        if (mWatched.contains(video.videoId)) {
+            text.append("Watched before").append(watchedAt != null
+                    ? ", " + Math.max(0, (System.currentTimeMillis() - watchedAt) / (24L * 60 * 60_000)) + " days ago" : "").append('\n');
         }
-
-        if (!channel.blocked.isEmpty()) {
-            text.append("• Not from one of the ").append(channel.blocked.size()).append(" blocked creators\n");
-        }
-
-        text.append(mWatched.contains(video.videoId) ? "• Watched before: the channel lets it come back after a while\n" : "• Not watched yet\n");
 
         return text.toString().trim();
     }
+
+    /** Words of a search that say nothing about the topic, left out of "Why is this on?". */
+    private static final java.util.Set<String> WHY_SKIP = new java.util.HashSet<>(java.util.Arrays.asList(
+            "the", "and", "for", "with", "full", "video", "videos", "best", "new", "old", "official", "episode", "part"));
 
     // What is being watched now, in the player or in the guide's preview: both are watching.
     private TvChannel mWatchingChannel;
