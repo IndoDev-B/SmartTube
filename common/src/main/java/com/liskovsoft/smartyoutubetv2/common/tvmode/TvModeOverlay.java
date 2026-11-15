@@ -47,8 +47,11 @@ public interface TvModeOverlay {
     /** Hides the top buttons even when the cursor is on them: a video that isn't TV mode's started. */
     void dropTopButtons();
 
-    /** The on-screen keypad's number line: the channel digits typed so far. Empty = none. */
-    void showTypedDigits(String digits);
+    /**
+     * The on-screen keypad's number line: the channel digits typed so far. Empty = none. Under the
+     * keys, the channel those digits pick and what it has on now, so Go is pressed knowing where it goes. Null = nothing.
+     */
+    void showTypedDigits(String digits, String channelLine, String programLine);
 
     /** Closes the on-screen keypad, if open. The focus goes back to its top button. */
     void hideRemote();

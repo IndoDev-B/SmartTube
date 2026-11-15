@@ -4417,6 +4417,20 @@ public class TvModeService {
         return true;
     }
 
+    /** Puts the channel at this number (from 1), the ones between moving along by one. False = no such number. */
+    public boolean moveTo(TvChannel channel, int number) {
+        int from = mChannels.indexOf(channel);
+
+        if (from == -1 || number < 1 || number > mChannels.size()) {
+            return false;
+        }
+
+        mChannels.remove(from);
+        mChannels.add(number - 1, channel);
+        save();
+        return true;
+    }
+
     public void delete(TvChannel channel) {
         mChannels.remove(channel);
 

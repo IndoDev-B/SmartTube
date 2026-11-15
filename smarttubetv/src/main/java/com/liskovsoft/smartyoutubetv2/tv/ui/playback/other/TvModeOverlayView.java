@@ -83,6 +83,14 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     /** The on-screen keypad under the keypad button: type a channel number without a remote that has digits. */
     private final LinearLayout mRemote;
     private final TextView mRemoteNumber;
+    /** Under the keys: the channel the typed number or the arrow keys picked, and what it has on now. */
+    private final TextView mRemoteChannel;
+    private final TextView mRemoteProgram;
+    // The arrow keys only move the pick; Go tunes it.
+    private static final String KEY_FIRST = "|◀";
+    private static final String KEY_BACK = "◀";
+    private static final String KEY_FORWARD = "▶";
+    private static final String KEY_LAST = "▶|";
     /** The keypad's keys row by row, the way the D-pad moves through them. */
     private final java.util.List<java.util.List<TextView>> mRemoteRows = new java.util.ArrayList<>();
     /** The top buttons from left to right, the way Left and Right move through them. */
@@ -231,9 +239,10 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
         LinearLayout.LayoutParams numberParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, dp(34));
         numberParams.bottomMargin = dp(6);
         mRemote.addView(mRemoteNumber, numberParams);
-        showTypedDigits("");
 
-        String[][] keys = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"Del", "0", "Go"}, {"First", "Last"}, {"Prev"}};
+        // Numbers, then the four keys that move through the channels without tuning, then Go, then Prev.
+        String[][] keys = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"Del", "0"},
+                {KEY_FIRST, KEY_BACK, KEY_FORWARD, KEY_LAST}, {"Go"}, {"Prev"}};
         for (String[] labels : keys) {
             LinearLayout line = new LinearLayout(context);
             line.setOrientation(LinearLayout.HORIZONTAL);
@@ -253,6 +262,18 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             mRemote.addView(line, lineParams);
             mRemoteRows.add(row);
         }
+
+        // Where Go would go: fixed to the keys' width, or a long title would widen the keypad.
+        mRemoteChannel = text(14f, 0xFFFFFFFF, 1);
+        mRemoteChannel.setTypeface(null, Typeface.BOLD);
+        LinearLayout.LayoutParams channelParams = new LinearLayout.LayoutParams(dp(3 * 54 + 2 * 6), LayoutParams.WRAP_CONTENT);
+        channelParams.topMargin = dp(8);
+        mRemote.addView(mRemoteChannel, channelParams);
+        mRemoteProgram = text(13f, 0xFFCFCFCF, 2);
+        LinearLayout.LayoutParams programParams = new LinearLayout.LayoutParams(dp(3 * 54 + 2 * 6), LayoutParams.WRAP_CONTENT);
+        programParams.topMargin = dp(2);
+        mRemote.addView(mRemoteProgram, programParams);
+        showTypedDigits("", null, null);
 
         mTip = text(13f, 0xFFFFFFFF, 1);
         mTip.setPadding(dp(8), dp(3), dp(8), dp(3));
@@ -430,14 +451,20 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
             case "Go":
                 TvModeController.tuneTypedNow();
                 break;
-            case "First":
-                TvModeController.tuneEdge(false);
+            case KEY_FIRST:
+                TvModeController.pick(TvModeController.PICK_FIRST);
+                break;
+            case KEY_BACK:
+                TvModeController.pick(TvModeController.PICK_BACK);
+                break;
+            case KEY_FORWARD:
+                TvModeController.pick(TvModeController.PICK_FORWARD);
+                break;
+            case KEY_LAST:
+                TvModeController.pick(TvModeController.PICK_LAST);
                 break;
             case "Prev":
                 TvModeController.tunePrevious();
-                break;
-            case "Last":
-                TvModeController.tuneEdge(true);
                 break;
             default:
                 TvModeController.typeDigit(label.charAt(0) - '0');
@@ -505,8 +532,12 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
     }
 
     @Override
-    public void showTypedDigits(String digits) {
+    public void showTypedDigits(String digits, String channelLine, String programLine) {
         mRemoteNumber.setText(digits == null || digits.isEmpty() ? "CH  - -" : "CH  " + digits);
+        mRemoteChannel.setText(channelLine != null ? channelLine : "");
+        mRemoteChannel.setVisibility(channelLine != null ? VISIBLE : GONE);
+        mRemoteProgram.setText(programLine != null ? programLine : "");
+        mRemoteProgram.setVisibility(programLine != null ? VISIBLE : GONE);
     }
 
     /**

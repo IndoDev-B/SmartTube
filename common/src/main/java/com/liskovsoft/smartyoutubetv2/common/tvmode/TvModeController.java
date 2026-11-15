@@ -34,6 +34,8 @@ public class TvModeController extends BasePlayerController {
     private static WeakReference<TvModeController> sInstance = new WeakReference<>(null);
     private static WeakReference<TvModeOverlay> sOverlay = new WeakReference<>(null);
     private String mDigits = "";
+    /** mDigits came from the keypad's arrow keys, not from typing. */
+    private boolean mPicked;
     private String mDecoratedId;
     private String mBannerWaitingId;
     private boolean mSleeping;
@@ -84,6 +86,10 @@ public class TvModeController extends BasePlayerController {
         }
 
         Utils.removeCallbacks(controller.mTuneDigits); // digits typed on the remote before are taken over, not tuned
+        if (controller.mPicked) { // a number after the arrow keys starts a new one
+            controller.mDigits = "";
+            controller.mPicked = false;
+        }
         controller.mDigits = controller.mDigits + digit;
 
         if (controller.mDigits.length() > 3) { // up to channel 999
@@ -141,19 +147,24 @@ public class TvModeController extends BasePlayerController {
         }
     }
 
-    /** On-screen keypad, First / Last: the first or last channel of the list the guide shows. */
-    public static void tuneEdge(boolean last) {
+    public static final int PICK_FIRST = 0;
+    public static final int PICK_BACK = 1;
+    public static final int PICK_FORWARD = 2;
+    public static final int PICK_LAST = 3;
+
+    /**
+     * On-screen keypad, the arrow keys: move the pick through the channels the guide shows, from
+     * the typed number or else from the channel on now. Nothing tunes: the keypad shows the
+     * channel and what it has on, and Go goes there.
+     */
+    public static void pick(int where) {
         TvModeController controller = sInstance.get();
 
         if (controller == null || controller.getPlayer() == null) {
             return;
         }
 
-        // Half-typed digits would otherwise tune somewhere else a moment later.
-        Utils.removeCallbacks(controller.mTuneDigits);
-        controller.mDigits = "";
-        controller.showTyped();
-
+        Utils.removeCallbacks(controller.mTuneDigits); // digits typed on the remote must not tune by themselves now
         TvModeService service = controller.getService();
         List<TvChannel> shown = service.getShownChannels();
 
@@ -162,27 +173,69 @@ public class TvModeController extends BasePlayerController {
             return;
         }
 
-        TvChannel channel = shown.get(last ? shown.size() - 1 : 0);
-        int number = service.indexOf(channel) + 1;
-        Video current = controller.getVideo();
+        TvChannel from = controller.pickedChannel();
 
-        if (current != null && channel.id.equals(current.tvChannelId)) {
-            MessageHelpers.showMessage(controller.getContext(), "Already on CH " + number);
-            return;
+        if (from == null) {
+            Video current = controller.getVideo();
+            from = current != null ? service.findChannel(current) : null;
         }
 
-        if (!controller.tune(service.tune(channel))) {
-            MessageHelpers.showMessage(controller.getContext(), "Channel " + number + " is still loading");
+        int at = from != null ? shown.indexOf(from) : -1;
+        int to;
+
+        if (where == PICK_FIRST) {
+            to = 0;
+        } else if (where == PICK_LAST) {
+            to = shown.size() - 1;
+        } else if (at == -1) { // a channel the guide's filters hide: start from an end
+            to = where == PICK_FORWARD ? 0 : shown.size() - 1;
+        } else { // round the list, like CH+ and CH-
+            to = (at + (where == PICK_FORWARD ? 1 : -1) + shown.size()) % shown.size();
         }
+
+        controller.mDigits = String.valueOf(service.indexOf(shown.get(to)) + 1);
+        controller.mPicked = true;
+        controller.showTyped();
     }
 
-    /** The keypad shows the digits typed so far, also the ones typed on the remote. */
+    /** The channel the typed digits name, or null. */
+    private TvChannel pickedChannel() {
+        if (mDigits.isEmpty()) {
+            return null;
+        }
+
+        int number;
+        try {
+            number = Integer.parseInt(mDigits);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+
+        List<TvChannel> channels = getService().getChannels();
+        return number >= 1 && number <= channels.size() ? channels.get(number - 1) : null;
+    }
+
+    /** The keypad shows the digits typed so far, also the ones typed on the remote, and the channel they name. */
     private void showTyped() {
         TvModeOverlay overlay = sOverlay.get();
 
-        if (overlay != null) {
-            overlay.showTypedDigits(mDigits);
+        if (overlay == null) {
+            return;
         }
+
+        TvChannel channel = pickedChannel();
+        String channelLine = null;
+        String programLine = null;
+
+        if (channel != null) {
+            channelLine = channel.name;
+            Video onNow = channel.onNow();
+            programLine = onNow != null && onNow.getTitle() != null ? onNow.getTitle() : "Not loaded yet";
+        } else if (!mDigits.isEmpty()) {
+            channelLine = "No channel " + mDigits;
+        }
+
+        overlay.showTypedDigits(mDigits, channelLine, programLine);
     }
 
     /** The channel of the last video, so the keypad closes on a channel change but not on the next program. */
@@ -877,6 +930,10 @@ public class TvModeController extends BasePlayerController {
 
     /** Number keys: type a channel number. Two digits within a moment make a two-digit number. */
     private boolean onDigit(int digit) {
+        if (mPicked) {
+            mDigits = "";
+            mPicked = false;
+        }
         mDigits = (mDigits + digit);
 
         if (mDigits.length() > 3) { // up to channel 999

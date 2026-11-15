@@ -523,6 +523,8 @@ public class TvModeMenu {
             }
         }));
 
+        appendMoveTo(channel);
+
         appendConfirm("Delete channel", "Yes, delete " + channel.name, () -> {
             mService.delete(channel);
             toast("Channel deleted");
@@ -753,9 +755,9 @@ public class TvModeMenu {
             List<OptionItem> playlists = new ArrayList<>();
             for (TvChannel.Series one : new ArrayList<>(channel.series)) {
                 playlists.add(UiOptionItem.from("Remove: " + one.title, option -> {
-                    mDialog.closeDialog();
                     mService.removePlaylistSource(channel, one, this::refreshGuide);
                     toast("Removed " + one.title);
+                    reopenEditor(channel);
                 }));
             }
             mDialog.appendStringsCategory("Playlists mixed in (" + channel.series.size() + ")", playlists);
@@ -806,6 +808,7 @@ public class TvModeMenu {
             SimpleEditDialog.show(mContext, "YouTube channel for " + channel.name, "", value -> {
                 if (value != null && mService.addCreator(channel, value, null, this::refreshGuide)) {
                     toast("Added " + value.trim());
+                    reopenEditor(channel);
                 }
                 return true;
             });
@@ -918,8 +921,32 @@ public class TvModeMenu {
                 askSeries(channel, seriesQuery(channel));
             } else {
                 toast(value.isEmpty() ? "No program type" : channel.name + " is now " + value + ", with the filters for it");
+                reopenEditor(channel); // with the new type's lines
             }
         }, choices.toArray(new String[0])));
+    }
+
+    /** Type a channel number and the channel moves there. */
+    private void appendMoveTo(TvChannel channel) {
+        mDialog.appendSingleButton(UiOptionItem.from("Move to channel number", option -> {
+            mDialog.closeDialog();
+            int count = mService.getChannels().size();
+            SimpleEditDialog.show(mContext, "Move " + channel.name + " to channel (1 to " + count + ")",
+                    String.valueOf(mService.indexOf(channel) + 1), value -> {
+                try {
+                    int number = Integer.parseInt(value != null ? value.trim() : "");
+                    if (mService.moveTo(channel, number)) {
+                        toast(channel.name + " is now channel " + number);
+                        refreshGuide();
+                    } else {
+                        toast("Pick a number from 1 to " + count);
+                    }
+                } catch (NumberFormatException e) {
+                    toast("That isn't a number");
+                }
+                return true;
+            });
+        }));
     }
 
     /** The lines every channel's editor ends with. */
@@ -930,6 +957,7 @@ public class TvModeMenu {
                 if (value != null && !value.trim().isEmpty()) {
                     mService.rename(channel, value.trim());
                     refreshGuide();
+                    reopenEditor(channel);
                 }
                 return true;
             });
@@ -963,6 +991,8 @@ public class TvModeMenu {
             refreshGuide();
         }));
 
+        appendMoveTo(channel);
+
         mDialog.showDialog("Edit " + (mService.indexOf(channel) + 1) + "  " + channel.name);
     }
 
@@ -991,11 +1021,45 @@ public class TvModeMenu {
     /** What the channel searches for changed: rebuild what's coming up and show it in the guide. */
     private void searchChanged(TvChannel channel, String message) {
         if (message != null) {
-            mDialog.closeDialog(); // the list on screen no longer matches the channel
             toast(message);
+            reopenEditor(channel); // the list on screen no longer matches the channel
         }
 
         mService.onSearchChanged(channel, this::refreshGuide);
+    }
+
+    /**
+     * Back into the channel's editor after a change, built afresh so its lists show the change,
+     * instead of leaving the person to open it again for the next edit. The old dialog has to be
+     * gone first: closing it clears the dialog's contents, and would empty a new one opened too soon.
+     */
+    private static final long REOPEN_WAIT_MS = 150;
+    private static final int REOPEN_TRIES = 20;
+
+    private void reopenEditor(TvChannel channel) {
+        if (mDialog.isDialogShown()) {
+            mDialog.closeDialog();
+        }
+
+        reopenWhenClosed(channel, REOPEN_TRIES);
+    }
+
+    private void reopenWhenClosed(TvChannel channel, int triesLeft) {
+        com.liskovsoft.smartyoutubetv2.common.utils.Utils.postDelayed(() -> {
+            if (mDialog.isDialogShown() || mDialog.getView() != null) {
+                if (triesLeft > 0) {
+                    reopenWhenClosed(channel, triesLeft - 1);
+                }
+                return;
+            }
+
+            // Gone from the screen: a moment more for it to finish tearing down, which clears the dialog's contents.
+            com.liskovsoft.smartyoutubetv2.common.utils.Utils.postDelayed(() -> {
+                if (mService.indexOf(channel) != -1 && !mDialog.isDialogShown()) { // not deleted, nothing else opened
+                    showEditor(channel);
+                }
+            }, 2 * REOPEN_WAIT_MS);
+        }, REOPEN_WAIT_MS);
     }
 
     // ---------------- new channel ----------------
