@@ -229,13 +229,41 @@ public class TvModeController extends BasePlayerController {
 
         if (channel != null) {
             channelLine = channel.name;
-            Video onNow = channel.onNow();
-            programLine = onNow != null && onNow.getTitle() != null ? onNow.getTitle() : "Not loaded yet";
+            showChannelInfo(overlay, channel); // the info bar at the bottom: what it has on now and next
         } else if (!mDigits.isEmpty()) {
             channelLine = "No channel " + mDigits;
         }
 
         overlay.showTypedDigits(mDigits, channelLine, programLine);
+    }
+
+    /**
+     * The bottom info bar for a channel that is picked but not tuned, as on a set-top box: its
+     * number and name, the program on now with its times, and the one after. The player stays put.
+     */
+    private void showChannelInfo(TvModeOverlay overlay, TvChannel channel) {
+        TvModeService service = getService();
+        boolean live = service.isLive(channel);
+        String number = String.valueOf(service.indexOf(channel) + 1);
+        // On Live TV the start times sync the channel to the clock first, so what's on now is right.
+        long startMs = live ? service.liveStartOf(channel, channel.pos) : 0;
+        Video onNow = channel.onNow();
+
+        if (onNow == null) {
+            overlay.showBanner(number, channel.name, live ? "LIVE" : "FREE", "Not loaded yet", "", null, null);
+            return;
+        }
+
+        java.text.DateFormat time = DateFormat.getTimeFormat(getContext());
+        String author = onNow.getAuthor() != null ? onNow.getAuthor() : "";
+        long endMs = live ? service.liveStartOf(channel, channel.pos + 1) : 0;
+        String subtitle = live && !onNow.isLive
+                ? time.format(new Date(startMs)) + " - " + time.format(new Date(endMs)) + (author.isEmpty() ? "" : "  •  " + author)
+                : author;
+        Video next = channel.pos + 1 < channel.lineup.size() ? channel.lineup.get(channel.pos + 1) : null;
+        String nextLabel = next == null ? null : live ? "Next at " + time.format(new Date(endMs)) : "Up next";
+
+        overlay.showBanner(number, channel.name, live ? "LIVE" : "FREE", onNow.getTitle(), subtitle, nextLabel, next != null ? next.getTitle() : null);
     }
 
     /** The channel of the last video, so the keypad closes on a channel change but not on the next program. */
