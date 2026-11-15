@@ -1506,7 +1506,27 @@
       ],
       "kind": "Songs",
       "blocked": [
-        "Prakash Jojawar"
+        "Prakash Jojawar",
+        "Raushan Rohi",
+        "Srishti Bharti",
+        "Sagar Bairagi",
+        "Gaurav Mali",
+        "Vatsal Bhoya",
+        "Zexcer Music",
+        "Mr.MuzikVala",
+        "NAGESH BISWAL",
+        "LoveBite",
+        "Sanjana Raj",
+        "Annapurna Films"
+      ],
+      "skipWords": [
+        "bhojpuri",
+        "bhajan",
+        "chhath",
+        "rangdari",
+        "khesari",
+        "new song 2026",
+        "new hindi song /"
       ]
     },
     {
@@ -3619,7 +3639,15 @@
       "languages": [
         "en"
       ],
-      "kind": "Documentary"
+      "kind": "Documentary",
+      "needWords": [
+        "newsreel|pathé|pathe|movietone|films division|archive|192|193|194|195|196|197"
+      ],
+      "skipWords": [
+        "full movie",
+        "box office",
+        "ramayana"
+      ]
     },
     {
       "id": "silent-films",
@@ -3708,21 +3736,6 @@
       "genre": "Theatre",
       "languages": [
         "en"
-      ],
-      "kind": "Shows"
-    },
-    {
-      "id": "hindi-natak",
-      "name": "Hindi Natak",
-      "terms": [
-        "hindi natak full",
-        "hindi play full theatre",
-        "ramleela full",
-        "nukkad natak"
-      ],
-      "genre": "Theatre",
-      "languages": [
-        "hi"
       ],
       "kind": "Shows"
     },
@@ -3957,7 +3970,9 @@
         "chinese drama",
         "drama explained",
         "drama recap",
-        "recap"
+        "recap",
+        "hindi explanation",
+        "empress"
       ],
       "genre": "Popular",
       "languages": [
