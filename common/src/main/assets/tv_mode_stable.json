@@ -18,8 +18,7 @@
     "freshDays": {
       "News": 2,
       "Trending": 3,
-      "Sports": 7,
-      "Podcasts": 30
+      "Sports": 7
     },
     "rewatchDays": {
       "default": 30,
@@ -1609,16 +1608,17 @@
     },
     {
       "id": "movies-explained",
-      "name": "Video Essays",
+      "name": "Behind the Scenes",
       "terms": [
-        "movie explained in english",
-        "film analysis",
-        "behind the scenes film",
-        "video essay",
-        "history video essay",
-        "video essay explained"
+        "movie behind the scenes making of",
+        "movie cast interview",
+        "director interview filmmaking",
+        "actors roundtable full",
+        "making of featurette",
+        "film director masterclass",
+        "vfx breakdown movie",
+        "stunt behind the scenes movie"
       ],
-      "length": "medium",
       "blocked": [
         "Pen Movies",
         "Shemaroo Movies",
@@ -1656,7 +1656,8 @@
         "en"
       ],
       "region": "US",
-      "kind": "Shows"
+      "kind": "Shows",
+      "minMinutes": 5
     },
     {
       "id": "trailers",
@@ -1764,6 +1765,18 @@
         "mile sur mera tumhara",
         "hindi comedy clips",
         "funny hindi clips"
+      ],
+      "skipWords": [
+        "jukebox",
+        "nonstop",
+        "non stop",
+        "non-stop",
+        "evergreen songs",
+        "love songs",
+        "full song",
+        "video song",
+        "chhath",
+        "bhajan"
       ]
     },
     {
@@ -1778,12 +1791,16 @@
       "terms": [
         "80s commercials",
         "90s tv commercials compilation",
-        "super bowl commercials",
         "funny commercials",
         "tv bloopers and outtakes",
         "funny news bloopers",
         "just for laughs gags",
-        "classic tv theme songs"
+        "classic tv theme songs",
+        "80s tv commercials",
+        "funny bloopers compilation"
+      ],
+      "skipWords": [
+        "super bowl"
       ]
     },
     {
@@ -1860,14 +1877,27 @@
       "name": "Doordarshan Classics",
       "terms": [
         "doordarshan old serials",
-        "old hindi tv serial full episode"
+        "old hindi tv serial full episode",
+        "malgudi days full episode",
+        "byomkesh bakshi doordarshan",
+        "nukkad doordarshan serial",
+        "wagle ki duniya old",
+        "tenali rama doordarshan",
+        "dekh bhai dekh full episode",
+        "flop show jaspal bhatti"
       ],
       "playlists": true,
       "genre": "Classics",
       "languages": [
         "hi"
       ],
-      "kind": "Shows"
+      "kind": "Shows",
+      "blocked": [
+        "Zee TV",
+        "ZEE5",
+        "Zee TV Classics",
+        "RD Horror Serials"
+      ]
     },
     {
       "id": "cartoons",
@@ -2130,13 +2160,14 @@
       "terms": [
         "science explained documentary",
         "physics explained",
-        "space documentary",
         "science experiments",
         "physics experiment",
         "chemistry demonstration",
         "university lecture",
         "ted talk",
-        "public lecture"
+        "public lecture",
+        "chemistry experiment",
+        "how things work science"
       ],
       "genre": "Science",
       "languages": [
@@ -2144,7 +2175,23 @@
       ],
       "kind": "Learning",
       "region": "US",
-      "playlists": true
+      "playlists": true,
+      "skipWords": [
+        "sleep",
+        "universe",
+        "galaxy",
+        "james webb",
+        "nasa",
+        "black hole",
+        "solar system"
+      ],
+      "blocked": [
+        "Sleep On Science",
+        "Sleepy Science Channel",
+        "The Sleepy Scientist",
+        "Sleep On Physics",
+        "Sleepy Time Science"
+      ]
     },
     {
       "id": "space",
@@ -2160,7 +2207,17 @@
         "en"
       ],
       "kind": "Learning",
-      "region": "US"
+      "region": "US",
+      "skipWords": [
+        "sleep"
+      ],
+      "blocked": [
+        "Sleep On Science",
+        "Sleepy Science Channel",
+        "The Sleepy Scientist",
+        "Sleep On Physics",
+        "Sleepy Time Science"
+      ]
     },
     {
       "id": "physics",
@@ -2178,7 +2235,17 @@
         "en"
       ],
       "kind": "Learning",
-      "region": "US"
+      "region": "US",
+      "skipWords": [
+        "sleep"
+      ],
+      "blocked": [
+        "Sleep On Science",
+        "Sleepy Science Channel",
+        "The Sleepy Scientist",
+        "Sleep On Physics",
+        "Sleepy Time Science"
+      ]
     },
     {
       "id": "biology",
@@ -2355,20 +2422,7 @@
       "terms": [
         "news explained",
         "current affairs analysis",
-        "geopolitics explained"
-      ],
-      "length": "medium",
-      "genre": "",
-      "languages": [
-        "en"
-      ],
-      "kind": "News",
-      "region": "US"
-    },
-    {
-      "id": "business",
-      "name": "Business and Economy",
-      "terms": [
+        "geopolitics explained",
         "business documentary",
         "company story",
         "economics explained",
@@ -2380,7 +2434,7 @@
         "personal finance"
       ],
       "length": "medium",
-      "genre": "Business",
+      "genre": "",
       "languages": [
         "en"
       ],
@@ -2392,85 +2446,82 @@
       "name": "Hindi News Analysis",
       "terms": [
         "news analysis hindi",
-        "current affairs hindi"
+        "current affairs hindi",
+        "share market hindi",
+        "personal finance hindi",
+        "business podcast hindi",
+        "startup podcast hindi"
       ],
       "length": "medium",
       "genre": "",
       "languages": [
         "hi"
       ],
-      "kind": "News"
-    },
-    {
-      "id": "hindi-finance",
-      "name": "Hindi Finance",
-      "terms": [
-        "share market hindi",
-        "personal finance hindi",
-        "business podcast hindi",
-        "startup podcast hindi"
-      ],
-      "genre": "Business",
-      "languages": [
-        "hi"
-      ],
       "kind": "News",
-      "playlists": true
+      "skipWords": [
+        "bitcoin",
+        "crypto",
+        "altcoin",
+        "match report",
+        "match highlights",
+        "odi highlights",
+        "ipl"
+      ]
     },
     {
       "id": "podcasts",
       "name": "Podcasts",
-      "terms": [
-        "podcast full episode",
-        "long form interview",
-        "conversation podcast",
-        "science podcast full episode",
-        "technology podcast full episode",
-        "business podcast full episode",
-        "history podcast full episode",
-        "comedy podcast full episode"
-      ],
+      "terms": [],
       "length": "long",
-      "playlists": true,
       "genre": "",
       "languages": [
         "en"
       ],
       "kind": "Podcasts",
-      "region": "US"
+      "creators": [
+        "Lex Fridman",
+        "The Diary Of A CEO",
+        "Andrew Huberman",
+        "Chris Williamson",
+        "PowerfulJRE",
+        "Shawn Ryan Show",
+        "Theo Von",
+        "Flagrant",
+        "All-In Podcast",
+        "Dwarkesh Patel",
+        "Mel Robbins",
+        "Jay Shetty Podcast",
+        "Tim Ferriss",
+        "Rich Roll",
+        "Peter Attia MD"
+      ],
+      "order": "timeline",
+      "mode": "pace"
     },
     {
       "id": "hindi-podcasts",
       "name": "Hindi Podcasts",
-      "terms": [
-        "hindi podcast full episode",
-        "podcast in hindi interview",
-        "comedy podcast hindi",
-        "hindi motivational speech",
-        "motivational video hindi"
-      ],
+      "terms": [],
       "length": "long",
-      "playlists": true,
       "genre": "",
       "languages": [
         "hi"
       ],
-      "kind": "Podcasts"
-    },
-    {
-      "id": "spirituality",
-      "name": "Spirituality",
-      "terms": [
-        "spiritual podcast hindi",
-        "adhyatmik pravachan"
+      "kind": "Podcasts",
+      "creators": [
+        "BeerBiceps",
+        "Raj Shamani",
+        "Shubhankar Mishra",
+        "Dostcast",
+        "Prakhar Ke Pravachan",
+        "The Mumta Podcast",
+        "Nikhil Kamath",
+        "Siddharth Kannan",
+        "Unfiltered by Samdish",
+        "The Lallantop"
       ],
-      "length": "long",
-      "playlists": true,
-      "genre": "Devotional",
-      "languages": [
-        "hi"
-      ],
-      "kind": "Podcasts"
+      "order": "timeline",
+      "mode": "pace"
     },
     {
       "id": "cricket",
@@ -2493,107 +2544,91 @@
       "terms": [
         "football highlights",
         "football documentary",
-        "best goals"
+        "best goals",
+        "premier league highlights",
+        "champions league highlights",
+        "la liga highlights",
+        "isl highlights"
       ],
       "length": "medium",
       "genre": "Football",
       "languages": [
         "en"
       ],
-      "kind": "Sports"
+      "kind": "Sports",
+      "skipWords": [
+        "nfl",
+        "super bowl",
+        "american football",
+        "efootball",
+        "pes 20",
+        "fc 25",
+        "fc 26"
+      ]
     },
     {
-      "id": "tennis",
-      "name": "Racket Sports",
+      "id": "more-sports",
+      "name": "More Sports",
       "terms": [
         "tennis highlights",
-        "tennis classic match",
         "badminton highlights",
-        "badminton best rallies",
-        "table tennis highlights"
-      ],
-      "length": "medium",
-      "genre": "Racket sports",
-      "languages": [
-        "en"
-      ],
-      "kind": "Sports"
-    },
-    {
-      "id": "basketball",
-      "name": "Basketball",
-      "terms": [
+        "table tennis highlights",
         "nba highlights",
-        "basketball documentary"
-      ],
-      "length": "medium",
-      "genre": "Basketball",
-      "languages": [
-        "en"
-      ],
-      "kind": "Sports"
-    },
-    {
-      "id": "combat-sports",
-      "name": "Combat Sports",
-      "terms": [
-        "ufc full fight",
-        "boxing full fight",
-        "martial arts documentary",
-        "wwe full match",
+        "ufc highlights",
+        "boxing highlights",
         "wwe highlights",
-        "indian wrestling dangal"
+        "cycling race highlights",
+        "tour de france highlights",
+        "marathon highlights",
+        "formula 1 race highlights",
+        "chess grandmaster game",
+        "chess tournament highlights"
       ],
       "length": "medium",
-      "genre": "Combat",
+      "genre": "Sports",
       "languages": [
         "en"
       ],
-      "kind": "Sports"
+      "kind": "Sports",
+      "skipWords": [
+        "efootball",
+        "gameplay",
+        "fifa 2",
+        "fc 25",
+        "fc 26",
+        "video game"
+      ]
     },
     {
       "id": "extreme-sports",
       "name": "Extreme Sports",
       "terms": [
         "extreme sports 4k",
-        "red bull documentary",
-        "mountain bike downhill"
+        "red bull extreme",
+        "freeride mountain bike",
+        "big wave surfing",
+        "wingsuit skydiving",
+        "skateboarding street",
+        "snowboarding backcountry",
+        "rock climbing free solo",
+        "freestyle motocross"
       ],
       "length": "medium",
       "genre": "Extreme",
       "languages": [
         "en"
       ],
-      "kind": "Sports"
-    },
-    {
-      "id": "running-and-cycling",
-      "name": "Running and Cycling",
-      "terms": [
-        "marathon documentary",
-        "cycling race highlights",
-        "trail running film"
-      ],
-      "length": "medium",
-      "genre": "Running",
-      "languages": [
-        "en"
-      ],
-      "kind": "Sports"
-    },
-    {
-      "id": "cricket-hindi",
-      "name": "Cricket Hindi",
-      "terms": [
-        "cricket highlights hindi commentary",
-        "cricket analysis hindi"
-      ],
-      "length": "medium",
-      "genre": "Cricket",
-      "languages": [
-        "hi"
-      ],
-      "kind": "Sports"
+      "kind": "Sports",
+      "skipWords": [
+        "boxing",
+        "ufc",
+        "mma",
+        "efootball",
+        "football",
+        "nfl",
+        "full highlights",
+        " vs "
+      ]
     },
     {
       "id": "kabaddi-and-kushti",
@@ -2995,23 +3030,6 @@
       ],
       "length": "medium",
       "genre": "Retro",
-      "languages": [
-        "en"
-      ],
-      "kind": "Gaming"
-    },
-    {
-      "id": "chess",
-      "name": "Chess and Board Games",
-      "terms": [
-        "chess game analysis",
-        "chess grandmaster",
-        "chess tournament",
-        "board game review",
-        "how to play board game"
-      ],
-      "length": "medium",
-      "genre": "Chess",
       "languages": [
         "en"
       ],
@@ -3773,7 +3791,10 @@
         "ram katha",
         "bhagwat katha",
         "pravachan hindi",
-        "shiv puran katha"
+        "shiv puran katha",
+        "spiritual podcast hindi",
+        "adhyatmik pravachan",
+        "osho hindi speech"
       ],
       "length": "long",
       "genre": "Devotional",
@@ -3939,7 +3960,15 @@
         "ranked",
         "1v1",
         "streamer",
-        "twitch"
+        "twitch",
+        "korean drama",
+        "k-drama",
+        "kdrama",
+        "c-drama",
+        "chinese drama",
+        "drama explained",
+        "drama recap",
+        "recap"
       ],
       "genre": "Popular",
       "languages": [

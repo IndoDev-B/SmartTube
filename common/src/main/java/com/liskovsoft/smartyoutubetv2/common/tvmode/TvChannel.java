@@ -30,6 +30,12 @@ public class TvChannel {
     public static final String ORDER_VIEWS = "views";
     /** Most viewed among this week's uploads. */
     public static final String ORDER_TRENDING = "trending";
+    /**
+     * By upload date, oldest on the left and newest on the right, like a recorder's list of
+     * shows. A new channel starts at this week's first upload, with older ones behind it. For
+     * channels that follow YouTube channels, such as podcasts.
+     */
+    public static final String ORDER_TIMELINE = "timeline";
     public static final String TYPE_VIDEO = "video";
     /** YouTube's "Movies" search filter. Paid titles come without a video id and are left out. */
     public static final String TYPE_MOVIE = "movie";
@@ -185,6 +191,8 @@ public class TvChannel {
     /** How many searches this channel ran since the app started. Every few, one asks for recent uploads. */
     public int fills;
     public long lastFillMs;
+    /** Fills still to run so a timeline channel reads every creator once. Not saved. */
+    public int sweep;
     /** The video that is playing and when it started, to tell a skip from watching. */
     public String startedId;
     public long startedMs;
@@ -227,6 +235,10 @@ public class TvChannel {
 
     public boolean isLiveOf() {
         return liveOf != null && !liveOf.isEmpty();
+    }
+
+    public boolean isTimeline() {
+        return ORDER_TIMELINE.equals(order);
     }
     /**
      * Videos a playlist added by hand to a channel that isn't in order (a Songs channel, say).

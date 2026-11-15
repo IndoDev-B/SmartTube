@@ -832,7 +832,7 @@ public class TvModeMenu {
             channel.order = value;
             searchChanged(channel, null);
         }, TvChannel.ORDER_MIXED, "Mixed", TvChannel.ORDER_TRENDING, "Trending this week", TvChannel.ORDER_VIEWS, "Most viewed",
-                TvChannel.ORDER_NEW, "Newest first"));
+                TvChannel.ORDER_NEW, "Newest first", TvChannel.ORDER_TIMELINE, "By date, newest on the right"));
 
         mDialog.appendRadioCategory("Search YouTube for", options(channel.type, value -> {
             channel.type = value;

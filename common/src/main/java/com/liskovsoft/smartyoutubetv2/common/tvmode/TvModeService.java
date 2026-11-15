@@ -83,6 +83,16 @@ public class TvModeService {
     private static final long CONFIG_CHECK_PERIOD_MS = 5 * 60 * 1_000;
     private static final int MAX_PAST = 20;
     private static final int PAST_SHOWN = 8;
+    /** A timeline channel's left side is its back catalogue, there to scroll through, so it keeps and shows more. */
+    private static final int TIMELINE_PAST = 60;
+
+    private static int maxPast(TvChannel channel) {
+        return channel.isTimeline() ? TIMELINE_PAST : MAX_PAST;
+    }
+
+    private static int pastShown(TvChannel channel) {
+        return channel.isTimeline() ? TIMELINE_PAST : PAST_SHOWN;
+    }
     private static final int MAX_MISSED = 80;
     /** Channels at the top of the guide get their first videos before the rest. */
     private static final int GUIDE_FIRST = 8;
@@ -360,7 +370,7 @@ public class TvModeService {
     private VideoGroup buildGroup(TvChannel channel, int row) {
         syncLive(channel);
         // A few already played videos stay at the start of the line, to the left of what's on now.
-        List<Video> videos = new ArrayList<>(channel.lineup.subList(Math.max(0, channel.pos - PAST_SHOWN), channel.lineup.size()));
+        List<Video> videos = new ArrayList<>(channel.lineup.subList(Math.max(0, channel.pos - pastShown(channel)), channel.lineup.size()));
         VideoGroup group = VideoGroup.from(videos, mSection, row);
         group.setId(("tv_mode:" + channel.id).hashCode());
         group.setTitle(title(channel));
@@ -699,7 +709,7 @@ public class TvModeService {
         watching(channel, video.videoId, isLive(channel) ? liveOffsetMs(channel) : savedPositionMs(video.videoId));
 
         // Keep a short tail of what already played.
-        int extra = channel.pos - MAX_PAST;
+        int extra = channel.pos - maxPast(channel);
         for (int i = 0; i < extra; i++) {
             Video removed = channel.lineup.remove(0);
             channel.durations.remove(removed.videoId);
@@ -955,6 +965,12 @@ public class TvModeService {
 
     /** How many videos a channel keeps ready. A fresh channel keeps fewer: what waits longest goes stale. */
     private int minAhead(TvChannel channel) {
+        // A timeline channel that has caught up waits for new uploads. Searching again and again
+        // would only read the same pages: its creators are read on a timer instead.
+        if (channel.isTimeline() && !channel.creators.isEmpty()) {
+            return 0;
+        }
+
         return isFresh(channel) ? Math.max(4, mMinAhead / 2) : mMinAhead;
     }
 
@@ -967,6 +983,14 @@ public class TvModeService {
         long now = System.currentTimeMillis();
 
         for (TvChannel channel : mChannels) {
+            // A timeline channel keeps its queue and only looks for new uploads, from every creator in turn.
+            if (channel.isTimeline() && !channel.creators.isEmpty() && !channel.loading && now - channel.lastFillMs > FRESH_REFILL_MS) {
+                channel.sweep = channel.creators.size() - 1;
+                channel.emptyFills = 0;
+                fill(channel, null, false);
+                continue;
+            }
+
             if (!isFresh(channel) || channel.loading) {
                 continue;
             }
@@ -2616,7 +2640,7 @@ public class TvModeService {
         }
 
         // A channel left running for days must not keep everything it ever played.
-        while (channel.pos > MAX_PAST) {
+        while (channel.pos > maxPast(channel)) {
             channel.lineup.remove(0);
             channel.pos--;
         }
@@ -4600,7 +4624,10 @@ public class TvModeService {
 
             try {
                 ContentService service = YouTubeServiceManager.instance().getContentService();
-                MediaGroup previous = fromPlaylist || fromApi || fromChart ? null : mPages.get(pageKey);
+                // A timeline channel reads each creator's newest uploads every time, never a later
+                // page: what it wants from a fill is what came out since the last one.
+                final boolean uploads = fromCreator && channel.isTimeline();
+                MediaGroup previous = fromPlaylist || fromApi || fromChart || uploads ? null : mPages.get(pageKey);
                 List<MediaGroup> groups;
 
                 if (fromChart) {
@@ -4634,7 +4661,8 @@ public class TvModeService {
                     if (creatorId[0] == null) {
                         creatorId[0] = findCreatorId(service, term);
                     }
-                    groups = creatorId[0] != null ? service.getChannelObserve(creatorId[0]).blockingFirst() : new ArrayList<MediaGroup>();
+                    groups = creatorId[0] == null ? new ArrayList<MediaGroup>()
+                            : uploads ? uploadsOf(service, creatorId[0]) : service.getChannelObserve(creatorId[0]).blockingFirst();
                 } else {
                     groups = service.getSearch(query, options);
 
@@ -4714,6 +4742,9 @@ public class TvModeService {
 
                     // One page is often not enough after filtering. Bounded so a dead search can't loop.
                     if (channel.ahead() < minAhead(channel) && channel.emptyFills < channel.sources() * 3) {
+                        fill(channel, null, urgent);
+                    } else if (channel.sweep > 0) { // a timeline channel looking through all its creators
+                        channel.sweep--;
                         fill(channel, null, urgent);
                     }
                 }
@@ -4831,6 +4862,38 @@ public class TvModeService {
         return result;
     }
 
+    /**
+     * A creator's latest uploads, newest first: two pages of the uploads playlist YouTube keeps
+     * for every channel ("UU" in place of the id's "UC"). The channel's own page is no good for
+     * this: it mixes popular videos, shorts and playlists into its rows. Worker threads.
+     */
+    private static final int UPLOAD_PAGES = 2;
+
+    private static List<MediaGroup> uploadsOf(ContentService service, String creatorId) {
+        List<MediaGroup> result = new ArrayList<>();
+
+        if (!creatorId.startsWith("UC")) {
+            return result;
+        }
+
+        List<MediaGroup> groups = service.getChannelObserve("VLUU" + creatorId.substring(2)).blockingFirst();
+        MediaGroup group = null;
+
+        for (int g = 0; groups != null && g < groups.size(); g++) {
+            MediaGroup one = groups.get(g);
+            if (one != null && one.getMediaItems() != null && !one.getMediaItems().isEmpty() && (group == null || one.getNextPageKey() != null)) {
+                group = one;
+            }
+        }
+
+        for (int page = 0; group != null && page < UPLOAD_PAGES; page++) {
+            result.add(group);
+            group = group.getNextPageKey() != null ? service.continueGroup(group) : null;
+        }
+
+        return result;
+    }
+
     /** The YouTube channel id for a creator's name: the first channel a search for the name returns. */
     private static String findCreatorId(ContentService service, String name) {
         List<MediaGroup> groups = service.getSearch(name, SearchOptions.TYPE_CHANNEL);
@@ -4892,7 +4955,9 @@ public class TvModeService {
                 continue;
             }
 
-            if (!channel.exhausted && isWatched(channel, item.getVideoId())) {
+            // A timeline channel runs out of new videos by design, between uploads. That must not
+            // bring watched episodes back.
+            if ((!channel.exhausted || channel.isTimeline()) && isWatched(channel, item.getVideoId())) {
                 continue;
             }
 
@@ -4913,12 +4978,16 @@ public class TvModeService {
                 continue;
             }
 
-            if (publishedMs > 0 && isFresh(channel)) {
+            if (publishedMs > 0 && (isFresh(channel) || channel.isTimeline())) {
                 channel.published.put(video.videoId, publishedMs);
             }
 
             keepFacts(channel, video.videoId, video.getDurationMs());
             fresh.add(video);
+        }
+
+        if (channel.isTimeline()) {
+            return addByDate(channel, fresh);
         }
 
         return addFresh(channel, fresh, seen);
@@ -5019,18 +5088,30 @@ public class TvModeService {
             }
         }
 
-        if (!TvChannel.ORDER_NEW.equals(channel.order) && !TvChannel.ORDER_VIEWS.equals(channel.order)) {
+        boolean mixed = !TvChannel.ORDER_NEW.equals(channel.order) && !TvChannel.ORDER_VIEWS.equals(channel.order);
+
+        if (mixed) {
             Collections.shuffle(fresh);
         }
 
         int added = 0;
+        // A fill reads one search term, so its videos are all one topic. Added in one block they
+        // would run for hours: in a mixed channel they are spread among what's already coming.
+        // From the program after next: the next one is already on the guide.
+        int from = channel.pos + 2;
+        java.util.Random random = new java.util.Random();
 
         for (Video video : fresh) {
             if (creatorRunsTooLong(channel, video) || sameAsQueued(channel, video)) {
                 continue;
             }
 
-            channel.lineup.add(video);
+            if (mixed && from >= 2 && channel.lineup.size() > from) {
+                channel.lineup.add(from + random.nextInt(channel.lineup.size() - from + 1), video);
+                channel.group = null; // the guide's row is out of order now: it's built again
+            } else {
+                channel.lineup.add(video);
+            }
             if (video.isLive) {
                 channel.durations.put(video.videoId, TvChannel.STREAM_SLOT_MS); // a stream has no length: it gets a slot
             } else if (video.getDurationMs() > 0 && !channel.durations.containsKey(video.videoId)) {
@@ -5042,6 +5123,94 @@ public class TvModeService {
             added++;
         }
 
+        return added;
+    }
+
+    /** Something up to what's on now was watched: the channel has been started. */
+    private boolean watchedUpTo(TvChannel channel) {
+        for (int i = 0; i <= channel.pos && i < channel.lineup.size(); i++) {
+            if (mWatched.contains(channel.lineup.get(i).videoId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** A new timeline channel starts here: at the first upload of the last week, older ones behind it. */
+    private static final long TIMELINE_START_MS = 7 * 24 * 60 * 60_000L;
+
+    /**
+     * Timeline channels: each new video goes in by its upload date, oldest on the left and newest
+     * on the right. One older than what's on now lands behind it, among the shows already passed,
+     * so the next program is always newer. fresh: a creator's uploads, newest first.
+     */
+    private int addByDate(TvChannel channel, List<Video> fresh) {
+        // Until something on it is watched or playing, the channel still starts at this week: a
+        // fill only reads one creator, and the next creator's week would otherwise land behind.
+        boolean firstFill = channel.lineup.isEmpty();
+        boolean wasEmpty = firstFill || (channel.startedId == null && !watchedUpTo(channel));
+        Video current = channel.pos >= 0 && channel.pos < channel.lineup.size() ? channel.lineup.get(channel.pos) : null;
+        long now = System.currentTimeMillis();
+        // "3 days ago" is all a result says, so videos of one day tie. Where it says nothing, a
+        // video is taken as just older than the one before it: the uploads list is newest first.
+        long previous = now;
+        int added = 0;
+
+        for (Video video : fresh) {
+            if (video.isLive || sameAsQueued(channel, video)) {
+                continue;
+            }
+
+            Long publishedMs = channel.published.get(video.videoId);
+            long at = publishedMs != null && publishedMs > 0 ? Math.min(publishedMs, previous - 1) : previous - 1;
+            channel.published.put(video.videoId, at);
+            previous = at;
+            channel.lineup.add(video);
+            if (video.getDurationMs() > 0 && !channel.durations.containsKey(video.videoId)) {
+                channel.durations.put(video.videoId, video.getDurationMs());
+            }
+            added++;
+        }
+
+        if (added == 0) {
+            return 0;
+        }
+
+        final Map<String, Long> published = channel.published;
+        // Stable: videos with the same date keep the order they came in.
+        Collections.sort(channel.lineup, (a, b) -> {
+            Long pa = published.get(a.videoId);
+            Long pb = published.get(b.videoId);
+            return Long.compare(pa != null ? pa : now, pb != null ? pb : now);
+        });
+
+        if (wasEmpty || current == null) {
+            int start = channel.lineup.size() - 1;
+            for (int i = 0; i < channel.lineup.size(); i++) {
+                Long at = published.get(channel.lineup.get(i).videoId);
+                if (at != null && now - at <= TIMELINE_START_MS) {
+                    start = i;
+                    break;
+                }
+            }
+            channel.pos = start;
+            channel.liveStartMs = 0;
+        } else {
+            channel.pos = channel.lineup.indexOf(current);
+        }
+
+        // The back catalogue is kept to a length the guide can show.
+        while (channel.pos > maxPast(channel)) {
+            channel.durations.remove(channel.lineup.remove(0).videoId);
+            channel.pos--;
+        }
+
+        if (firstFill) { // the other creators' weeks too, before anyone tunes in
+            channel.sweep = Math.max(channel.sweep, channel.creators.size() - 1);
+        }
+
+        channel.group = null;
         return added;
     }
 
