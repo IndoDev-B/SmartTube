@@ -78,7 +78,7 @@ jobs:
           fi
           {
             echo "CHANGES<<EOF"
-            git log $limit --format='%s' "$range" -- . ':(exclude).github' \
+            git log --first-parent $limit --format='%s' "$range" -- . ':(exclude).github' \
               ':(exclude)smarttubetv/plus.gradle' ':(exclude)smarttubetv/src/stdev' \
               ':(exclude)smarttubetv/src/ststableRelease' ':(exclude)README.md' ':(exclude)docs' \
               | grep -v -e '^SmartTube Plus' -e '^Merge ' -e '^Restore MediaServiceCore' -e '^Revert "' -e '^README' | tac || true
