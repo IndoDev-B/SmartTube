@@ -104,7 +104,14 @@ jobs:
           fi
           git submodule update --init --recursive
           # A patch that no longer fits a new SmartTube release must not block the release.
-          sh patches/apply.sh --lenient
+          # Those left out are listed in the changelog, to be redone by hand for the next release.
+          : > "$RUNNER_TEMP/skipped.txt"
+          PLUS_SKIPPED="$RUNNER_TEMP/skipped.txt" sh patches/apply.sh --lenient
+          {
+            echo "SKIPPED<<EOF"
+            cat "$RUNNER_TEMP/skipped.txt"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         if: steps.check.outputs.go == 'true'
@@ -165,7 +172,7 @@ jobs:
           jq -n \
             --arg base "$BASE_URL" --arg version "$version" \
             --argjson code $(( code * 1000 + BUILD )) \
-            --arg tag "${{ steps.check.outputs.tag }}" --arg changes "$CHANGES" --arg upstream "$UPSTREAM_NOTES" '
+            --arg tag "${{ steps.check.outputs.tag }}" --arg changes "$CHANGES" --arg upstream "$UPSTREAM_NOTES" --arg skipped "$SKIPPED" '
             def lines(s): s | split("\n") | map(select(length > 0));
             {
               package: {
@@ -179,7 +186,10 @@ jobs:
                 (if (lines($upstream) | length) > 0
                   then ["New in SmartTube \($tag):"] + lines($upstream) + ["New in SmartTube Plus:"]
                   else ["Based on SmartTube \($tag). New in SmartTube Plus:"] end)
-                + (if (lines($changes) | length) > 0 then lines($changes) else ["Rebuilt, no new Plus changes"] end))
+                + (if (lines($changes) | length) > 0 then lines($changes) else ["Rebuilt, no new Plus changes"] end)
+                + (if (lines($skipped) | length) > 0
+                  then ["Left out, they clash with this SmartTube version and will come back in a later build:"] + (lines($skipped) | map("Not included: " + .))
+                  else [] end))
             } }' \
             > dist/smarttubeplus.json
           cat dist/smarttubeplus.json
@@ -192,6 +202,11 @@ jobs:
         run: |
           list=$(printf '%s\n' "$CHANGES" | sed '/^$/d; s/^/- /')
           [ -n "$list" ] || list="- None yet, same features as SmartTube"
+          left=$(sed '/^$/d; s/^/- /' "$RUNNER_TEMP/skipped.txt")
+          [ -z "$left" ] || list="$list
+
+          **Left out of this build** (they clash with SmartTube $TAG, to be redone by hand):
+          $left"
           notes="Unofficial build of [SmartTube](https://github.com/yuliskov/SmartTube) $TAG with extra features. Installs as **SmartTube Plus**, next to the official app.
 
           **Install on the TV:** in Downloader, enter code **9583142**, or open
