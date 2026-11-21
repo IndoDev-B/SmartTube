@@ -1,5 +1,5 @@
 diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt
-index 77822ad6..72bdb2a0 100644
+index 6821919b..6245dfe0 100644
 --- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt
 +++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/app/PoTokenGate.kt
 @@ -70,7 +70,8 @@ internal object PoTokenGate {
@@ -92,10 +92,10 @@ index bb3945e6..8594fc9b 100644
          }
      }
 diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java
-index 69a7fc14..e57f36b8 100644
+index 709c809b..7c3cf550 100644
 --- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java
 +++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/YouTubeServiceManager.java
-@@ -15,6 +15,7 @@ import com.liskovsoft.mediaserviceinterfaces.SignInService;
+@@ -14,6 +14,7 @@ import com.liskovsoft.mediaserviceinterfaces.SignInService;
  import com.liskovsoft.sharedutils.mylogger.Log;
  import com.liskovsoft.sharedutils.rx.RxHelper;
  import com.liskovsoft.youtubeapi.app.AppService;
@@ -103,62 +103,16 @@ index 69a7fc14..e57f36b8 100644
  import com.liskovsoft.youtubeapi.app.ReloadPlaybackGate;
  import com.liskovsoft.youtubeapi.channelgroups.ChannelGroupServiceImpl;
  import com.liskovsoft.googlecommon.common.locale.LocaleManager;
-@@ -130,7 +131,10 @@ public class YouTubeServiceManager implements ServiceManager {
+@@ -101,7 +102,11 @@ public class YouTubeServiceManager implements ServiceManager {
          }
  
          mRefreshCoreDataAction =
--                RxHelper.execute(RxHelper.fromRunnable(() -> getAppService().refreshCacheIfNeeded(getVideoInfoService().getClient())));
+-                RxHelper.execute(RxHelper.fromRunnable(() -> getAppService().warmUpCacheIfNeeded(FormatInfoWrapper.getActualClient())));
 +                RxHelper.execute(RxHelper.fromRunnable(() -> {
-+                    getAppService().refreshCacheIfNeeded(getVideoInfoService().getClient());
-+                    PoTokenGate.warmUp(getVideoInfoService().getClient());
++                    getAppService().warmUpCacheIfNeeded(FormatInfoWrapper.getActualClient());
++                    // SmartTube Plus: the anti-bot token is made ahead too, so the first video doesn't wait for it.
++                    PoTokenGate.warmUp(FormatInfoWrapper.getActualClient());
 +                }));
      }
  
-     @NonNull
-diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
-index 29e7de1e..99b4bc6f 100644
---- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
-+++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/V2/VideoInfoService.java
-@@ -76,6 +76,8 @@ public class VideoInfoService extends VideoInfoServiceBase {
- 
-         mUseAuth = true;
- 
-+        long startMs = System.currentTimeMillis();
-+
-         VideoInfo result = firstPlayable(videoId, clickTrackingParams);
- 
-         if (result == null) {
-@@ -83,10 +85,17 @@ public class VideoInfoService extends VideoInfoServiceBase {
-             return null;
-         }
- 
-+        long playerMs = System.currentTimeMillis();
-+
-         applyFixesIfNeeded(result, videoId, clickTrackingParams);
- 
-+        long fixesMs = System.currentTimeMillis();
-+
-         transformFormats(result);
- 
-+        Log.d(TAG, "Video start timing for %s via %s: player request %s ms, extras %s ms, urls and token %s ms",
-+                videoId, result.getClient(), playerMs - startMs, fixesMs - playerMs, System.currentTimeMillis() - fixesMs);
-+
-         persistRecentTypeIfNeeded(result);
- 
-         mIsUnplayable = result.isUnplayable();
-@@ -120,12 +129,15 @@ public class VideoInfoService extends VideoInfoServiceBase {
-         AppClient nextClient = beginClient;
- 
-         do {
-+            long startMs = System.currentTimeMillis();
-             VideoInfo result = getVideoInfoWithRentFix(nextClient, videoId, clickTrackingParams);
- 
-             if (result != null && infoTester.test(result)) {
-                 return result;
-             }
- 
-+            Log.d(TAG, "Client %s refused %s after %s ms", nextClient, videoId, System.currentTimeMillis() - startMs);
-+
-             nextClient = Helpers.getNextValue(CLIENT_LIST, nextClient);
-         } while (nextClient != beginClient);
- 
+     @Override

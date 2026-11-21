@@ -81,7 +81,7 @@ jobs:
             git log $limit --format='%s' "$range" -- . ':(exclude).github' \
               ':(exclude)smarttubetv/plus.gradle' ':(exclude)smarttubetv/src/stdev' \
               ':(exclude)smarttubetv/src/ststableRelease' ':(exclude)README.md' ':(exclude)docs' \
-              | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' -e '^Revert "' -e '^README' | tac || true
+              | grep -v -e '^SmartTube Plus' -e '^Merge ' -e '^Restore MediaServiceCore' -e '^Revert "' -e '^README' | tac || true
             echo "EOF"
           } >> "$GITHUB_ENV"
           {
