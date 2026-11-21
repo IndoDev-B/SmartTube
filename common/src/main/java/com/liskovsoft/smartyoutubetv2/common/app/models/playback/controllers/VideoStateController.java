@@ -736,7 +736,8 @@ public class VideoStateController extends BasePlayerController {
         ScreensaverManager screensaverManager = getScreensaverManager();
 
         // Card previews shouldn't keep the screen on
-        if (screensaverManager == null || isEmbedPlayer()) {
+        // SmartTube Plus: except the TV guide's preview, which is watching TV.
+        if (screensaverManager == null || (isEmbedPlayer() && !com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.isGuidePreviewOn())) {
             return;
         }
 

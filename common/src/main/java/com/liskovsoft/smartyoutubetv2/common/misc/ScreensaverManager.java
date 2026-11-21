@@ -303,7 +303,8 @@ public class ScreensaverManager {
         }
 
         PlaybackView playbackView = PlaybackPresenter.instance(activity).getView();
-        return playbackView != null && !playbackView.isEmbed() && playbackView.isPlaying();
+        // SmartTube Plus: the TV guide's preview counts as playing, unlike card previews.
+        return playbackView != null && (!playbackView.isEmbed() || com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.isGuidePreviewOn()) && playbackView.isPlaying();
     }
 
     private long getPosition() {

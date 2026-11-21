@@ -3450,6 +3450,20 @@ public class TvModeService {
         }
     }
 
+    /**
+     * The guide's preview box is playing. SmartTube lets the screen dim during preview players, so
+     * card previews on Home don't keep the TV awake. The guide's preview is watching TV, so it does.
+     */
+    private static volatile boolean sGuidePreviewOn;
+
+    public static void setGuidePreviewOn(boolean on) {
+        sGuidePreviewOn = on;
+    }
+
+    public static boolean isGuidePreviewOn() {
+        return sGuidePreviewOn;
+    }
+
     /** Stops the guide's preview, which plays on under a menu. Set by the guide, taken once by the player. */
     private Runnable mGuidePreviewStopper;
 

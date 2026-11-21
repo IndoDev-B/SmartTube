@@ -580,6 +580,9 @@ public class TvGuideHeroView extends FrameLayout {
         mPreviewPlayer.setFocusable(false);
         // Over the still picture, under the channel name and the clock.
         mPreviewBox.addView(mPreviewPlayer, 1, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        // Watching the guide is watching TV: the screen stays on, as it does in full screen.
+        mPreviewPlayer.setKeepScreenOn(true);
+        TvModeService.setGuidePreviewOn(true);
         mPreviewPlayer.openVideo(copy);
         // Watching here is watching: a program seen through in the preview is as watched as one seen full screen.
         TvModeService.instance(getContext()).watchingInPreview(channel, copy.videoId, copy.pendingPosMs);
@@ -619,6 +622,7 @@ public class TvGuideHeroView extends FrameLayout {
         removeCallbacks(mStartPreview);
         removeCallbacks(mPreloadAround);
         TvModeService.instance(getContext()).cancelPreload();
+        TvModeService.setGuidePreviewOn(false);
 
         if (mPreviewPlayer != null) {
             mPreviewPlayer.finish();
