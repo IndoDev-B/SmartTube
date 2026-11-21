@@ -319,8 +319,22 @@ public class VideoMenuPresenter extends BaseMenuPresenter {
         // Search serves playlists in YouTube's newer card format, which comes through as an unknown
         // type. A plain video card is TYPE_VIDEO: one inside a playlist would otherwise offer its playlist under its own title.
         if (mVideo == null || getContext() == null || !com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeService.isEnabled(getContext())
-                || mVideo.itemType == com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_VIDEO
-                || mVideo.itemType == com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_CHANNEL) {
+                || mVideo.itemType == com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_VIDEO) {
+            return;
+        }
+
+        // A YouTube channel's card: the TV channel follows its uploads, the way Podcasts follows podcasters.
+        if (mVideo.itemType == com.liskovsoft.mediaserviceinterfaces.data.MediaItem.TYPE_CHANNEL) {
+            final String youtubeId = mVideo.channelId;
+            final String channelName = mVideo.getTitle();
+            final android.content.Context context = getContext();
+
+            if (youtubeId != null && youtubeId.startsWith("UC") && channelName != null && !channelName.isEmpty()) {
+                mDialogPresenter.appendSingleButton(UiOptionItem.from("Add to a TV channel", optionItem -> {
+                    mDialogPresenter.closeDialog();
+                    com.liskovsoft.smartyoutubetv2.common.tvmode.TvModeMenu.showAddCreatorToChannel(context, channelName, youtubeId);
+                }));
+            }
             return;
         }
 

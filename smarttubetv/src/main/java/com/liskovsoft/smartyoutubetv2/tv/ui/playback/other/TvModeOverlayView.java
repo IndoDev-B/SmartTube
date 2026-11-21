@@ -399,6 +399,7 @@ public class TvModeOverlayView extends FrameLayout implements TvModeOverlay {
 
             restartTopTimeout();
             keepControlsUp();
+            TvModeController.onKeypadKey();
 
             if (digit != -1) { // the remote's own number keys still work while the keypad is open
                 TvModeController.typeDigit(digit);

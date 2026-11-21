@@ -4546,6 +4546,46 @@ public class TvModeService {
         save();
     }
 
+    /**
+     * A channel of its own for one YouTube channel, set up like Podcasts: Free, its uploads by
+     * date with the newest on the right, no shorts.
+     */
+    public TvChannel createFromCreator(String name, String youtubeId, Runnable onDone) {
+        ensureLoaded();
+        TvChannel channel = new TvChannel();
+        channel.id = "my-" + System.currentTimeMillis();
+        channel.name = name;
+        channel.creators.add(name.trim());
+        if (youtubeId != null) {
+            channel.creatorIds.put(name.trim(), youtubeId);
+        }
+        channel.order = TvChannel.ORDER_TIMELINE;
+        channel.mode = TvChannel.MODE_FREE;
+        channel.edited = true;
+        mChannels.add(channel);
+        mShown = null;
+        save();
+        fill(channel, onDone);
+        return channel;
+    }
+
+    /** Channels a YouTube channel can be added to: every one except those playing playlists in order. Ones already following YouTube channels first. */
+    public List<TvChannel> creatorTargets() {
+        ensureLoaded();
+        List<TvChannel> following = new ArrayList<>();
+        List<TvChannel> rest = new ArrayList<>();
+
+        for (TvChannel channel : mChannels) {
+            if (channel.isSeries() || channel.isLiveOf()) {
+                continue;
+            }
+            (channel.creators.isEmpty() ? rest : following).add(channel);
+        }
+
+        following.addAll(rest);
+        return following;
+    }
+
     public TvChannel create(String name, List<String> terms, Runnable onDone) {
         TvChannel channel = new TvChannel();
         channel.id = "my-" + System.currentTimeMillis();

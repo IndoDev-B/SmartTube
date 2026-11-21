@@ -282,6 +282,20 @@ public class TvModeController extends BasePlayerController {
         return channel != null ? "CH " + (controller.getService().indexOf(channel) + 1) + "   " + channel.name : null;
     }
 
+    /**
+     * A key was pressed on the keypad. Its keys never reach the player, so SmartTube's own
+     * "hide the controls after N seconds" timer would run out mid-browse and take the keypad with it.
+     */
+    public static void onKeypadKey() {
+        TvModeController controller = sInstance.get();
+        com.liskovsoft.smartyoutubetv2.common.app.models.playback.controllers.PlayerUIController ui =
+                controller != null ? controller.getController(com.liskovsoft.smartyoutubetv2.common.app.models.playback.controllers.PlayerUIController.class) : null;
+
+        if (ui != null) {
+            ui.restartUiAutoHideTimeout();
+        }
+    }
+
     /** The player's own controls are on screen. */
     public static boolean isControlsUp() {
         TvModeController controller = sInstance.get();

@@ -640,6 +640,11 @@ public class PlayerUIController extends BasePlayerController {
         }
     }
 
+    /** A key went to something drawn over the player, like TV mode's keypad: the controls wait again from now. */
+    public void restartUiAutoHideTimeout() {
+        enableUiAutoHideTimeout();
+    }
+
     private void disableUiAutoHideTimeout() {
         Log.d(TAG, "Stopping auto hide ui timer...");
         mHandler.removeCallbacks(mUiAutoHideHandler);

@@ -1285,4 +1285,43 @@ public class TvModeMenu {
 
         mDialog.showDialog("Add \"" + name + "\" to a TV channel");
     }
+
+    // ---------------- Add a YouTube channel to a TV channel ----------------
+
+    /** From SmartTube's own menus: hold OK on a YouTube channel's card. */
+    public static void showAddCreatorToChannel(Context context, String name, String youtubeId) {
+        new TvModeMenu(context).showAddCreatorToChannel(name, youtubeId);
+    }
+
+    /** A new channel of its own, or any channel that isn't a series or a network's live stream. */
+    private void showAddCreatorToChannel(String name, String youtubeId) {
+        if (name == null || name.trim().isEmpty()) {
+            toast("This YouTube channel has no name to follow");
+            return;
+        }
+
+        mDialog.appendSingleButton(UiOptionItem.from("New channel", option -> {
+            mDialog.closeDialog();
+            TvChannel made = mService.createFromCreator(name, youtubeId, this::refreshGuide);
+            toast("New channel " + (mService.indexOf(made) + 1) + ": " + made.name);
+            refreshGuide();
+        }));
+
+        for (TvChannel channel : mService.creatorTargets()) {
+            final boolean has = channel.creators.contains(name.trim());
+            String label = "CH " + (mService.indexOf(channel) + 1) + "  " + channel.name + (has ? "  (has it already)" : "");
+
+            mDialog.appendSingleButton(UiOptionItem.from(label, option -> {
+                mDialog.closeDialog();
+                if (has || !mService.addCreator(channel, name, youtubeId, this::refreshGuide)) {
+                    toast(channel.name + " already follows " + name);
+                    return;
+                }
+                toast(name + " added to " + channel.name);
+                refreshGuide();
+            }));
+        }
+
+        mDialog.showDialog("Add \"" + name + "\" to a TV channel");
+    }
 }

@@ -34,10 +34,14 @@ jobs:
         id: check
         run: |
           tag=$(gh api repos/yuliskov/SmartTube/releases/latest --jq .tag_name)
-          built=$(gh release view latest -R "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null \
-            | sed -n 's/.*<!-- upstream: \([^ ]*\) -->.*/\1/p' || true)
-          echo "SmartTube latest stable: $tag, last Plus build based on: ${built:-none}"
+          body=$(gh release view latest -R "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null || true)
+          built=$(printf '%s\n' "$body" | sed -n 's/.*<!-- upstream: \([^ ]*\) -->.*/\1/p')
+          # The my-features commit the last Plus build was made from: the changelog starts after it.
+          prev=$(printf '%s\n' "$body" | sed -n 's/.*<!-- plus-commit: \([0-9a-f]*\) -->.*/\1/p')
+          echo "SmartTube latest stable: $tag, last Plus build based on: ${built:-none}, from ${prev:-unknown}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "built=$built" >> "$GITHUB_OUTPUT"
+          echo "prev=$prev" >> "$GITHUB_OUTPUT"
           if [ "$tag" = "$built" ] && [ "${{ github.event_name }}" = "schedule" ]; then
             echo "Nothing new."
             echo "go=false" >> "$GITHUB_OUTPUT"
@@ -55,21 +59,38 @@ jobs:
         if: steps.check.outputs.go == 'true'
         env:
           TAG: ${{ steps.check.outputs.tag }}
+          BUILT: ${{ steps.check.outputs.built }}
+          PREV: ${{ steps.check.outputs.prev }}
         run: |
           git fetch --force "$UPSTREAM" "+refs/tags/*:refs/tags/*"
           # The upstream stable tag my-features currently sits on, e.g. 32.71s.
           old=$(git describe --tags --abbrev=0 --match '[0-9]*s' HEAD)
           echo "my-features is based on $old, applying it to $TAG"
+          echo "PLUS_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-          # Apply all of my-features as ONE patch instead of replaying commits: commits that
-          # cancel out (a change and its revert) then can't conflict with the new release.
-          # Changelog = commit subjects, minus the setup commits and workflow-only commits.
+          # The update dialog shows only what is new since the last Plus build: our commits after
+          # the one it was made from (the 15 newest when that is unknown), and SmartTube's own
+          # release notes when this build is the first on a new SmartTube release.
+          if [ -n "$PREV" ] && git cat-file -e "$PREV^{commit}" 2>/dev/null; then
+            range="$PREV..HEAD"; limit=""
+          else
+            range="$old..HEAD"; limit="-15"
+          fi
           {
             echo "CHANGES<<EOF"
-            git log --reverse --format='%s' "$old..HEAD" -- . ':(exclude).github' \
+            git log $limit --format='%s' "$range" -- . ':(exclude).github' \
               ':(exclude)smarttubetv/plus.gradle' ':(exclude)smarttubetv/src/stdev' \
-              ':(exclude)smarttubetv/src/ststableRelease' \
-              | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' || true
+              ':(exclude)smarttubetv/src/ststableRelease' ':(exclude)README.md' ':(exclude)docs' \
+              | grep -v -e '^SmartTube Plus:' -e '^Restore MediaServiceCore' -e '^Revert "' -e '^README' | tac || true
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+          {
+            echo "UPSTREAM_NOTES<<EOF"
+            if [ "$TAG" != "$BUILT" ]; then
+              # SmartTube's notes are a few "- " lines, then download and VirusTotal blocks.
+              gh api "repos/yuliskov/SmartTube/releases/tags/$TAG" --jq .body 2>/dev/null | tr -d '\r' \
+                | sed '/Downloader code/,$d' | sed -n 's/^[-*] *//p' || true
+            fi
             echo "EOF"
           } >> "$GITHUB_ENV"
           # README.md is ours on this branch and SmartTube's on the release: left out, so a change
@@ -144,7 +165,8 @@ jobs:
           jq -n \
             --arg base "$BASE_URL" --arg version "$version" \
             --argjson code $(( code * 1000 + BUILD )) \
-            --arg tag "${{ steps.check.outputs.tag }}" --arg changes "$CHANGES" '
+            --arg tag "${{ steps.check.outputs.tag }}" --arg changes "$CHANGES" --arg upstream "$UPSTREAM_NOTES" '
+            def lines(s): s | split("\n") | map(select(length > 0));
             {
               package: {
                 downloadUrlList: ["\($base)/smarttubeplus_armeabi-v7a.apk"],
@@ -153,7 +175,11 @@ jobs:
               }
             } + { ($version): {
               versionCode: $code,
-              changelog: (["Based on SmartTube \($tag)"] + ($changes | split("\n") | map(select(length > 0))))
+              changelog: (
+                (if (lines($upstream) | length) > 0
+                  then ["New in SmartTube \($tag):"] + lines($upstream) + ["New in SmartTube Plus:"]
+                  else ["Based on SmartTube \($tag). New in SmartTube Plus:"] end)
+                + (if (lines($changes) | length) > 0 then lines($changes) else ["Rebuilt, no new Plus changes"] end))
             } }' \
             > dist/smarttubeplus.json
           cat dist/smarttubeplus.json
@@ -173,10 +199,11 @@ jobs:
 
           After that, the app offers new builds as in-app updates.
 
-          **Changes on top of SmartTube:**
+          **New in this build:**
           $list
 
-          <!-- upstream: $TAG -->"
+          <!-- upstream: $TAG -->
+          <!-- plus-commit: $PLUS_COMMIT -->"
           if gh release view latest >/dev/null 2>&1; then
             gh release edit latest --title "SmartTube Plus $VERSION" --notes "$notes" --latest
           else
